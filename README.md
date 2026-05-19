@@ -25,6 +25,8 @@ It is designed for sensors where coloured context bands make the graph easier to
 - Configure X-axis and Y-axis visibility, position, tick count and label styling
 - Add optional X-grid and Y-grid lines
 - Configure graph line colour, width and opacity
+- Downsample large history responses automatically for performance
+- Show optional debug and performance diagnostics
 
 ## Installation
 
@@ -77,7 +79,7 @@ type: module
 ## Examples
 
 <details>
-<summary>Basic example</summary>
+<summary>Basic CO₂ example</summary>
 
 ```yaml
 type: custom:simple-band-graph-card
@@ -86,6 +88,192 @@ name: Office CO₂
 hours_to_show: 24
 y_min: 400
 y_max: 2000
+bands:
+  - from: 400
+    to: 800
+    color: "#2ecc7133"
+    label: Good
+  - from: 800
+    to: 1100
+    color: "#f1c40f33"
+    label: OK
+  - from: 1100
+    to: 1500
+    color: "#e67e2233"
+    label: Stale
+  - from: 1500
+    to: 2000
+    color: "#e74c3c33"
+    label: Poor
+```
+
+</details>
+
+<details>
+<summary>Temperature example</summary>
+
+```yaml
+type: custom:simple-band-graph-card
+entity: sensor.living_room_temperature
+name: Living Room Temperature
+height: 150
+hours_to_show: 48
+y_min: 14
+y_max: 24
+
+top_left: name
+top_center: band
+top_right: current
+
+band_label_mode: range
+band_label_unit: true
+band_label_position: middle
+band_label_align: outside_right
+band_label_outside_width: auto
+
+show_y_axis_labels: true
+y_axis_position: left
+y_axis_ticks: 6
+
+show_x_axis_labels: true
+x_axis_ticks: 5
+
+show_y_grid: true
+
+show_latest: true
+show_latest_label: true
+show_min: true
+show_max: true
+marker_label_background_mode: band
+
+bands:
+  - from: 14
+    to: 17
+    color: "#3498db33"
+    label: Cool
+  - from: 17
+    to: 20
+    color: "#2ecc7133"
+    label: Comfortable
+  - from: 20
+    to: 22
+    color: "#f1c40f33"
+    label: Warm
+  - from: 22
+    to: 24
+    color: "#e67e2233"
+    label: Hot
+```
+
+</details>
+
+<details>
+<summary>Solar generation example</summary>
+
+```yaml
+type: custom:simple-band-graph-card
+entity: sensor.example_solar_generation
+name: Solar Generation
+height: 155
+hours_to_show: 48
+y_min: 0
+y_max: 2500
+
+top_left: name
+top_center: band
+top_right: current
+
+band_label_mode: threshold
+band_label_position: middle
+band_label_align: outside_left
+band_label_outside_width: auto
+
+show_y_axis_labels: true
+y_axis_position: right
+y_axis_ticks: 6
+
+show_x_axis_labels: true
+x_axis_ticks: 5
+
+show_y_grid: true
+
+show_latest: true
+show_latest_label: true
+show_max: true
+show_min: false
+marker_label_background_mode: band
+
+bands:
+  - from: 0
+    to: 250
+    color: "#95a5a633"
+    label: Minimal
+  - from: 250
+    to: 1000
+    color: "#f1c40f33"
+    label: Useful
+  - from: 1000
+    to: 1800
+    color: "#2ecc7133"
+    label: Good
+  - from: 1800
+    to: 2500
+    color: "#27ae6033"
+    label: Excellent
+```
+
+</details>
+
+<details>
+<summary>Debug and performance example</summary>
+
+```yaml
+type: custom:simple-band-graph-card
+entity: sensor.example_co2
+name: CO₂ Debug Test
+height: 190
+hours_to_show: 100
+y_min: 400
+y_max: 2000
+
+max_history_points: auto
+history_refresh_interval: 60
+
+top_left: name
+top_center: band
+top_right: current
+bottom_left: debug
+
+debug_multiline: true
+debug_level: performance
+
+ribbon_styles:
+  bottom_left:
+    font_size: 11
+    font_weight: 400
+    color: var(--secondary-text-color)
+    opacity: 0.7
+
+band_label_mode: threshold
+band_label_position: middle
+band_label_align: outside_left
+band_label_outside_width: auto
+
+show_y_axis_labels: true
+y_axis_position: right
+y_axis_ticks: 5
+
+show_x_axis_labels: true
+x_axis_ticks: 6
+
+show_y_grid: true
+grid_opacity: 0.25
+
+show_latest: true
+show_latest_label: true
+show_max: true
+marker_label_background_mode: band
+
 bands:
   - from: 400
     to: 800
@@ -118,6 +306,9 @@ height: 180
 hours_to_show: 10
 y_min: 400
 y_max: 2000
+
+max_history_points: auto
+history_refresh_interval: 60
 
 show_line: true
 line_color: var(--primary-color)
@@ -173,6 +364,9 @@ bottom_left: debug
 bottom_center: none
 bottom_right: none
 
+debug_multiline: true
+debug_level: performance
+
 ribbon_styles:
   top_left:
     font_size: 16
@@ -188,10 +382,10 @@ ribbon_styles:
     font_weight: 700
     color: var(--primary-text-color)
   bottom_left:
-    font_size: 12
+    font_size: 11
     font_weight: 400
     color: var(--secondary-text-color)
-    opacity: 0.65
+    opacity: 0.7
 
 show_latest: true
 show_latest_label: true
@@ -240,6 +434,18 @@ bands:
 | `y_max` | No | `100` | Maximum Y-axis value. |
 | `bands` | No | `[]` | List of coloured threshold bands. |
 
+### History and performance options
+
+| Option | Default | Description |
+|---|---:|---|
+| `max_history_points` | `auto` | Maximum number of history points to plot after fetching. `auto` currently targets about `500` plotted points. Use a number to override. |
+| `history_refresh_interval` | `60` | Minimum time, in seconds, between full history API refreshes. The card can still update the current value between history refreshes. |
+| `debug_level` | `basic` | Debug detail level. Options: `off`, `basic`, `performance`, `verbose`. |
+| `debug_multiline` | `false` | Shows debug output over multiple lines. Useful with `debug_level: performance` or `debug_level: verbose`. |
+| `debug_performance` | `false` | Backwards-compatible shortcut. If set to `true`, defaults `debug_level` to `performance`. |
+
+The card requests detailed Home Assistant history and then downsamples locally if needed. This keeps the visible graph responsive while preserving useful spikes and high/low points.
+
 ### Bands
 
 Each band supports:
@@ -267,6 +473,15 @@ Each band supports:
 | `band_label_opacity` | `0.75` | Band label opacity. |
 | `hide_small_band_labels` | `false` | Hide labels where the band is too small. |
 | `min_band_label_height` | `18` | Minimum band height before labels are hidden, when `hide_small_band_labels` is enabled. |
+
+Band label modes:
+
+| Mode | Example |
+|---|---|
+| `hide` | No label |
+| `label` | `Good` |
+| `threshold` | `Good 400+` |
+| `range` | `Good 400–800` |
 
 ### Line options
 
@@ -305,6 +520,8 @@ Each band supports:
 | `grid_width` | `1` | Grid line width. |
 | `grid_opacity` | `0.35` | Grid line opacity. |
 
+Grid lines use the same intervals as `x_axis_ticks` and `y_axis_ticks`.
+
 ### Ribbon options
 
 The card has six configurable ribbon slots:
@@ -318,6 +535,16 @@ bottom_center: none
 bottom_right: none
 ```
 
+| Option | Default | Description |
+|---|---:|---|
+| `top_left` | `name` | Content for the top-left ribbon slot. |
+| `top_center` | `none` | Content for the top-centre ribbon slot. |
+| `top_right` | `current` | Content for the top-right ribbon slot. |
+| `bottom_left` | `none` | Content for the bottom-left ribbon slot. |
+| `bottom_center` | `none` | Content for the bottom-centre ribbon slot. |
+| `bottom_right` | `none` | Content for the bottom-right ribbon slot. |
+| `ribbon_styles` | `{}` | Per-slot style overrides. |
+
 Supported slot values:
 
 | Value | Description |
@@ -330,6 +557,36 @@ Supported slot values:
 | `status` | Alias for `debug`, kept for backwards compatibility. |
 | `entity` | Entity ID. |
 | `unit` | Entity unit. |
+
+Each ribbon position can be styled:
+
+```yaml
+ribbon_styles:
+  top_left:
+    font_size: 16
+    font_weight: 600
+    color: var(--primary-text-color)
+  top_right:
+    font_size: 22
+    font_weight: 700
+    color: var(--primary-text-color)
+  bottom_left:
+    font_size: 11
+    font_weight: 400
+    color: var(--secondary-text-color)
+    opacity: 0.7
+```
+
+Supported ribbon style options:
+
+| Option | Description |
+|---|---|
+| `font_size` | Font size in pixels, or a CSS value. |
+| `font_weight` | Font weight. |
+| `color` | Text colour. |
+| `opacity` | Text opacity. |
+| `text_transform` | CSS text transform, e.g. `uppercase`. |
+| `letter_spacing` | CSS letter spacing. |
 
 ### Latest, minimum and maximum markers
 
@@ -346,15 +603,68 @@ Supported slot values:
 | `hide_recent_max` | `false` | Hide the max marker when it is very recent. |
 | `recent_extrema_minutes` | `30` | Time window used by `hide_recent_min` and `hide_recent_max`. |
 
+### Marker label options
+
+| Option | Default | Description |
+|---|---:|---|
+| `marker_label_size` | `11` | Marker label font size. |
+| `marker_label_weight` | `400` | Marker label font weight. |
+| `marker_label_color` | `var(--primary-text-color)` | Marker label text colour. |
+| `marker_label_opacity` | `0.9` | Marker label opacity. |
+| `marker_label_background_color` | `var(--card-background-color)` | Marker label background colour. |
+| `marker_label_background_opacity` | `0.75` | Marker label background opacity. |
+| `marker_label_background_mode` | `card` | Background mode. Options: `card`, `band`. |
+
+Use this to match marker label backgrounds to the relevant band colour:
+
+```yaml
+marker_label_background_mode: band
+```
+
+## Debug output
+
+The debug slot can be added to any ribbon position:
+
+```yaml
+bottom_left: debug
+debug_multiline: true
+debug_level: performance
+```
+
+Debug levels:
+
+| Level | Description |
+|---|---|
+| `off` | No debug output. |
+| `basic` | Shows history window, fetch age, raw/plotted/path point counts, refresh interval and axis range. |
+| `performance` | Adds fetch/API/downsample/render timings, render count, downsampling ratio and point density. |
+| `verbose` | Adds first/last history point age and requested history window details. |
+
+Example performance output:
+
+```text
+debug · 100h · fetched 12s ago
+raw 1294 · plotted 500 · path 501 · max auto/500
+refresh 60s · full history request
+y 400-2000 · x relative
+fetch 82ms · api 76ms · downsample 2ms
+render 9ms · renders 14
+downsample yes · ratio 39% · density 12.9/h
+```
+
 ## Notes
 
-Home Assistant history only records changes. If an entity has not changed recently, the latest history point may be some distance before the current time. This card appends the current live value at `now` when drawing the graph, so the line reaches the live edge of the chart.
+Home Assistant history records state changes rather than regular samples. This card requests detailed history for the selected time window and then downsamples locally when needed.
+
+When `max_history_points` is set to `auto`, the card currently targets about `500` plotted history points. The downsampling keeps the first and last points and tries to preserve local highs and lows, which helps retain short spikes.
+
+The card appends the current live value at `now` when drawing the graph, so the line reaches the live edge of the chart without requiring a full history refresh every time the entity state changes.
 
 Minimum and maximum markers are calculated from real Home Assistant history only, not from the artificial current-at-now point.
 
 ## Status
 
-Work in progress, but functional. The card can load Home Assistant history and render a configurable threshold-banded line graph.
+Work in progress, but functional. The card can load Home Assistant history and render a configurable threshold-banded line graph with optional markers, axes, grid lines, ribbon content and debug diagnostics.
 
 ## Roadmap
 
@@ -362,8 +672,10 @@ Planned or possible future features:
 
 - Visual editor support in the Home Assistant UI
 - More marker dot styling options
+- Optional prefixed min/max labels, e.g. `Max 1234ppm`
 - Optional dynamic messages based on the current threshold band
 - More compact presets
+- Additional data-source modes for longer-range statistics
 - More examples and screenshots
 - Packaging/polish for a wider HACS release
 
