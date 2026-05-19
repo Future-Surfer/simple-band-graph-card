@@ -1,12 +1,11 @@
 /*
   Simple Band Graph Card
 
-  Early version:
+  Current version:
   - reads the current value from a Home Assistant entity
-  - draws a static demo SVG line graph
+  - fetches recent Home Assistant history for that entity
+  - draws an SVG line graph
   - draws configurable coloured threshold bands
-
-  Next step: replace demo data with real Home Assistant history.
 */
 
 class SimpleBandGraphCard extends HTMLElement {
@@ -18,19 +17,68 @@ class SimpleBandGraphCard extends HTMLElement {
     this.config = {
       name: config.name || config.entity,
       height: config.height || 180,
+      hours_to_show: config.hours_to_show ?? 24,
       y_min: config.y_min ?? 0,
       y_max: config.y_max ?? 100,
       bands: config.bands || [],
       ...config,
     };
+
+    this._history = [];
+    this._historyKey = "";
+    this._isFetchingHistory = false;
   }
 
   set hass(hass) {
     this._hass = hass;
+
+    const key = `${this.config.entity}-${this.config.hours_to_show}`;
+
+    if (this._historyKey !== key && !this._isFetchingHistory) {
+      this._historyKey = key;
+      this.fetchHistory();
+    }
+
+    this.render();
+  }
+
+  async fetchHistory() {
+    this._isFetchingHistory = true;
+
+    const entityId = this.config.entity;
+    const hoursToShow = Number(this.config.hours_to_show);
+
+    const start = new Date();
+    start.setHours(start.getHours() - hoursToShow);
+
+    try {
+      const history = await this._hass.callApi(
+        "GET",
+        `history/period/${start.toISOString()}?filter_entity_id=${encodeURIComponent(entityId)}`
+      );
+
+      const entityHistory = Array.isArray(history) && Array.isArray(history[0])
+        ? history[0]
+        : [];
+
+      this._history = entityHistory
+        .map((item) => ({
+          state: Number(item.state),
+          time: new Date(item.last_changed).getTime(),
+        }))
+        .filter((item) => Number.isFinite(item.state) && Number.isFinite(item.time));
+    } catch (error) {
+      console.error("Simple Band Graph Card: failed to fetch history", error);
+      this._history = [];
+    }
+
+    this._isFetchingHistory = false;
     this.render();
   }
 
   render() {
+    if (!this._hass) return;
+
     const entityId = this.config.entity;
     const state = this._hass.states[entityId];
 
@@ -41,7 +89,6 @@ class SimpleBandGraphCard extends HTMLElement {
     const width = 600;
     const height = this.config.height;
 
-    // Padding leaves room for basic axis labels.
     const padding = {
       top: 14,
       right: 14,
@@ -57,28 +104,22 @@ class SimpleBandGraphCard extends HTMLElement {
 
     const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
-    // Convert a sensor value into an SVG Y coordinate.
-    // SVG coordinates start at the top, so higher values need lower Y numbers.
     const yToSvg = (y) => {
       const clamped = clamp(y, yMin, yMax);
       const ratio = (clamped - yMin) / (yMax - yMin);
       return padding.top + plotHeight - ratio * plotHeight;
     };
 
-    // Temporary: evenly space demo points across the X axis.
-    const xToSvg = (index, total) => {
-      if (total <= 1) return padding.left;
-      return padding.left + (index / (total - 1)) * plotWidth;
+    const now = Date.now();
+    const startTime = now - Number(this.config.hours_to_show) * 60 * 60 * 1000;
+
+    const xToSvg = (timestamp) => {
+      const ratio = (timestamp - startTime) / (now - startTime);
+      return padding.left + clamp(ratio, 0, 1) * plotWidth;
     };
 
-    // Static demo data until Home Assistant history support is added.
-    const demoData = [
-      430, 455, 470, 520, 610, 780, 920, 1050, 980, 870, 760, 690,
-      720, 830, 960, 1120, 1350, 1490, 1260, 980, 760, 620, 540, 500,
-    ];
-
-    const points = demoData
-      .map((point, index) => `${xToSvg(index, demoData.length)},${yToSvg(point)}`)
+    const points = this._history
+      .map((point) => `${xToSvg(point.time)},${yToSvg(point.state)}`)
       .join(" ");
 
     const bands = this.config.bands
@@ -119,6 +160,12 @@ class SimpleBandGraphCard extends HTMLElement {
         `;
       })
       .join("");
+
+    const statusText = this._isFetchingHistory
+      ? "Loading history..."
+      : this._history.length > 0
+        ? `${this._history.length} history points · ${this.config.hours_to_show}h`
+        : "No history data found";
 
     this.innerHTML = `
       <ha-card>
@@ -188,18 +235,34 @@ class SimpleBandGraphCard extends HTMLElement {
               ${yMin}
             </text>
 
-            <polyline
-              points="${points}"
-              fill="none"
-              stroke="var(--primary-color)"
-              stroke-width="3"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></polyline>
+            ${
+              points
+                ? `
+                  <polyline
+                    points="${points}"
+                    fill="none"
+                    stroke="var(--primary-color)"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  ></polyline>
+                `
+                : `
+                  <text
+                    x="${padding.left + plotWidth / 2}"
+                    y="${padding.top + plotHeight / 2}"
+                    text-anchor="middle"
+                    font-size="13"
+                    fill="var(--secondary-text-color)"
+                  >
+                    No data
+                  </text>
+                `
+            }
           </svg>
 
           <div style="font-size: 12px; opacity: 0.65; margin-top: 4px;">
-            Static demo data — history support coming next.
+            ${statusText}
           </div>
         </div>
       </ha-card>
@@ -211,4 +274,6 @@ class SimpleBandGraphCard extends HTMLElement {
   }
 }
 
-customElements.define("simple-band-graph-card", SimpleBandGraphCard);
+if (!customElements.get("simple-band-graph-card")) {
+  customElements.define("simple-band-graph-card", SimpleBandGraphCard);
+}
