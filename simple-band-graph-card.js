@@ -1,29 +1,5 @@
 /*
   Simple Band Graph Card
-
-  Current version:
-  - reads the current value from a Home Assistant entity
-  - fetches recent Home Assistant history for that entity
-  - appends the current state at "now" so the line reaches the chart edge
-  - draws an SVG line graph
-  - supports custom line styling
-  - draws configurable coloured threshold bands
-  - supports configurable band label modes, placement, styling, small-band hiding, and outside placement
-  - supports automatic outside band label width
-  - allows Y-axis labels and outside band labels to coexist on the same side
-  - supports configurable marker label styling and band-matched marker label backgrounds
-  - supports configurable top and bottom ribbon slots
-  - supports custom ribbon styling per slot
-  - supports optional X-axis and Y-axis lines and labels
-  - supports configurable X-axis and Y-axis positions
-  - supports shared axis label styling
-  - supports configurable X-axis and Y-axis tick counts
-  - supports optional X-grid and Y-grid lines tied to axis ticks
-  - supports relative or clock-time X-axis labels
-  - optionally marks minimum and maximum values in the displayed period
-  - optionally marks the latest/current value at the live edge of the chart
-  - allows recent min/max markers to be hidden separately
-  - supports an optional debug ribbon slot
 */
 
 class SimpleBandGraphCard extends HTMLElement {
@@ -39,6 +15,11 @@ class SimpleBandGraphCard extends HTMLElement {
       y_min: config.y_min ?? 0,
       y_max: config.y_max ?? 100,
       bands: config.bands || [],
+
+      max_history_points: config.max_history_points ?? "auto",
+      history_refresh_interval: config.history_refresh_interval ?? 60,
+
+      debug_multiline: config.debug_multiline ?? false,
 
       show_line: config.show_line ?? true,
       line_color: config.line_color ?? "var(--primary-color)",
@@ -136,6 +117,8 @@ class SimpleBandGraphCard extends HTMLElement {
     }
 
     this._history = [];
+    this._rawHistoryCount = 0;
+    this._plottedHistoryCount = 0;
     this._historyKey = "";
     this._isFetchingHistory = false;
     this._lastHistoryFetch = null;
@@ -144,14 +127,97 @@ class SimpleBandGraphCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
 
-    const key = `${this.config.entity}-${this.config.hours_to_show}`;
+    const key = [
+      this.config.entity,
+      this.config.hours_to_show,
+      this.config.max_history_points,
+    ].join("-");
 
-    if (this._historyKey !== key && !this._isFetchingHistory) {
+    const refreshIntervalMs =
+      Number(this.config.history_refresh_interval) * 1000 || 60000;
+
+    const historyIsStale =
+      !this._lastHistoryFetch ||
+      Date.now() - this._lastHistoryFetch.getTime() > refreshIntervalMs;
+
+    if ((this._historyKey !== key || historyIsStale) && !this._isFetchingHistory) {
       this._historyKey = key;
       this.fetchHistory();
     }
 
     this.render();
+  }
+
+  getMaxHistoryPoints() {
+    if (this.config.max_history_points === "auto") {
+      return 500;
+    }
+
+    const max = Number(this.config.max_history_points);
+
+    if (!Number.isFinite(max) || max <= 0) {
+      return Infinity;
+    }
+
+    return Math.max(2, Math.floor(max));
+  }
+
+  downsampleHistory(points, maxPoints) {
+    if (!Array.isArray(points) || points.length <= maxPoints) {
+      return points;
+    }
+
+    if (!Number.isFinite(maxPoints)) {
+      return points;
+    }
+
+    /*
+      Min/max bucket downsampling.
+      Keeps first and last points, and preserves local highs/lows within each bucket.
+      This is better for sensor graphs than simply taking every nth point, because
+      short spikes are less likely to disappear.
+    */
+    const result = [points[0]];
+    const bucketCount = Math.max(1, Math.floor((maxPoints - 2) / 2));
+    const bucketSize = (points.length - 2) / bucketCount;
+
+    for (let bucketIndex = 0; bucketIndex < bucketCount; bucketIndex++) {
+      const start = Math.floor(1 + bucketIndex * bucketSize);
+      const end = Math.min(
+        points.length - 1,
+        Math.floor(1 + (bucketIndex + 1) * bucketSize)
+      );
+
+      const bucket = points.slice(start, end);
+
+      if (bucket.length === 0) continue;
+
+      let minPoint = bucket[0];
+      let maxPoint = bucket[0];
+
+      for (const point of bucket) {
+        if (point.state < minPoint.state) minPoint = point;
+        if (point.state > maxPoint.state) maxPoint = point;
+      }
+
+      if (minPoint.time < maxPoint.time) {
+        result.push(minPoint, maxPoint);
+      } else if (maxPoint.time < minPoint.time) {
+        result.push(maxPoint, minPoint);
+      } else {
+        result.push(minPoint);
+      }
+    }
+
+    result.push(points[points.length - 1]);
+
+    return result
+      .filter(Boolean)
+      .sort((a, b) => a.time - b.time)
+      .filter((point, index, array) => {
+        if (index === 0) return true;
+        return point.time !== array[index - 1].time;
+      });
   }
 
   async fetchHistory() {
@@ -160,29 +226,41 @@ class SimpleBandGraphCard extends HTMLElement {
     const entityId = this.config.entity;
     const hoursToShow = Number(this.config.hours_to_show);
 
-    const start = new Date();
-    start.setHours(start.getHours() - hoursToShow);
+    const end = new Date();
+    const start = new Date(end.getTime() - hoursToShow * 60 * 60 * 1000);
 
     try {
       const history = await this._hass.callApi(
         "GET",
-        `history/period/${start.toISOString()}?filter_entity_id=${encodeURIComponent(entityId)}`
+        `history/period/${start.toISOString()}?filter_entity_id=${encodeURIComponent(
+          entityId
+        )}&end_time=${encodeURIComponent(
+          end.toISOString()
+        )}&minimal_response=false&significant_changes_only=false&no_attributes=false`
       );
 
       const entityHistory =
         Array.isArray(history) && Array.isArray(history[0]) ? history[0] : [];
 
-      this._history = entityHistory
+      const rawHistory = entityHistory
         .map((item) => ({
           state: Number(item.state),
           time: new Date(item.last_changed).getTime(),
         }))
         .filter((item) => Number.isFinite(item.state) && Number.isFinite(item.time));
 
+      this._rawHistoryCount = rawHistory.length;
+
+      const maxHistoryPoints = this.getMaxHistoryPoints();
+      this._history = this.downsampleHistory(rawHistory, maxHistoryPoints);
+      this._plottedHistoryCount = this._history.length;
+
       this._lastHistoryFetch = new Date();
     } catch (error) {
       console.error("Simple Band Graph Card: failed to fetch history", error);
       this._history = [];
+      this._rawHistoryCount = 0;
+      this._plottedHistoryCount = 0;
     }
 
     this._isFetchingHistory = false;
@@ -235,13 +313,8 @@ class SimpleBandGraphCard extends HTMLElement {
       const mode = this.config.band_label_mode;
       const label = band.label || "";
 
-      if (mode === "hide") {
-        return "";
-      }
-
-      if (mode === "label") {
-        return label;
-      }
+      if (mode === "hide") return "";
+      if (mode === "label") return label;
 
       const from = Number(band.from);
       const to = Number(band.to);
@@ -360,9 +433,18 @@ class SimpleBandGraphCard extends HTMLElement {
       return padding.left + clamp(ratio, 0, 1) * plotWidth;
     };
 
+    /*
+      Home Assistant history records past changes. Add the current live value
+      at "now" so the graph reaches the live edge without requiring a full
+      history refetch on every state update.
+    */
     const plotData = [...this._history];
 
-    if (Number.isFinite(rawValue)) {
+    const latestHistoryPoint = plotData[plotData.length - 1];
+    const latestHistoryIsCurrent =
+      latestHistoryPoint && now - latestHistoryPoint.time < 5000;
+
+    if (Number.isFinite(rawValue) && !latestHistoryIsCurrent) {
       plotData.push({
         state: rawValue,
         time: now,
@@ -875,11 +957,23 @@ class SimpleBandGraphCard extends HTMLElement {
         `
         : "";
 
-    const debugText = this._isFetchingHistory
-      ? "debug · loading history"
-      : this._history.length > 0
-        ? `debug · ${this._history.length} pts · ${this.config.hours_to_show}h · y ${yMin}-${yMax} · x ${this.config.x_axis_label_mode} · fetched ${formatRelativeFetchTime()}`
-        : `debug · no history · ${this.config.hours_to_show}h · y ${yMin}-${yMax} · x ${this.config.x_axis_label_mode}`;
+    const maxHistoryPointsText =
+      this.config.max_history_points === "auto"
+        ? "auto/500"
+        : String(this.config.max_history_points);
+
+    const debugLines = this._isFetchingHistory
+      ? ["debug · loading history"]
+      : [
+          `debug · ${this.config.hours_to_show}h · fetched ${formatRelativeFetchTime()}`,
+          `raw ${this._rawHistoryCount} · plotted ${this._plottedHistoryCount} · max ${maxHistoryPointsText}`,
+          `refresh ${this.config.history_refresh_interval}s · full history request`,
+          `y ${yMin}-${yMax} · x ${this.config.x_axis_label_mode}`,
+        ];
+
+    const debugText = this.config.debug_multiline
+      ? debugLines.join("\n")
+      : debugLines.join(" · ");
 
     const slotContent = {
       none: "",
@@ -930,8 +1024,9 @@ class SimpleBandGraphCard extends HTMLElement {
             letter-spacing: ${letterSpacing};
             min-width: 0;
             overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            text-overflow: ${this.config.debug_multiline && isDebug ? "clip" : "ellipsis"};
+            white-space: ${this.config.debug_multiline && isDebug ? "pre-line" : "nowrap"};
+            line-height: ${this.config.debug_multiline && isDebug ? "1.35" : "normal"};
           "
         >
           ${content}
