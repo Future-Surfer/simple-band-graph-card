@@ -1,2 +1,3 @@
-# simple-band-graph-card
-A simple Home Assistant Lovelace card for line graphs with custom coloured threshold bands.
+# Simple Band Graph Card
+
+Early work-in-progress Home Assistant Lovelace card for simple line graphs with configurable threshold bands.
