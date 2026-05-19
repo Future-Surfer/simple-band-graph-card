@@ -20,6 +20,10 @@ class SimpleBandGraphCard extends HTMLElement {
       history_refresh_interval: config.history_refresh_interval ?? 60,
 
       debug_multiline: config.debug_multiline ?? false,
+      debug_performance: config.debug_performance ?? false,
+      debug_level:
+        config.debug_level ??
+        (config.debug_performance ? "performance" : "basic"),
 
       show_line: config.show_line ?? true,
       line_color: config.line_color ?? "var(--primary-color)",
@@ -51,7 +55,8 @@ class SimpleBandGraphCard extends HTMLElement {
       marker_label_opacity: config.marker_label_opacity ?? 0.9,
       marker_label_background_color:
         config.marker_label_background_color ?? "var(--card-background-color)",
-      marker_label_background_opacity: config.marker_label_background_opacity ?? 0.75,
+      marker_label_background_opacity:
+        config.marker_label_background_opacity ?? 0.75,
       marker_label_background_mode: config.marker_label_background_mode ?? "card",
 
       show_x_axis: config.show_x_axis ?? true,
@@ -122,6 +127,19 @@ class SimpleBandGraphCard extends HTMLElement {
     this._historyKey = "";
     this._isFetchingHistory = false;
     this._lastHistoryFetch = null;
+
+    this._lastFetchDurationMs = null;
+    this._lastHistoryApiDurationMs = null;
+    this._lastDownsampleDurationMs = null;
+    this._lastRenderDurationMs = null;
+    this._lastWasDownsampled = false;
+    this._lastRequestMode = "full history request";
+    this._lastHistoryStartTime = null;
+    this._lastHistoryEndTime = null;
+    this._lastHistoryFirstPointTime = null;
+    this._lastHistoryLastPointTime = null;
+    this._lastPlotDataCount = 0;
+    this._renderCount = 0;
   }
 
   set hass(hass) {
@@ -171,12 +189,6 @@ class SimpleBandGraphCard extends HTMLElement {
       return points;
     }
 
-    /*
-      Min/max bucket downsampling.
-      Keeps first and last points, and preserves local highs/lows within each bucket.
-      This is better for sensor graphs than simply taking every nth point, because
-      short spikes are less likely to disappear.
-    */
     const result = [points[0]];
     const bucketCount = Math.max(1, Math.floor((maxPoints - 2) / 2));
     const bucketSize = (points.length - 2) / bucketCount;
@@ -223,13 +235,21 @@ class SimpleBandGraphCard extends HTMLElement {
   async fetchHistory() {
     this._isFetchingHistory = true;
 
+    const fetchStarted = performance.now();
+
     const entityId = this.config.entity;
     const hoursToShow = Number(this.config.hours_to_show);
 
     const end = new Date();
     const start = new Date(end.getTime() - hoursToShow * 60 * 60 * 1000);
 
+    this._lastHistoryStartTime = start.getTime();
+    this._lastHistoryEndTime = end.getTime();
+    this._lastRequestMode = "full history request";
+
     try {
+      const apiStarted = performance.now();
+
       const history = await this._hass.callApi(
         "GET",
         `history/period/${start.toISOString()}?filter_entity_id=${encodeURIComponent(
@@ -238,6 +258,8 @@ class SimpleBandGraphCard extends HTMLElement {
           end.toISOString()
         )}&minimal_response=false&significant_changes_only=false&no_attributes=false`
       );
+
+      this._lastHistoryApiDurationMs = Math.round(performance.now() - apiStarted);
 
       const entityHistory =
         Array.isArray(history) && Array.isArray(history[0]) ? history[0] : [];
@@ -251,16 +273,37 @@ class SimpleBandGraphCard extends HTMLElement {
 
       this._rawHistoryCount = rawHistory.length;
 
+      this._lastHistoryFirstPointTime = rawHistory[0]?.time || null;
+      this._lastHistoryLastPointTime = rawHistory[rawHistory.length - 1]?.time || null;
+
       const maxHistoryPoints = this.getMaxHistoryPoints();
+
+      const downsampleStarted = performance.now();
+
       this._history = this.downsampleHistory(rawHistory, maxHistoryPoints);
+
+      this._lastDownsampleDurationMs = Math.round(
+        performance.now() - downsampleStarted
+      );
+
       this._plottedHistoryCount = this._history.length;
+      this._lastWasDownsampled = this._history.length < rawHistory.length;
 
       this._lastHistoryFetch = new Date();
+      this._lastFetchDurationMs = Math.round(performance.now() - fetchStarted);
     } catch (error) {
       console.error("Simple Band Graph Card: failed to fetch history", error);
+
       this._history = [];
       this._rawHistoryCount = 0;
       this._plottedHistoryCount = 0;
+
+      this._lastFetchDurationMs = Math.round(performance.now() - fetchStarted);
+      this._lastHistoryApiDurationMs = null;
+      this._lastDownsampleDurationMs = null;
+      this._lastWasDownsampled = false;
+      this._lastHistoryFirstPointTime = null;
+      this._lastHistoryLastPointTime = null;
     }
 
     this._isFetchingHistory = false;
@@ -268,6 +311,8 @@ class SimpleBandGraphCard extends HTMLElement {
   }
 
   render() {
+    const renderStarted = performance.now();
+
     if (!this._hass) return;
 
     const entityId = this.config.entity;
@@ -433,11 +478,6 @@ class SimpleBandGraphCard extends HTMLElement {
       return padding.left + clamp(ratio, 0, 1) * plotWidth;
     };
 
-    /*
-      Home Assistant history records past changes. Add the current live value
-      at "now" so the graph reaches the live edge without requiring a full
-      history refetch on every state update.
-    */
     const plotData = [...this._history];
 
     const latestHistoryPoint = plotData[plotData.length - 1];
@@ -454,6 +494,8 @@ class SimpleBandGraphCard extends HTMLElement {
     const points = plotData
       .map((point) => `${xToSvg(point.time)},${yToSvg(point.state)}`)
       .join(" ");
+
+    this._lastPlotDataCount = plotData.length;
 
     const getBandLabelY = (bandTopY, bandBottomY) => {
       const position = normaliseBandLabelPosition(this.config.band_label_position);
@@ -568,6 +610,52 @@ class SimpleBandGraphCard extends HTMLElement {
 
       const hours = Math.round(minutes / 60);
       return `${hours}h ago`;
+    };
+
+    const formatDuration = (durationMs) => {
+      if (durationMs === null || durationMs === undefined) return "–";
+      return `${durationMs}ms`;
+    };
+
+    const formatRelativeTimestamp = (timestamp) => {
+      if (!timestamp) return "–";
+
+      const ageSeconds = Math.round((Date.now() - timestamp) / 1000);
+
+      if (ageSeconds < 60) return `${ageSeconds}s ago`;
+
+      const ageMinutes = Math.round(ageSeconds / 60);
+
+      if (ageMinutes < 60) return `${ageMinutes}m ago`;
+
+      const ageHours = Math.round(ageMinutes / 60);
+
+      if (ageHours < 48) return `${ageHours}h ago`;
+
+      const ageDays = Math.round(ageHours / 24);
+      return `${ageDays}d ago`;
+    };
+
+    const formatDensity = () => {
+      const hours = Number(this.config.hours_to_show);
+
+      if (!Number.isFinite(hours) || hours <= 0 || !this._rawHistoryCount) {
+        return "–";
+      }
+
+      const density = this._rawHistoryCount / hours;
+
+      if (density >= 10) return `${density.toFixed(0)}/h`;
+      if (density >= 1) return `${density.toFixed(1)}/h`;
+
+      return `${density.toFixed(2)}/h`;
+    };
+
+    const formatDownsampleRatio = () => {
+      if (!this._rawHistoryCount) return "–";
+
+      const ratio = (this._plottedHistoryCount / this._rawHistoryCount) * 100;
+      return `${ratio.toFixed(0)}%`;
     };
 
     const getBandForValue = (numericValue) => {
@@ -896,8 +984,7 @@ class SimpleBandGraphCard extends HTMLElement {
     const xAxisY =
       xAxisPosition === "top" ? padding.top : padding.top + plotHeight;
 
-    const xAxisLabelY =
-      xAxisPosition === "top" ? xAxisY - 14 : xAxisY + 18;
+    const xAxisLabelY = xAxisPosition === "top" ? xAxisY - 14 : xAxisY + 18;
 
     const xAxisLabelsHtml = this.config.show_x_axis_labels
       ? xTickValues
@@ -962,14 +1049,45 @@ class SimpleBandGraphCard extends HTMLElement {
         ? "auto/500"
         : String(this.config.max_history_points);
 
-    const debugLines = this._isFetchingHistory
-      ? ["debug · loading history"]
-      : [
-          `debug · ${this.config.hours_to_show}h · fetched ${formatRelativeFetchTime()}`,
-          `raw ${this._rawHistoryCount} · plotted ${this._plottedHistoryCount} · max ${maxHistoryPointsText}`,
-          `refresh ${this.config.history_refresh_interval}s · full history request`,
-          `y ${yMin}-${yMax} · x ${this.config.x_axis_label_mode}`,
+    const debugLevel = this.config.debug_level || "basic";
+
+    let debugLines = [];
+
+    if (debugLevel === "off") {
+      debugLines = [];
+    } else if (this._isFetchingHistory) {
+      debugLines = ["debug · loading history"];
+    } else {
+      const basicDebugLines = [
+        `debug · ${this.config.hours_to_show}h · fetched ${formatRelativeFetchTime()}`,
+        `raw ${this._rawHistoryCount} · plotted ${this._plottedHistoryCount} · path ${this._lastPlotDataCount} · max ${maxHistoryPointsText}`,
+        `refresh ${this.config.history_refresh_interval}s · ${this._lastRequestMode}`,
+        `y ${yMin}-${yMax} · x ${this.config.x_axis_label_mode}`,
+      ];
+
+      const performanceDebugLines = [
+        `fetch ${formatDuration(this._lastFetchDurationMs)} · api ${formatDuration(this._lastHistoryApiDurationMs)} · downsample ${formatDuration(this._lastDownsampleDurationMs)}`,
+        `render ${formatDuration(this._lastRenderDurationMs)} · renders ${this._renderCount}`,
+        `downsample ${this._lastWasDownsampled ? "yes" : "no"} · ratio ${formatDownsampleRatio()} · density ${formatDensity()}`,
+      ];
+
+      const verboseDebugLines = [
+        `first ${formatRelativeTimestamp(this._lastHistoryFirstPointTime)} · last ${formatRelativeTimestamp(this._lastHistoryLastPointTime)}`,
+        `window ${formatRelativeTimestamp(this._lastHistoryStartTime)} → ${formatRelativeTimestamp(this._lastHistoryEndTime)}`,
+      ];
+
+      if (debugLevel === "performance") {
+        debugLines = [...basicDebugLines, ...performanceDebugLines];
+      } else if (debugLevel === "verbose") {
+        debugLines = [
+          ...basicDebugLines,
+          ...performanceDebugLines,
+          ...verboseDebugLines,
         ];
+      } else {
+        debugLines = basicDebugLines;
+      }
+    }
 
     const debugText = this.config.debug_multiline
       ? debugLines.join("\n")
@@ -1167,6 +1285,9 @@ class SimpleBandGraphCard extends HTMLElement {
         </div>
       </ha-card>
     `;
+
+    this._lastRenderDurationMs = Math.round(performance.now() - renderStarted);
+    this._renderCount += 1;
   }
 
   getCardSize() {
