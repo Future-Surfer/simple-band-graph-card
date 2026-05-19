@@ -116,6 +116,19 @@ Each band supports:
 
 Early work in progress. The card can now load Home Assistant history and render a basic threshold-banded graph.
 
+## Roadmap
+
+Planned or possible future features:
+
+- Visual editor support in the Home Assistant UI
+- Optional marker dots on graph points
+- Optional X-axis labels
+- Configurable current value position
+- Configurable line colour
+- Optional status/debug line
+- Dynamic title or message based on the current threshold band
+- More flexible band labels and styling
+
 ## License
 
 MIT License.
