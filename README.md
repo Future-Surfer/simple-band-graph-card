@@ -4,6 +4,8 @@ A work-in-progress Home Assistant custom card for simple line graphs with config
 
 It is designed for sensors where coloured context bands make the graph easier to read, such as CO₂, air quality, temperature, humidity, battery level, energy use, or anything else with meaningful thresholds.
 
+[![Open your Home Assistant instance and add this repository to HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Future-Surfer&repository=simple-band-graph-card&category=plugin)
+
 ## Features
 
 - Select a Home Assistant entity
@@ -12,6 +14,54 @@ It is designed for sensors where coloured context bands make the graph easier to
 - Set the graph duration with `hours_to_show`
 - Set minimum and maximum Y-axis values
 - Display the current entity value and unit
+
+## Installation
+
+### HACS custom repository
+
+Use the button above, or add the repository manually:
+
+1. Open **HACS** in Home Assistant.
+2. Open the three-dot menu in the top right.
+3. Select **Custom repositories**.
+4. Add this repository URL:
+
+```text
+https://github.com/Future-Surfer/simple-band-graph-card
+```
+
+5. Select the category/type:
+
+```text
+Dashboard
+```
+
+6. Click **Add**.
+7. Search HACS for **Simple Band Graph Card**.
+8. Download/install it.
+9. Refresh your browser.
+
+If the card is not added to your dashboard resources automatically, add this resource manually:
+
+```yaml
+url: /hacsfiles/simple-band-graph-card/simple-band-graph-card.js
+type: module
+```
+
+### Manual installation
+
+Download `simple-band-graph-card.js` and place it in:
+
+```text
+/config/www/simple-band-graph-card.js
+```
+
+Then add this dashboard resource:
+
+```yaml
+url: /local/simple-band-graph-card.js
+type: module
+```
 
 ## Example
 
