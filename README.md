@@ -2,7 +2,7 @@
 
 A Home Assistant custom card for simple line graphs with configurable coloured threshold bands.
 
-It is designed for sensors where coloured context bands make the graph easier to read, such as CO₂, air quality, temperature, humidity, battery level, energy use, or anything else with meaningful thresholds.
+It is designed for sensors where coloured context bands make the graph easier to read, such as CO₂, air quality, temperature, humidity, battery level, energy use, solar generation, or anything else with meaningful thresholds.
 
 [![Open your Home Assistant instance and add this repository to HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Future-Surfer&repository=simple-band-graph-card&category=plugin)
 
@@ -15,17 +15,23 @@ It is designed for sensors where coloured context bands make the graph easier to
 - Set minimum and maximum Y-axis values
 - Display the current entity value and unit
 - Show the current threshold band in the ribbon
+- Hide visible bands while still using them for colour logic
 - Configure top and bottom ribbon content
 - Style each ribbon segment independently
+- Use band-driven colours for ribbon text
+- Configure separate backgrounds for the card, plot area, top ribbon and bottom ribbon
+- Drive card, plot or ribbon background colours from the current band
 - Configure band label content, position, alignment and styling
 - Place band labels inside or outside the graph area
 - Show optional latest, minimum and maximum value markers
 - Style marker labels and marker label backgrounds
-- Optionally match marker label backgrounds to the current band colour
+- Optionally match marker label colours/backgrounds to the marker value’s band
 - Configure X-axis and Y-axis visibility, position, tick count and label styling
 - Add optional X-grid and Y-grid lines
 - Configure graph line colour, width and opacity
-- Downsample large history responses automatically for performance
+- Use `line_color_mode: band` to colour the graph line by threshold band
+- Band-coloured lines are split at threshold boundaries and grouped into fewer SVG paths for performance
+- Downsample large history responses automatically
 - Show optional debug and performance diagnostics
 
 ## Installation
@@ -88,6 +94,11 @@ name: Office CO₂
 hours_to_show: 24
 y_min: 400
 y_max: 2000
+
+top_left: name
+top_center: band
+top_right: current
+
 bands:
   - from: 400
     to: 800
@@ -110,7 +121,150 @@ bands:
 </details>
 
 <details>
-<summary>Temperature example</summary>
+<summary>Status-card style using hidden bands</summary>
+
+This keeps the threshold logic but hides the visible band stripes.
+
+```yaml
+type: custom:simple-band-graph-card
+entity: sensor.example_co2
+name: Office CO₂
+height: 170
+hours_to_show: 12
+y_min: 400
+y_max: 2000
+
+show_bands: false
+
+plot_background_color_mode: band
+plot_background_opacity: 0.14
+
+top_ribbon_background_color_mode: band
+top_ribbon_background_opacity: 0.16
+ribbon_background_radius: 10
+
+top_left: name
+top_center: band
+top_right: current
+
+ribbon_color_mode: band
+ribbon_styles:
+  top_left:
+    color_mode: static
+    color: var(--primary-text-color)
+  top_center:
+    font_weight: 700
+    color_mode: band
+  top_right:
+    font_size: 24
+    font_weight: 700
+    color_mode: band
+
+show_latest: true
+show_latest_label: true
+marker_label_color_mode: band
+marker_label_background_mode: card
+
+show_y_grid: true
+grid_opacity: 0.2
+
+bands:
+  - from: 400
+    to: 800
+    color: "#2ecc71"
+    label: Good
+  - from: 800
+    to: 1100
+    color: "#f1c40f"
+    label: OK
+  - from: 1100
+    to: 1500
+    color: "#e67e22"
+    label: Stale
+  - from: 1500
+    to: 2000
+    color: "#e74c3c"
+    label: Poor
+```
+
+</details>
+
+<details>
+<summary>Band-coloured line example</summary>
+
+This colours the line according to the configured bands. The line is split at threshold boundaries and grouped into same-colour paths for better performance.
+
+```yaml
+type: custom:simple-band-graph-card
+entity: sensor.example_co2
+name: CO₂ Band Line
+height: 190
+hours_to_show: 100
+y_min: 400
+y_max: 2000
+
+max_history_points: auto
+history_refresh_interval: 60
+
+show_bands: false
+line_color_mode: band
+line_width: 4
+line_opacity: 1
+
+plot_background_color_mode: band
+plot_background_opacity: 0.08
+
+top_left: name
+top_center: band
+top_right: current
+bottom_left: debug
+
+debug_multiline: true
+debug_level: performance
+
+show_latest: true
+show_latest_label: true
+show_min: true
+show_max: true
+show_extrema_labels: true
+extrema_label_mode: compact
+
+marker_label_color_mode: band
+marker_label_background_mode: card
+
+show_y_axis_labels: true
+y_axis_position: right
+y_axis_ticks: 5
+
+show_x_axis_labels: true
+x_axis_ticks: 6
+
+show_y_grid: true
+grid_opacity: 0.2
+
+bands:
+  - from: 400
+    to: 800
+    color: "#2ecc71"
+    label: Good
+  - from: 800
+    to: 1100
+    color: "#f1c40f"
+    label: OK
+  - from: 1100
+    to: 1500
+    color: "#e67e22"
+    label: Stale
+  - from: 1500
+    to: 2000
+    color: "#e74c3c"
+    label: Poor
+```
+
+</details>
+
+<details>
+<summary>Temperature example with outside band labels</summary>
 
 ```yaml
 type: custom:simple-band-graph-card
@@ -296,7 +450,7 @@ bands:
 </details>
 
 <details>
-<summary>Advanced example</summary>
+<summary>Advanced formatting example</summary>
 
 ```yaml
 type: custom:simple-band-graph-card
@@ -310,8 +464,26 @@ y_max: 2000
 max_history_points: auto
 history_refresh_interval: 60
 
+show_bands: true
+
+background_color: var(--card-background-color)
+background_opacity: 1
+background_color_mode: static
+
+plot_background_color: var(--card-background-color)
+plot_background_opacity: 0.35
+plot_background_color_mode: static
+plot_background_radius: 8
+
+top_ribbon_background_color_mode: band
+top_ribbon_background_opacity: 0.12
+bottom_ribbon_background_color: "#000000"
+bottom_ribbon_background_opacity: 0.06
+ribbon_background_radius: 8
+
 show_line: true
 line_color: var(--primary-color)
+line_color_mode: static
 line_width: 3
 line_opacity: 1
 
@@ -330,6 +502,7 @@ band_label_outside_gap: 6
 band_label_size: 11
 band_label_weight: 600
 band_label_color: var(--secondary-text-color)
+band_label_color_mode: static
 band_label_opacity: 0.8
 hide_small_band_labels: true
 min_band_label_height: 18
@@ -337,6 +510,7 @@ min_band_label_height: 18
 marker_label_size: 10
 marker_label_weight: 600
 marker_label_color: var(--primary-text-color)
+marker_label_color_mode: band
 marker_label_opacity: 0.95
 marker_label_background_mode: band
 marker_label_background_opacity: 0.85
@@ -355,6 +529,7 @@ y_axis_ticks: 5
 axis_label_size: 11
 axis_label_weight: 400
 axis_label_color: var(--secondary-text-color)
+axis_label_color_mode: static
 axis_label_opacity: 0.8
 
 top_left: name
@@ -367,6 +542,7 @@ bottom_right: none
 debug_multiline: true
 debug_level: performance
 
+ribbon_color_mode: static
 ribbon_styles:
   top_left:
     font_size: 16
@@ -374,13 +550,12 @@ ribbon_styles:
     color: var(--primary-text-color)
   top_center:
     font_size: 15
-    font_weight: 600
-    color: var(--secondary-text-color)
-    opacity: 0.9
+    font_weight: 700
+    color_mode: band
   top_right:
     font_size: 22
     font_weight: 700
-    color: var(--primary-text-color)
+    color_mode: band
   bottom_left:
     font_size: 11
     font_weight: 400
@@ -398,23 +573,24 @@ hide_recent_max: false
 recent_extrema_minutes: 30
 show_extrema_labels: true
 extrema_marker_size: 4
+extrema_label_mode: compact
 
 bands:
   - from: 400
     to: 800
-    color: "#2ecc7133"
+    color: "#2ecc71"
     label: Good
   - from: 800
     to: 1100
-    color: "#f1c40f33"
+    color: "#f1c40f"
     label: OK
   - from: 1100
     to: 1500
-    color: "#e67e2233"
+    color: "#e67e22"
     label: Stale
   - from: 1500
     to: 2000
-    color: "#e74c3c33"
+    color: "#e74c3c"
     label: Poor
 ```
 
@@ -433,6 +609,7 @@ bands:
 | `y_min` | No | `0` | Minimum Y-axis value. |
 | `y_max` | No | `100` | Maximum Y-axis value. |
 | `bands` | No | `[]` | List of coloured threshold bands. |
+| `show_bands` | No | `true` | Show or hide the visible coloured band areas. Bands can still be used for labels and colour logic when hidden. |
 
 ### History and performance options
 
@@ -454,8 +631,48 @@ Each band supports:
 |---|---|
 | `from` | Lower value for the band. |
 | `to` | Upper value for the band. |
-| `color` | Band colour. Hex colours with alpha work well, e.g. `#2ecc7133`. |
+| `color` | Band colour. Hex colours with alpha work well for visible bands/backgrounds, e.g. `#2ecc7133`. Solid colours work better for text and line colour modes, e.g. `#2ecc71`. |
 | `label` | Optional label for the band. |
+
+### Colour modes
+
+Several options support a matching `*_color_mode`.
+
+| Mode | Behaviour |
+|---|---|
+| `static` | Use the configured colour. |
+| `band` | Use a band colour. For card/plot/ribbon backgrounds and ribbon text this uses the current value’s band. For marker labels this uses the marker value’s own band. For line colour it uses the band the line section passes through. |
+| `none` | Use transparent/no colour. |
+
+Examples:
+
+```yaml
+plot_background_color_mode: band
+ribbon_color_mode: band
+marker_label_color_mode: band
+line_color_mode: band
+```
+
+If a marker value is outside all configured bands, `marker_label_color_mode: band` falls back to `marker_label_color`.
+
+### Background options
+
+| Option | Default | Description |
+|---|---:|---|
+| `background_color` | `var(--card-background-color)` | Outer card background colour. |
+| `background_opacity` | `1` | Outer card background opacity. |
+| `background_color_mode` | `static` | Options: `static`, `band`, `none`. |
+| `plot_background_color` | `var(--card-background-color)` | Plot area background colour. |
+| `plot_background_opacity` | `0.35` | Plot area background opacity. |
+| `plot_background_color_mode` | `static` | Options: `static`, `band`, `none`. |
+| `plot_background_radius` | `8` | Plot area background corner radius. |
+| `top_ribbon_background_color` | `transparent` | Top ribbon background colour. |
+| `top_ribbon_background_opacity` | `0` | Top ribbon background opacity. |
+| `top_ribbon_background_color_mode` | `static` | Options: `static`, `band`, `none`. |
+| `bottom_ribbon_background_color` | `transparent` | Bottom ribbon background colour. |
+| `bottom_ribbon_background_opacity` | `0` | Bottom ribbon background opacity. |
+| `bottom_ribbon_background_color_mode` | `static` | Options: `static`, `band`, `none`. |
+| `ribbon_background_radius` | `8` | Ribbon background corner radius. |
 
 ### Band label options
 
@@ -470,6 +687,7 @@ Each band supports:
 | `band_label_size` | `11` | Band label font size. |
 | `band_label_weight` | `400` | Band label font weight. |
 | `band_label_color` | `var(--secondary-text-color)` | Band label text colour. |
+| `band_label_color_mode` | `static` | Options: `static`, `band`, `none`. |
 | `band_label_opacity` | `0.75` | Band label opacity. |
 | `hide_small_band_labels` | `false` | Hide labels where the band is too small. |
 | `min_band_label_height` | `18` | Minimum band height before labels are hidden, when `hide_small_band_labels` is enabled. |
@@ -488,9 +706,20 @@ Band label modes:
 | Option | Default | Description |
 |---|---:|---|
 | `show_line` | `true` | Show or hide the graph line. |
-| `line_color` | `var(--primary-color)` | Graph line colour. |
+| `line_color` | `var(--primary-color)` | Graph line colour. Used when `line_color_mode: static`, and as a fallback. |
+| `line_color_mode` | `static` | Line colour mode. Options: `static`, `band`, `none`. |
 | `line_width` | `3` | Graph line width. |
 | `line_opacity` | `1` | Graph line opacity. |
+
+When `line_color_mode: band` is used, the line is coloured according to the configured bands. Line sections are split at threshold boundaries, then consecutive same-colour sections are grouped into fewer SVG paths for better performance.
+
+Example:
+
+```yaml
+line_color_mode: band
+line_width: 4
+line_opacity: 1
+```
 
 ### Axis options
 
@@ -508,6 +737,7 @@ Band label modes:
 | `axis_label_size` | `11` | Shared axis label font size. |
 | `axis_label_weight` | `400` | Shared axis label font weight. |
 | `axis_label_color` | `var(--secondary-text-color)` | Shared axis label colour. |
+| `axis_label_color_mode` | `static` | Options: `static`, `band`, `none`. |
 | `axis_label_opacity` | `0.8` | Shared axis label opacity. |
 
 ### Grid options
@@ -543,6 +773,7 @@ bottom_right: none
 | `bottom_left` | `none` | Content for the bottom-left ribbon slot. |
 | `bottom_center` | `none` | Content for the bottom-centre ribbon slot. |
 | `bottom_right` | `none` | Content for the bottom-right ribbon slot. |
+| `ribbon_color_mode` | `static` | Global ribbon text colour mode. Options: `static`, `band`, `none`. |
 | `ribbon_styles` | `{}` | Per-slot style overrides. |
 
 Supported slot values:
@@ -557,6 +788,10 @@ Supported slot values:
 | `status` | Alias for `debug`, kept for backwards compatibility. |
 | `entity` | Entity ID. |
 | `unit` | Entity unit. |
+| `min` | Minimum value in the displayed history. |
+| `minimum` | Alias for `min`. |
+| `max` | Maximum value in the displayed history. |
+| `maximum` | Alias for `max`. |
 
 Each ribbon position can be styled:
 
@@ -566,10 +801,14 @@ ribbon_styles:
     font_size: 16
     font_weight: 600
     color: var(--primary-text-color)
+  top_center:
+    font_size: 16
+    font_weight: 700
+    color_mode: band
   top_right:
     font_size: 22
     font_weight: 700
-    color: var(--primary-text-color)
+    color_mode: band
   bottom_left:
     font_size: 11
     font_weight: 400
@@ -584,7 +823,9 @@ Supported ribbon style options:
 | `font_size` | Font size in pixels, or a CSS value. |
 | `font_weight` | Font weight. |
 | `color` | Text colour. |
-| `opacity` | Text opacity. |
+| `color_mode` | Options: `static`, `band`, `none`. Overrides `ribbon_color_mode` for that slot. |
+| `color_opacity` | Colour opacity. |
+| `opacity` | Backwards-compatible opacity value. |
 | `text_transform` | CSS text transform, e.g. `uppercase`. |
 | `letter_spacing` | CSS letter spacing. |
 
@@ -599,9 +840,18 @@ Supported ribbon style options:
 | `show_max` | `false` | Show a marker for the maximum value in the displayed history. |
 | `show_extrema_labels` | `true` | Show labels for min/max markers. |
 | `extrema_marker_size` | `4` | Min/max marker dot size. |
+| `extrema_label_mode` | `value` | Options: `value`, `compact`, `prefixed`. |
 | `hide_recent_min` | `true` | Hide the min marker when it is very recent. |
 | `hide_recent_max` | `false` | Hide the max marker when it is very recent. |
 | `recent_extrema_minutes` | `30` | Time window used by `hide_recent_min` and `hide_recent_max`. |
+
+Extrema label modes:
+
+| Mode | Example |
+|---|---|
+| `value` | `1729ppm` |
+| `compact` | `↑ 1729ppm` |
+| `prefixed` | `Max 1729ppm` |
 
 ### Marker label options
 
@@ -610,16 +860,25 @@ Supported ribbon style options:
 | `marker_label_size` | `11` | Marker label font size. |
 | `marker_label_weight` | `400` | Marker label font weight. |
 | `marker_label_color` | `var(--primary-text-color)` | Marker label text colour. |
+| `marker_label_color_mode` | `static` | Options: `static`, `band`, `none`. |
 | `marker_label_opacity` | `0.9` | Marker label opacity. |
 | `marker_label_background_color` | `var(--card-background-color)` | Marker label background colour. |
 | `marker_label_background_opacity` | `0.75` | Marker label background opacity. |
 | `marker_label_background_mode` | `card` | Background mode. Options: `card`, `band`. |
 
-Use this to match marker label backgrounds to the relevant band colour:
+Use this to match marker label backgrounds to the relevant marker value band:
 
 ```yaml
 marker_label_background_mode: band
 ```
+
+Use this to match marker label text to the relevant marker value band:
+
+```yaml
+marker_label_color_mode: band
+```
+
+If the marker value is outside all configured bands, it falls back to `marker_label_color`.
 
 ## Debug output
 
@@ -644,13 +903,20 @@ Example performance output:
 
 ```text
 debug · 100h · fetched 12s ago
-raw 1294 · plotted 500 · path 501 · max auto/500
+raw 1315 · plotted 500 · path 501 · segments 500/543 · grouped paths 45 · max auto/500
 refresh 60s · full history request
-y 400-2000 · x relative
-fetch 82ms · api 76ms · downsample 2ms
-render 9ms · renders 14
-downsample yes · ratio 39% · density 12.9/h
+y 400-2000 · x relative · line band
+fetch 418ms · api 417ms · downsample 0ms
+render 1ms · renders 79
+downsample yes · ratio 38% · density 13/h
 ```
+
+In the line debug:
+
+| Value | Meaning |
+|---|---|
+| `segments 500/543` | Original line segments / threshold-split line segments. |
+| `grouped paths 45` | Number of actual SVG line paths rendered after grouping same-colour sections. |
 
 ## Notes
 
@@ -662,9 +928,11 @@ The card appends the current live value at `now` when drawing the graph, so the 
 
 Minimum and maximum markers are calculated from real Home Assistant history only, not from the artificial current-at-now point.
 
+If you use `*_color_mode: band`, the configured `bands` are still required even when `show_bands: false`.
+
 ## Status
 
-Work in progress, but functional. The card can load Home Assistant history and render a configurable threshold-banded line graph with optional markers, axes, grid lines, ribbon content and debug diagnostics.
+Work in progress, but functional. The card can load Home Assistant history and render a configurable threshold-banded line graph with optional markers, axes, grid lines, ribbon content, band-driven colours and debug diagnostics.
 
 ## Roadmap
 
@@ -672,11 +940,15 @@ Planned or possible future features:
 
 - Visual editor support in the Home Assistant UI
 - More marker dot styling options
-- Optional prefixed min/max labels, e.g. `Max 1234ppm`
-- Optional dynamic messages based on the current threshold band
+- More ribbon content options
+- Optional area graph / line graph toggle
+- Area fill colour modes, including band-driven area fill
+- Optional hover / tooltip features
 - More compact presets
+- Optional dynamic messages based on the current threshold band
 - Additional data-source modes for longer-range statistics
 - More examples and screenshots
+- Better handling for marker values outside configured bands
 - Packaging/polish for a wider HACS release
 
 ## License
