@@ -173,6 +173,10 @@ class SimpleBandGraphCard extends HTMLElement {
       bottom_center: config.bottom_center ?? "none",
       bottom_right: config.bottom_right ?? "none",
 
+      // Extra ribbon slot content
+      custom_text: config.custom_text ?? "",
+      duration_format: config.duration_format ?? "short",
+
       ribbon_styles: config.ribbon_styles || {},
 
       // Current value and point marker settings
@@ -951,6 +955,36 @@ class SimpleBandGraphCard extends HTMLElement {
       return formatHoursAgo(hoursAgo);
     };
 
+    const formatDurationLabel = () => {
+      const hours = Number(this.config.hours_to_show);
+    
+      if (!Number.isFinite(hours) || hours <= 0) return "";
+    
+      if (this.config.duration_format === "long") {
+        if (hours < 1) {
+          const minutes = Math.round(hours * 60);
+          return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+        }
+    
+        if (hours % 24 === 0 && hours >= 24) {
+          const days = hours / 24;
+          return `${days} day${days === 1 ? "" : "s"}`;
+        }
+    
+        return `${hours} hour${hours === 1 ? "" : "s"}`;
+      }
+    
+      if (hours < 1) {
+        return `${Math.round(hours * 60)}m`;
+      }
+    
+      if (hours % 24 === 0 && hours >= 24) {
+        return `${hours / 24}d`;
+      }
+    
+      return Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(1)}h`;
+    };
+
     const formatRelativeFetchTime = () => {
       if (!this._lastHistoryFetch) return "not fetched";
 
@@ -1703,6 +1737,7 @@ class SimpleBandGraphCard extends HTMLElement {
       makes it easier to add new slot keywords later.
     */
     const minText = extrema.min ? formatMarkerLabel(extrema.min, "min") : "";
+    const durationText = formatDurationLabel();
     const maxText =
       extrema.max && extrema.max !== extrema.min
         ? formatMarkerLabel(extrema.max, "max")
@@ -1721,6 +1756,13 @@ class SimpleBandGraphCard extends HTMLElement {
       minimum: minText,
       max: maxText,
       maximum: maxText,
+    
+      // Extra ribbon slot content
+      custom: this.config.custom_text,
+      text: this.config.custom_text,
+      duration: durationText,
+      hours: durationText,
+      range: durationText,
     };
 
     const renderSlot = (slotName, alignment, positionKey) => {
