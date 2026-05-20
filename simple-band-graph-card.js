@@ -37,6 +37,7 @@ class SimpleBandGraphCard extends HTMLElement {
 
       // Band display settings
       show_bands: config.show_bands ?? true,
+      band_opacity: config.band_opacity ?? 0.2,
 
       // Whole-card background settings
       background_color: config.background_color ?? "var(--card-background-color)",
@@ -1209,7 +1210,10 @@ class SimpleBandGraphCard extends HTMLElement {
                 y="${y1}"
                 width="${plotWidth}"
                 height="${bandHeight}"
-                fill="${band.color || "rgba(128,128,128,0.15)"}"
+                fill="${applyOpacityToColour(
+                  band.color || "rgba(128,128,128,0.15)",
+                  this.config.band_opacity
+                )}"
               ></rect>
 
               ${
