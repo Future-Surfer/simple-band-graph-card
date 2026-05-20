@@ -8,30 +8,19 @@ It is designed for sensors where coloured context bands make the graph easier to
 
 ## Features
 
-- Select a Home Assistant entity
-- Show recent Home Assistant history as a simple line graph
-- Define custom coloured threshold bands
-- Set the graph duration with `hours_to_show`
-- Set minimum and maximum Y-axis values
-- Display the current entity value and unit
-- Show the current threshold band in the ribbon
-- Hide visible bands while still using them for colour logic
-- Configure top and bottom ribbon content
-- Style each ribbon segment independently
-- Use band-driven colours for ribbon text
+- Display recent Home Assistant entity history as a clean line graph
+- Define custom coloured threshold bands with configurable labels
+- Set graph duration and Y-axis range with `hours_to_show`, `y_min` and `y_max`
+- Configure top and bottom ribbon content, including name, current value, band, min/max, debug text, custom text and graph duration
+- Style ribbon text, backgrounds and band-driven colours
 - Configure separate backgrounds for the card, plot area, top ribbon and bottom ribbon
-- Drive card, plot or ribbon background colours from the current band
-- Configure band label content, position, alignment and styling
-- Place band labels inside or outside the graph area
-- Show optional latest, minimum and maximum value markers
-- Style marker labels and marker label backgrounds
-- Optionally match marker label colours/backgrounds to the marker value’s band
-- Configure X-axis and Y-axis visibility, position, tick count and label styling
-- Add optional X-grid and Y-grid lines
-- Configure graph line colour, width and opacity
+- Optionally drive card, plot or ribbon background colours from the current band
+- Show, hide and position band labels inside or outside the graph area
+- Show optional latest, minimum and maximum value markers with configurable labels
+- Configure X/Y axes, tick labels and optional grid lines
+- Customise graph line colour, width and opacity
 - Use `line_color_mode: band` to colour the graph line by threshold band
-- Band-coloured lines are split at threshold boundaries and grouped into fewer SVG paths for performance
-- Downsample large history responses automatically
+- Automatically downsample large history responses for better performance
 - Show optional debug and performance diagnostics
 
 ## Installation
@@ -84,20 +73,17 @@ type: module
 
 ## Examples
 
-<details>
-<summary>Basic CO₂ example</summary>
+<details open>
+<summary>Minimal example</summary>
+
+The smallest useful card: one entity, one graph, and a few coloured bands.
 
 ```yaml
 type: custom:simple-band-graph-card
 entity: sensor.example_co2
 name: Office CO₂
-hours_to_show: 24
 y_min: 400
 y_max: 2000
-
-top_left: name
-top_center: band
-top_right: current
 
 bands:
   - from: 400
@@ -121,15 +107,62 @@ bands:
 </details>
 
 <details>
-<summary>Status-card style using hidden bands</summary>
+<summary>Ribbon content example</summary>
 
-This keeps the threshold logic but hides the visible band stripes.
+Shows custom ribbon content, including custom text, current band, current value, graph duration, minimum and maximum values.
 
 ```yaml
 type: custom:simple-band-graph-card
 entity: sensor.example_co2
 name: Office CO₂
-height: 170
+hours_to_show: 2
+y_min: 400
+y_max: 2000
+
+top_left: custom
+top_center: band
+top_right: current
+
+bottom_left: duration
+bottom_center: min
+bottom_right: max
+
+custom_text: Office CO₂
+duration_format: short
+
+show_min: true
+show_max: true
+
+bands:
+  - from: 400
+    to: 800
+    color: "#2ecc7133"
+    label: Good
+  - from: 800
+    to: 1100
+    color: "#f1c40f33"
+    label: OK
+  - from: 1100
+    to: 1500
+    color: "#e67e2233"
+    label: Stale
+  - from: 1500
+    to: 2000
+    color: "#e74c3c33"
+    label: Poor
+```
+
+</details>
+
+<details>
+<summary>Band-driven background example</summary>
+
+Colours the plot and ribbon backgrounds using the current value’s band, while hiding the visible band stripes.
+
+```yaml
+type: custom:simple-band-graph-card
+entity: sensor.example_co2
+name: Office CO₂
 hours_to_show: 12
 y_min: 400
 y_max: 2000
@@ -137,7 +170,7 @@ y_max: 2000
 show_bands: false
 
 plot_background_color_mode: band
-plot_background_opacity: 0.14
+plot_background_opacity: 0.12
 
 top_ribbon_background_color_mode: band
 top_ribbon_background_opacity: 0.16
@@ -146,27 +179,6 @@ ribbon_background_radius: 10
 top_left: name
 top_center: band
 top_right: current
-
-ribbon_color_mode: band
-ribbon_styles:
-  top_left:
-    color_mode: static
-    color: var(--primary-text-color)
-  top_center:
-    font_weight: 700
-    color_mode: band
-  top_right:
-    font_size: 24
-    font_weight: 700
-    color_mode: band
-
-show_latest: true
-show_latest_label: true
-marker_label_color_mode: band
-marker_label_background_mode: card
-
-show_y_grid: true
-grid_opacity: 0.2
 
 bands:
   - from: 400
@@ -192,55 +204,24 @@ bands:
 <details>
 <summary>Band-coloured line example</summary>
 
-This colours the line according to the configured bands. The line is split at threshold boundaries and grouped into same-colour paths for better performance.
+Colours the graph line according to the band the value is in.
 
 ```yaml
 type: custom:simple-band-graph-card
 entity: sensor.example_co2
 name: CO₂ Band Line
-height: 190
-hours_to_show: 100
+hours_to_show: 24
 y_min: 400
 y_max: 2000
 
-max_history_points: auto
-history_refresh_interval: 60
-
 show_bands: false
+
 line_color_mode: band
 line_width: 4
-line_opacity: 1
-
-plot_background_color_mode: band
-plot_background_opacity: 0.08
 
 top_left: name
 top_center: band
 top_right: current
-bottom_left: debug
-
-debug_multiline: true
-debug_level: performance
-
-show_latest: true
-show_latest_label: true
-show_min: true
-show_max: true
-show_extrema_labels: true
-extrema_label_mode: compact
-
-marker_label_color_mode: band
-marker_label_background_mode: card
-
-show_y_axis_labels: true
-y_axis_position: right
-y_axis_ticks: 5
-
-show_x_axis_labels: true
-x_axis_ticks: 6
-
-show_y_grid: true
-grid_opacity: 0.2
 
 bands:
   - from: 400
@@ -264,13 +245,14 @@ bands:
 </details>
 
 <details>
-<summary>Temperature example with outside band labels</summary>
+<summary>Outside band labels example</summary>
+
+Places band labels outside the graph area. This is useful when the bands themselves are narrow or when you want a cleaner plot.
 
 ```yaml
 type: custom:simple-band-graph-card
 entity: sensor.living_room_temperature
 name: Living Room Temperature
-height: 150
 hours_to_show: 48
 y_min: 14
 y_max: 24
@@ -284,21 +266,6 @@ band_label_unit: true
 band_label_position: middle
 band_label_align: outside_right
 band_label_outside_width: auto
-
-show_y_axis_labels: true
-y_axis_position: left
-y_axis_ticks: 6
-
-show_x_axis_labels: true
-x_axis_ticks: 5
-
-show_y_grid: true
-
-show_latest: true
-show_latest_label: true
-show_min: true
-show_max: true
-marker_label_background_mode: band
 
 bands:
   - from: 14
@@ -322,111 +289,83 @@ bands:
 </details>
 
 <details>
-<summary>Solar generation example</summary>
+<summary>Markers example</summary>
+
+Shows latest, minimum and maximum markers with labels.
 
 ```yaml
 type: custom:simple-band-graph-card
-entity: sensor.example_solar_generation
-name: Solar Generation
-height: 155
-hours_to_show: 48
-y_min: 0
-y_max: 2500
+entity: sensor.example_co2
+name: CO₂ Markers
+hours_to_show: 24
+y_min: 400
+y_max: 2000
 
 top_left: name
 top_center: band
 top_right: current
 
-band_label_mode: threshold
-band_label_position: middle
-band_label_align: outside_left
-band_label_outside_width: auto
-
-show_y_axis_labels: true
-y_axis_position: right
-y_axis_ticks: 6
-
-show_x_axis_labels: true
-x_axis_ticks: 5
-
-show_y_grid: true
-
 show_latest: true
 show_latest_label: true
+
+show_min: true
 show_max: true
-show_min: false
-marker_label_background_mode: band
+show_extrema_labels: true
+extrema_label_mode: compact
+
+marker_label_color_mode: band
+marker_label_background_mode: card
 
 bands:
-  - from: 0
-    to: 250
-    color: "#95a5a633"
-    label: Minimal
-  - from: 250
-    to: 1000
-    color: "#f1c40f33"
-    label: Useful
-  - from: 1000
-    to: 1800
-    color: "#2ecc7133"
+  - from: 400
+    to: 800
+    color: "#2ecc71"
     label: Good
-  - from: 1800
-    to: 2500
-    color: "#27ae6033"
-    label: Excellent
+  - from: 800
+    to: 1100
+    color: "#f1c40f"
+    label: OK
+  - from: 1100
+    to: 1500
+    color: "#e67e22"
+    label: Stale
+  - from: 1500
+    to: 2000
+    color: "#e74c3c"
+    label: Poor
 ```
 
 </details>
 
 <details>
-<summary>Debug and performance example</summary>
+<summary>Axes and grid example</summary>
+
+Shows configurable axes, tick labels and grid lines.
 
 ```yaml
 type: custom:simple-band-graph-card
 entity: sensor.example_co2
-name: CO₂ Debug Test
-height: 190
-hours_to_show: 100
+name: CO₂ Axes and Grid
+hours_to_show: 24
 y_min: 400
 y_max: 2000
-
-max_history_points: auto
-history_refresh_interval: 60
 
 top_left: name
 top_center: band
 top_right: current
-bottom_left: debug
 
-debug_multiline: true
-debug_level: performance
+show_x_axis: true
+show_x_axis_labels: true
+x_axis_ticks: 5
 
-ribbon_styles:
-  bottom_left:
-    font_size: 11
-    font_weight: 400
-    color: var(--secondary-text-color)
-    opacity: 0.7
-
-band_label_mode: threshold
-band_label_position: middle
-band_label_align: outside_left
-band_label_outside_width: auto
-
+show_y_axis: true
 show_y_axis_labels: true
 y_axis_position: right
 y_axis_ticks: 5
 
-show_x_axis_labels: true
-x_axis_ticks: 6
-
+show_x_grid: true
 show_y_grid: true
 grid_opacity: 0.25
-
-show_latest: true
-show_latest_label: true
-show_max: true
-marker_label_background_mode: band
 
 bands:
   - from: 400
@@ -450,75 +389,78 @@ bands:
 </details>
 
 <details>
-<summary>Advanced formatting example</summary>
+<summary>Advanced customisation example</summary>
+
+A fuller example showing custom backgrounds, ribbons, labels, axes, markers and performance settings.
 
 ```yaml
 type: custom:simple-band-graph-card
 entity: sensor.example_co2
 name: Office CO₂
-height: 180
-hours_to_show: 10
+height: 190
+hours_to_show: 24
 y_min: 400
 y_max: 2000
 
 max_history_points: auto
 history_refresh_interval: 60
 
-show_bands: true
-
+background_color_mode: static
 background_color: var(--card-background-color)
 background_opacity: 1
-background_color_mode: static
 
-plot_background_color: var(--card-background-color)
-plot_background_opacity: 0.35
-plot_background_color_mode: static
-plot_background_radius: 8
+plot_background_color_mode: band
+plot_background_opacity: 0.08
+plot_background_radius: 10
 
 top_ribbon_background_color_mode: band
-top_ribbon_background_opacity: 0.12
+top_ribbon_background_opacity: 0.14
 bottom_ribbon_background_color: "#000000"
-bottom_ribbon_background_opacity: 0.06
-ribbon_background_radius: 8
+bottom_ribbon_background_opacity: 0.05
+ribbon_background_radius: 10
+
+top_left: custom
+top_center: band
+top_right: current
+bottom_left: duration
+bottom_center: min
+bottom_right: max
+
+custom_text: Office CO₂
+duration_format: short
+
+top_left_font_size: 16
+top_center_font_size: 16
+top_right_font_size: 20
+bottom_left_font_size: 12
+bottom_center_font_size: 12
+bottom_right_font_size: 12
+
+ribbon_color_mode: static
+ribbon_styles:
+  top_center:
+    font_weight: 700
+    color_mode: band
+  top_right:
+    font_weight: 800
+    color_mode: band
 
 show_line: true
-line_color: var(--primary-color)
-line_color_mode: static
-line_width: 3
+line_color_mode: band
+line_width: 4
 line_opacity: 1
 
-show_x_grid: false
-show_y_grid: true
-grid_color: var(--divider-color)
-grid_width: 1
-grid_opacity: 0.25
-
 band_label_mode: threshold
-band_label_unit: false
 band_label_position: middle
 band_label_align: outside_left
 band_label_outside_width: auto
-band_label_outside_gap: 6
 band_label_size: 11
 band_label_weight: 600
-band_label_color: var(--secondary-text-color)
-band_label_color_mode: static
-band_label_opacity: 0.8
 hide_small_band_labels: true
 min_band_label_height: 18
 
-marker_label_size: 10
-marker_label_weight: 600
-marker_label_color: var(--primary-text-color)
-marker_label_color_mode: band
-marker_label_opacity: 0.95
-marker_label_background_mode: band
-marker_label_background_opacity: 0.85
-
 show_x_axis: true
 show_x_axis_labels: true
-x_axis_position: bottom
-x_axis_label_mode: relative
 x_axis_ticks: 5
 
 show_y_axis: true
@@ -526,54 +468,25 @@ show_y_axis_labels: true
 y_axis_position: right
 y_axis_ticks: 5
 
-axis_label_size: 11
-axis_label_weight: 400
-axis_label_color: var(--secondary-text-color)
-axis_label_color_mode: static
-axis_label_opacity: 0.8
-
-top_left: name
-top_center: band
-top_right: current
-bottom_left: debug
-bottom_center: none
-bottom_right: none
-
-debug_multiline: true
-debug_level: performance
-
-ribbon_color_mode: static
-ribbon_styles:
-  top_left:
-    font_size: 16
-    font_weight: 600
-    color: var(--primary-text-color)
-  top_center:
-    font_size: 15
-    font_weight: 700
-    color_mode: band
-  top_right:
-    font_size: 22
-    font_weight: 700
-    color_mode: band
-  bottom_left:
-    font_size: 11
-    font_weight: 400
-    color: var(--secondary-text-color)
-    opacity: 0.7
+show_y_grid: true
+grid_opacity: 0.25
 
 show_latest: true
 show_latest_label: true
-latest_marker_size: 4
 
-show_min: false
+show_min: true
 show_max: true
+show_extrema_labels: true
+extrema_label_mode: compact
 hide_recent_min: true
 hide_recent_max: false
 recent_extrema_minutes: 30
-show_extrema_labels: true
-extrema_marker_size: 4
-extrema_label_mode: compact
+
+marker_label_size: 11
+marker_label_weight: 600
+marker_label_color_mode: band
+marker_label_background_mode: card
+marker_label_background_opacity: 0.85
 
 bands:
   - from: 400
@@ -592,6 +505,49 @@ bands:
     to: 2000
     color: "#e74c3c"
     label: Poor
+```
+
+</details>
+
+<details>
+<summary>Basic debug example</summary>
+
+Shows simple debug output in the bottom ribbon.
+
+```yaml
+type: custom:simple-band-graph-card
+entity: sensor.ep_lite_with_co2_co2
+name: Basic debug example
+hours_to_show: 24
+
+y_min: 400
+y_max: 2000
+
+top_left: name
+top_center: band
+top_right: current
+bottom_left: debug
+debug_level: verbose
+debug_multiline: true
+
+bands:
+  - from: 400
+    to: 800
+    color: "#2ecc7133"
+    label: Good
+  - from: 800
+    to: 1100
+    color: "#f1c40f33"
+    label: OK
+  - from: 1100
+    to: 1500
+    color: "#e67e2233"
+    label: Stale
+  - from: 1500
+    to: 2000
+    color: "#e74c3c33"
+    label: Poor
+
 ```
 
 </details>
@@ -773,8 +729,10 @@ bottom_right: none
 | `bottom_left` | `none` | Content for the bottom-left ribbon slot. |
 | `bottom_center` | `none` | Content for the bottom-centre ribbon slot. |
 | `bottom_right` | `none` | Content for the bottom-right ribbon slot. |
+| `custom_text` | `""` | Custom text shown when a ribbon slot is set to `custom` or `text`. |
+| `duration_format` | `short` | Duration label format. Options: `short`, `long`. |
 | `ribbon_color_mode` | `static` | Global ribbon text colour mode. Options: `static`, `band`, `none`. |
-| `ribbon_styles` | `{}` | Per-slot style overrides. |
+| `ribbon_styles` | `{}` | Advanced per-slot style overrides. |
 
 Supported slot values:
 
@@ -784,6 +742,11 @@ Supported slot values:
 | `name` | Card name. |
 | `current` | Current entity value and unit. |
 | `band` | Current threshold band label. |
+| `custom` | Custom text from `custom_text`. |
+| `text` | Alias for `custom`. |
+| `duration` | Selected graph duration based on `hours_to_show`. |
+| `hours` | Alias for `duration`. |
+| `range` | Alias for `duration`. |
 | `debug` | Debug/status information. |
 | `status` | Alias for `debug`, kept for backwards compatibility. |
 | `entity` | Entity ID. |
@@ -793,7 +756,61 @@ Supported slot values:
 | `max` | Maximum value in the displayed history. |
 | `maximum` | Alias for `max`. |
 
-Each ribbon position can be styled:
+Duration labels are based on `hours_to_show`.
+
+```yaml
+hours_to_show: 0.5
+bottom_left: duration
+duration_format: short
+
+This shows 30m.
+
+hours_to_show: 48
+bottom_left: duration
+duration_format: long
+
+This shows 2 days.
+
+Each ribbon position has simple font size, weight and opacity options:
+
+| Option | Default | Description |
+|---|---:|---|
+| `top_left_font_size` | `16` | Top-left ribbon font size. |
+| `top_center_font_size` | `16` | Top-centre ribbon font size. |
+| `top_right_font_size` | `16` | Top-right ribbon font size. |
+| `bottom_left_font_size` | `12` | Bottom-left ribbon font size. |
+| `bottom_center_font_size` | `12` | Bottom-centre ribbon font size. |
+| `bottom_right_font_size` | `12` | Bottom-right ribbon font size. |
+| `top_left_font_weight` | `600` | Top-left ribbon font weight. |
+| `top_center_font_weight` | `600` | Top-centre ribbon font weight. |
+| `top_right_font_weight` | `600` | Top-right ribbon font weight. |
+| `bottom_left_font_weight` | `500` | Bottom-left ribbon font weight. |
+| `bottom_center_font_weight` | `500` | Bottom-centre ribbon font weight. |
+| `bottom_right_font_weight` | `500` | Bottom-right ribbon font weight. |
+| `top_left_opacity` | `1` | Top-left ribbon text opacity. |
+| `top_center_opacity` | `1` | Top-centre ribbon text opacity. |
+| `top_right_opacity` | `1` | Top-right ribbon text opacity. |
+| `bottom_left_opacity` | `0.8` | Bottom-left ribbon text opacity. |
+| `bottom_center_opacity` | `0.8` | Bottom-centre ribbon text opacity. |
+| `bottom_right_opacity` | `0.8` | Bottom-right ribbon text opacity. |
+
+Example:
+
+```yaml
+top_left_font_size: 16
+top_center_font_size: 16
+top_right_font_size: 18
+
+bottom_left_font_size: 12
+bottom_center_font_size: 12
+bottom_right_font_size: 12
+
+top_left_font_weight: 600
+top_center_font_weight: 600
+top_right_font_weight: 700
+```
+
+For more advanced styling, each ribbon position can also be overridden with `ribbon_styles`:
 
 ```yaml
 ribbon_styles:
@@ -816,7 +833,7 @@ ribbon_styles:
     opacity: 0.7
 ```
 
-Supported ribbon style options:
+Supported advanced ribbon style options:
 
 | Option | Description |
 |---|---|
@@ -940,13 +957,11 @@ Planned or possible future features:
 
 - Visual editor support in the Home Assistant UI
 - More marker dot styling options
-- More ribbon content options
 - Optional area graph / line graph toggle
 - Area fill colour modes, including band-driven area fill
 - Optional hover / tooltip features
 - More compact presets
 - Optional dynamic messages based on the current threshold band
-- Additional data-source modes for longer-range statistics
 - More examples and screenshots
 - Better handling for marker values outside configured bands
 - Packaging/polish for a wider HACS release
