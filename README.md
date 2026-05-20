@@ -905,13 +905,13 @@ Duration labels are based on `hours_to_show`.
 hours_to_show: 0.5
 bottom_left: duration
 duration_format: short
-
+```
 This shows 30m.
-
+```
 hours_to_show: 48
 bottom_left: duration
 duration_format: long
-
+```
 This shows 2 days.
 
 Each ribbon position has simple font size, weight and opacity options:
