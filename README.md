@@ -77,8 +77,11 @@ type: module
 
 ## Examples
 
+## Examples
+
 <details open>
 <summary>Minimal example</summary>
+<img width="718" height="411" alt="image" src="https://github.com/user-attachments/assets/7b392cd7-310e-47ee-8c85-eebd75916142" />
 
 The smallest useful card: one entity, one graph, and a few coloured bands.
 
@@ -89,79 +92,35 @@ name: Office CO₂
 y_min: 400
 y_max: 2000
 
+band_opacity: 0.18
+
+show_x_axis: false
+show_x_axis_labels: false
+show_y_axis: false
+show_y_axis_labels: false
+
 bands:
   - from: 400
     to: 800
-    color: "#2ecc7133"
-    label: Good
+    color: "#2ecc71"
   - from: 800
     to: 1100
-    color: "#f1c40f33"
-    label: OK
+    color: "#f1c40f"
   - from: 1100
     to: 1500
-    color: "#e67e2233"
-    label: Stale
+    color: "#e67e22"
   - from: 1500
     to: 2000
-    color: "#e74c3c33"
-    label: Poor
+    color: "#e74c3c"
 ```
 
 </details>
 
 <details>
-<summary>Ribbon content example</summary>
+<summary>Ribbon message example</summary>
+<img width="721" height="507" alt="image" src="https://github.com/user-attachments/assets/c8beef94-b952-4374-95f5-5673f7fd0e10" />
 
-Shows custom ribbon content, including custom text, current band, current value, graph duration, minimum and maximum values.
-
-```yaml
-type: custom:simple-band-graph-card
-entity: sensor.example_co2
-name: Office CO₂
-hours_to_show: 2
-y_min: 400
-y_max: 2000
-
-top_left: custom
-top_center: band
-top_right: current
-
-bottom_left: duration
-bottom_center: min
-bottom_right: max
-
-custom_text: Office CO₂
-duration_format: short
-
-show_min: true
-show_max: true
-
-bands:
-  - from: 400
-    to: 800
-    color: "#2ecc7133"
-    label: Good
-  - from: 800
-    to: 1100
-    color: "#f1c40f33"
-    label: OK
-  - from: 1100
-    to: 1500
-    color: "#e67e2233"
-    label: Stale
-  - from: 1500
-    to: 2000
-    color: "#e74c3c33"
-    label: Poor
-```
-
-</details>
-
-<details>
-<summary>Band-driven background example</summary>
-
-Colours the plot and ribbon backgrounds using the current value’s band, while hiding the visible band stripes.
+Shows a band-specific message in the bottom ribbon.
 
 ```yaml
 type: custom:simple-band-graph-card
@@ -171,14 +130,70 @@ hours_to_show: 12
 y_min: 400
 y_max: 2000
 
-show_bands: false
+band_opacity: 0.18
 
-plot_background_color_mode: band
-plot_background_opacity: 0.12
+top_left: name
+top_center: none
+top_right: duration
 
-top_ribbon_background_color_mode: band
-top_ribbon_background_opacity: 0.16
+bottom_left: none
+bottom_center: message
+bottom_right: none
+
+duration_format: short
+
+bottom_ribbon_background_color_mode: band
+bottom_ribbon_background_opacity: 0.35
 ribbon_background_radius: 10
+
+bottom_center_font_size: 15
+bottom_center_font_weight: 700
+bottom_center_opacity: 1
+
+bands:
+  - from: 400
+    to: 800
+    color: "#2ecc71"
+    label: Good
+    message: Air quality is good
+  - from: 800
+    to: 1100
+    color: "#f1c40f"
+    label: OK
+    message: Air quality is OK
+  - from: 1100
+    to: 1500
+    color: "#e67e22"
+    label: Stale
+    message: Air is getting stale
+  - from: 1500
+    to: 2000
+    color: "#e74c3c"
+    label: Poor
+    message: Open a window
+```
+
+</details>
+
+<details>
+<summary>Band-coloured line example</summary>
+<img width="730" height="433" alt="image" src="https://github.com/user-attachments/assets/3d434498-f8f8-4862-b816-b32883007bfc" />
+
+Uses translucent bands with a stronger band-coloured line on top.
+
+```yaml
+type: custom:simple-band-graph-card
+entity: sensor.example_co2
+name: CO₂ Band Line
+hours_to_show: 24
+y_min: 400
+y_max: 2000
+
+band_opacity: 0.14
+
+line_color_mode: band
+line_width: 4
+line_opacity: 1
 
 top_left: name
 top_center: band
@@ -206,22 +221,27 @@ bands:
 </details>
 
 <details>
-<summary>Band-coloured line example</summary>
+<summary>Band-driven background example</summary>
+<img width="721" height="452" alt="image" src="https://github.com/user-attachments/assets/78cf9770-c893-4344-83d5-a66930b0948d" />
 
-Colours the graph line according to the band the value is in.
+Hides the visible band stripes and uses the current band to colour the plot and ribbon backgrounds.
 
 ```yaml
 type: custom:simple-band-graph-card
 entity: sensor.example_co2
-name: CO₂ Band Line
-hours_to_show: 24
+name: Office CO₂
+hours_to_show: 12
 y_min: 400
 y_max: 2000
 
 show_bands: false
 
-line_color_mode: band
-line_width: 4
+plot_background_color_mode: band
+plot_background_opacity: 0.12
+
+top_ribbon_background_color_mode: band
+top_ribbon_background_opacity: 0.22
+ribbon_background_radius: 10
 
 top_left: name
 top_center: band
@@ -250,8 +270,9 @@ bands:
 
 <details>
 <summary>Outside band labels example</summary>
+<img width="719" height="423" alt="image" src="https://github.com/user-attachments/assets/b3f69fec-0fd4-4270-bde2-57df90f6ea89" />
 
-Places band labels outside the graph area. This is useful when the bands themselves are narrow or when you want a cleaner plot.
+Places band labels outside the graph area. This is useful when bands are narrow or when you want a cleaner plot.
 
 ```yaml
 type: custom:simple-band-graph-card
@@ -260,6 +281,8 @@ name: Living Room Temperature
 hours_to_show: 48
 y_min: 14
 y_max: 24
+
+band_opacity: 0.18
 
 top_left: name
 top_center: band
@@ -274,19 +297,19 @@ band_label_outside_width: auto
 bands:
   - from: 14
     to: 17
-    color: "#3498db33"
+    color: "#3498db"
     label: Cool
   - from: 17
     to: 20
-    color: "#2ecc7133"
+    color: "#2ecc71"
     label: Comfortable
   - from: 20
     to: 22
-    color: "#f1c40f33"
+    color: "#f1c40f"
     label: Warm
   - from: 22
     to: 24
-    color: "#e67e2233"
+    color: "#e67e22"
     label: Hot
 ```
 
@@ -294,8 +317,9 @@ bands:
 
 <details>
 <summary>Markers example</summary>
+<img width="732" height="427" alt="image" src="https://github.com/user-attachments/assets/508b2104-dd46-46e4-ae81-5af7530e832a" />
 
-Shows latest, minimum and maximum markers with labels.
+Shows the latest value and maximum value directly on the graph.
 
 ```yaml
 type: custom:simple-band-graph-card
@@ -305,20 +329,26 @@ hours_to_show: 24
 y_min: 400
 y_max: 2000
 
+band_opacity: 0.18
+
 top_left: name
 top_center: band
 top_right: current
 
 show_latest: true
 show_latest_label: true
+latest_marker_size: 3
 
-show_min: true
+show_min: false
 show_max: true
 show_extrema_labels: true
 extrema_label_mode: compact
 
-marker_label_color_mode: band
+marker_label_color_mode: static
 marker_label_background_mode: card
+marker_label_background_opacity: 0.8
+marker_label_size: 12
+marker_label_weight: 600
 
 bands:
   - from: 400
@@ -343,6 +373,7 @@ bands:
 
 <details>
 <summary>Axes and grid example</summary>
+<img width="715" height="429" alt="image" src="https://github.com/user-attachments/assets/ecb380e5-0733-4add-829e-7bc930420524" />
 
 Shows configurable axes, tick labels and grid lines.
 
@@ -353,6 +384,8 @@ name: CO₂ Axes and Grid
 hours_to_show: 24
 y_min: 400
 y_max: 2000
+
+band_opacity: 0.18
 
 top_left: name
 top_center: band
@@ -371,22 +404,18 @@ show_x_grid: true
 show_y_grid: true
 grid_opacity: 0.25
 
+plot_background_color: "#ffffff"
+plot_background_opacity: 1
+
+band_label_mode: label
+band_label_position: middle
+band_label_size: 20
+band_label_weight: 600
+
 bands:
-  - from: 400
-    to: 800
-    color: "#2ecc7133"
-    label: Good
-  - from: 800
-    to: 1100
-    color: "#f1c40f33"
-    label: OK
-  - from: 1100
-    to: 1500
-    color: "#e67e2233"
-    label: Stale
   - from: 1500
     to: 2000
-    color: "#e74c3c33"
+    color: "#e74c3c"
     label: Poor
 ```
 
@@ -394,103 +423,158 @@ bands:
 
 <details>
 <summary>Advanced customisation example</summary>
+<img width="691" height="533" alt="image" src="https://github.com/user-attachments/assets/ba14e359-ef39-4501-9fdb-8fa4bb9ccd35" />
 
-A fuller example showing custom backgrounds, ribbons, labels, axes, markers and performance settings.
+A fuller example showing custom ribbons, band messages, backgrounds, labels, axes, markers and band-coloured lines.
 
 ```yaml
 type: custom:simple-band-graph-card
 entity: sensor.example_co2
-name: Office CO₂
+name: Simple Band Graph
 height: 190
-hours_to_show: 24
+hours_to_show: 12
 y_min: 400
 y_max: 2000
 
 max_history_points: auto
 history_refresh_interval: 60
 
+band_opacity: 0.18
+
 background_color_mode: static
 background_color: var(--card-background-color)
 background_opacity: 1
 
-plot_background_color_mode: band
-plot_background_opacity: 0.08
+plot_background_color_mode: static
+plot_background_color: var(--card-background-color)
+plot_background_opacity: 0.35
 plot_background_radius: 10
 
-top_ribbon_background_color_mode: band
-top_ribbon_background_opacity: 0.14
-bottom_ribbon_background_color: "#000000"
-bottom_ribbon_background_opacity: 0.05
+bottom_ribbon_background_color_mode: band
+bottom_ribbon_background_opacity: 0.35
 ribbon_background_radius: 10
 
-top_left: custom
-top_center: band
-top_right: current
-bottom_left: duration
-bottom_center: min
-bottom_right: max
+top_left: name
+top_center: none
+top_right: duration
 
-custom_text: Office CO₂
+bottom_left: none
+bottom_center: message
+bottom_right: none
+
 duration_format: short
 
 top_left_font_size: 16
-top_center_font_size: 16
-top_right_font_size: 20
-bottom_left_font_size: 12
-bottom_center_font_size: 12
-bottom_right_font_size: 12
+top_right_font_size: 16
+bottom_center_font_size: 15
+
+top_left_font_weight: 700
+top_right_font_weight: 700
+bottom_center_font_weight: 700
 
 ribbon_color_mode: static
 ribbon_styles:
-  top_center:
-    font_weight: 700
-    color_mode: band
   top_right:
-    font_weight: 800
-    color_mode: band
+    color: var(--primary-text-color)
+    color_mode: static
+  bottom_center:
+    color: var(--primary-text-color)
+    color_mode: static
 
 show_line: true
 line_color_mode: band
-line_width: 4
+line_width: 3
 line_opacity: 1
 
-band_label_mode: threshold
+band_label_mode: label
 band_label_position: middle
-band_label_align: outside_left
-band_label_outside_width: auto
-band_label_size: 11
-band_label_weight: 600
-hide_small_band_labels: true
-min_band_label_height: 18
+band_label_align: left
+band_label_size: 13
+band_label_weight: 500
+band_label_opacity: 0.85
 
 show_x_axis: true
 show_x_axis_labels: true
-x_axis_ticks: 5
+x_axis_ticks: 3
+axis_label_size: 13
 
-show_y_axis: true
-show_y_axis_labels: true
-y_axis_position: right
-y_axis_ticks: 5
+show_y_axis: false
+show_y_axis_labels: false
 
-show_y_grid: true
-grid_opacity: 0.25
+show_x_grid: false
+show_y_grid: false
 
 show_latest: true
 show_latest_label: true
+latest_marker_size: 3
 
-show_min: true
+show_min: false
 show_max: true
 show_extrema_labels: true
 extrema_label_mode: compact
-hide_recent_min: true
 hide_recent_max: false
-recent_extrema_minutes: 30
 
-marker_label_size: 11
-marker_label_weight: 600
-marker_label_color_mode: band
+marker_label_color_mode: static
 marker_label_background_mode: card
-marker_label_background_opacity: 0.85
+marker_label_background_opacity: 0.8
+marker_label_size: 13
+marker_label_weight: 600
+
+bands:
+  - from: 400
+    to: 800
+    color: "#2ecc71"
+    label: Good
+    message: Air quality is good
+  - from: 800
+    to: 1100
+    color: "#f1c40f"
+    label: OK
+    message: Air quality is OK
+  - from: 1100
+    to: 1500
+    color: "#e67e22"
+    label: Stale
+    message: Air is getting stale
+  - from: 1500
+    to: 2000
+    color: "#e74c3c"
+    label: Poor
+    message: Open a window
+```
+
+</details>
+
+<details>
+<summary>Basic debug example</summary>
+<img width="734" height="611" alt="image" src="https://github.com/user-attachments/assets/68c486ce-e417-4327-bad7-1d04ba614119" />
+
+Shows basic debug output in the bottom ribbon.
+
+```yaml
+type: custom:simple-band-graph-card
+entity: sensor.example_co2
+name: CO₂ Debug
+hours_to_show: 24
+y_min: 400
+y_max: 2000
+
+band_opacity: 0.18
+
+top_left: name
+top_center: band
+top_right: current
+
+bottom_left: debug
+bottom_center: none
+bottom_right: none
+
+debug_level: basic
+debug_multiline: true
+
+bottom_left_font_size: 11
+bottom_left_font_weight: 400
+bottom_left_opacity: 0.75
 
 bands:
   - from: 400
@@ -512,49 +596,104 @@ bands:
 ```
 
 </details>
-
 <details>
-<summary>Basic debug example</summary>
+<summary>Complex debug and performance example</summary>
+<img width="720" height="793" alt="image" src="https://github.com/user-attachments/assets/a363b212-0363-4f1f-aa7c-bf2ef49880d8" />
 
-Shows simple debug output in the bottom ribbon.
+Shows detailed debug and performance output, including fetch timings, downsampling, render counts and line path information. Useful when testing long history windows or band-coloured lines.
 
 ```yaml
 type: custom:simple-band-graph-card
-entity: sensor.ep_lite_with_co2_co2
-name: Basic debug example
-hours_to_show: 24
-
+entity: sensor.example_co2
+name: CO₂ Performance Debug
+height: 230
+hours_to_show: 100
 y_min: 400
 y_max: 2000
 
+max_history_points: auto
+history_refresh_interval: 60
+
+band_opacity: 0.12
+
 top_left: name
-top_center: band
+top_center: duration
 top_right: current
+
 bottom_left: debug
-debug_level: verbose
+bottom_center: none
+bottom_right: none
+
+duration_format: short
+
+debug_level: performance
 debug_multiline: true
+
+bottom_left_font_size: 11
+bottom_left_font_weight: 400
+bottom_left_opacity: 0.75
+
+show_line: true
+line_color_mode: band
+line_width: 4
+line_opacity: 1
+
+show_x_axis: true
+show_x_axis_labels: true
+x_axis_ticks: 6
+
+show_y_axis: true
+show_y_axis_labels: true
+y_axis_position: right
+y_axis_ticks: 5
+
+show_y_grid: true
+grid_opacity: 0.25
+
+show_latest: true
+show_latest_label: true
+latest_marker_size: 3
+
+show_min: true
+show_max: true
+show_extrema_labels: true
+extrema_label_mode: compact
+hide_recent_min: true
+hide_recent_max: false
+recent_extrema_minutes: 30
+
+marker_label_color_mode: static
+marker_label_background_mode: card
+marker_label_background_opacity: 0.8
+marker_label_size: 11
+marker_label_weight: 600
 
 bands:
   - from: 400
     to: 800
-    color: "#2ecc7133"
+    color: "#2ecc71"
     label: Good
+    message: Air quality is good
   - from: 800
     to: 1100
-    color: "#f1c40f33"
+    color: "#f1c40f"
     label: OK
+    message: Air quality is OK
   - from: 1100
     to: 1500
-    color: "#e67e2233"
+    color: "#e67e22"
     label: Stale
+    message: Air is getting stale
   - from: 1500
     to: 2000
-    color: "#e74c3c33"
+    color: "#e74c3c"
     label: Poor
-
+    message: Open a window
 ```
 
 </details>
+
+
 
 ## Configuration
 
