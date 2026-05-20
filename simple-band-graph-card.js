@@ -1,14 +1,33 @@
 /*
   Simple Band Graph Card
+  ----------------------
+  Home Assistant Lovelace custom card for plotting an entity against configurable
+  coloured bands, optional axes, markers, ribbons, and debug information.
 */
 
 class SimpleBandGraphCard extends HTMLElement {
+  /*
+    ============================================================================
+    CONFIGURATION
+    ============================================================================
+    setConfig is called by Home Assistant when the card is loaded or when the YAML
+    changes. This section defines defaults, handles backwards-compatible options,
+    and initialises runtime state used by history fetching and rendering.
+  */
   setConfig(config) {
     if (!config.entity) {
       throw new Error("You need to define an entity");
     }
 
+    /*
+      --------------------------------------------------------------------------
+      User configuration + defaults
+      --------------------------------------------------------------------------
+      Keep these grouped by feature area so new YAML options can be added in the
+      right place and documented more easily.
+    */
     this.config = {
+      // Core card and data range settings
       name: config.name || config.entity,
       height: config.height || 180,
       hours_to_show: config.hours_to_show ?? 24,
@@ -16,17 +35,21 @@ class SimpleBandGraphCard extends HTMLElement {
       y_max: config.y_max ?? 100,
       bands: config.bands || [],
 
+      // Band display settings
       show_bands: config.show_bands ?? true,
 
+      // Whole-card background settings
       background_color: config.background_color ?? "var(--card-background-color)",
       background_opacity: config.background_opacity ?? 1,
       background_color_mode: config.background_color_mode ?? "static",
 
+      // Plot-area background settings
       plot_background_color: config.plot_background_color ?? "var(--card-background-color)",
       plot_background_opacity: config.plot_background_opacity ?? 0.35,
       plot_background_color_mode: config.plot_background_color_mode ?? "static",
       plot_background_radius: config.plot_background_radius ?? 8,
 
+      // Top ribbon background settings
       top_ribbon_background_color:
         config.top_ribbon_background_color ?? "transparent",
       top_ribbon_background_opacity:
@@ -34,6 +57,7 @@ class SimpleBandGraphCard extends HTMLElement {
       top_ribbon_background_color_mode:
         config.top_ribbon_background_color_mode ?? "static",
 
+      // Bottom ribbon background settings
       bottom_ribbon_background_color:
         config.bottom_ribbon_background_color ?? "transparent",
       bottom_ribbon_background_opacity:
@@ -44,27 +68,32 @@ class SimpleBandGraphCard extends HTMLElement {
       ribbon_background_radius: config.ribbon_background_radius ?? 8,
       ribbon_color_mode: config.ribbon_color_mode ?? "static",
 
+      // History fetching and downsampling settings
       max_history_points: config.max_history_points ?? "auto",
       history_refresh_interval: config.history_refresh_interval ?? 60,
 
+      // Debug/status settings
       debug_multiline: config.debug_multiline ?? false,
       debug_performance: config.debug_performance ?? false,
       debug_level:
         config.debug_level ??
         (config.debug_performance ? "performance" : "basic"),
 
+      // Line appearance settings
       show_line: config.show_line ?? true,
       line_color: config.line_color ?? "var(--primary-color)",
       line_color_mode: config.line_color_mode ?? "static",
       line_width: config.line_width ?? 3,
       line_opacity: config.line_opacity ?? 1,
 
+      // Grid-line settings
       show_x_grid: config.show_x_grid ?? false,
       show_y_grid: config.show_y_grid ?? false,
       grid_color: config.grid_color ?? "var(--divider-color)",
       grid_width: config.grid_width ?? 1,
       grid_opacity: config.grid_opacity ?? 0.35,
 
+      // Band label settings
       band_label_mode: config.band_label_mode ?? "label",
       band_label_unit: config.band_label_unit ?? false,
       band_label_position: config.band_label_position ?? "top",
@@ -79,6 +108,7 @@ class SimpleBandGraphCard extends HTMLElement {
       hide_small_band_labels: config.hide_small_band_labels ?? false,
       min_band_label_height: config.min_band_label_height ?? 18,
 
+      // Marker label settings
       marker_label_size: config.marker_label_size ?? 11,
       marker_label_weight: config.marker_label_weight ?? 400,
       marker_label_color: config.marker_label_color ?? "var(--primary-text-color)",
@@ -90,6 +120,7 @@ class SimpleBandGraphCard extends HTMLElement {
         config.marker_label_background_opacity ?? 0.75,
       marker_label_background_mode: config.marker_label_background_mode ?? "card",
 
+      // Axis settings
       show_x_axis: config.show_x_axis ?? true,
       show_x_axis_labels: config.show_x_axis_labels ?? true,
       x_axis_position: config.x_axis_position ?? "bottom",
@@ -107,6 +138,7 @@ class SimpleBandGraphCard extends HTMLElement {
       axis_label_color_mode: config.axis_label_color_mode ?? "static",
       axis_label_opacity: config.axis_label_opacity ?? 0.8,
 
+      // Top/bottom ribbon slot settings
       top_left: config.top_left ?? "name",
       top_center: config.top_center ?? "none",
       top_right: config.top_right ?? "current",
@@ -116,6 +148,7 @@ class SimpleBandGraphCard extends HTMLElement {
 
       ribbon_styles: config.ribbon_styles || {},
 
+      // Current value and point marker settings
       show_current: config.show_current ?? true,
       current_position: config.current_position ?? null,
 
@@ -123,6 +156,7 @@ class SimpleBandGraphCard extends HTMLElement {
       show_latest_label: config.show_latest_label ?? true,
       latest_marker_size: config.latest_marker_size ?? 4,
 
+      // Min/max marker settings
       show_min: config.show_min ?? config.show_extrema ?? false,
       show_max: config.show_max ?? config.show_extrema ?? false,
 
@@ -134,9 +168,17 @@ class SimpleBandGraphCard extends HTMLElement {
       hide_recent_max: config.hide_recent_max ?? config.hide_recent_extrema ?? false,
       recent_extrema_minutes: config.recent_extrema_minutes ?? 30,
 
+      // Allow unknown/future config options through for compatibility.
       ...config,
     };
 
+    /*
+      --------------------------------------------------------------------------
+      Backwards-compatible current_position handling
+      --------------------------------------------------------------------------
+      Older YAML could place the current value using current_position. This maps
+      that setting onto the newer ribbon slot system.
+    */
     if (this.config.current_position) {
       this.config.top_left = "name";
       this.config.top_center = "none";
@@ -154,6 +196,13 @@ class SimpleBandGraphCard extends HTMLElement {
       }
     }
 
+    /*
+      --------------------------------------------------------------------------
+      Runtime state
+      --------------------------------------------------------------------------
+      These are internal values, not user-facing config. They track fetched history,
+      performance/debug information, and render statistics.
+    */
     this._history = [];
     this._rawHistoryCount = 0;
     this._plottedHistoryCount = 0;
@@ -178,6 +227,13 @@ class SimpleBandGraphCard extends HTMLElement {
     this._renderCount = 0;
   }
 
+  /*
+    ============================================================================
+    HOME ASSISTANT STATE HANDLING
+    ============================================================================
+    Called whenever Home Assistant provides updated state. This decides whether
+    history needs to be refreshed and then triggers a render.
+  */
   set hass(hass) {
     this._hass = hass;
 
@@ -202,6 +258,13 @@ class SimpleBandGraphCard extends HTMLElement {
     this.render();
   }
 
+  /*
+    ============================================================================
+    HISTORY HELPERS
+    ============================================================================
+    Functions for deciding how much history to plot and reducing dense histories
+    without losing the visible high/low shape of the line.
+  */
   getMaxHistoryPoints() {
     if (this.config.max_history_points === "auto") {
       return 500;
@@ -268,6 +331,13 @@ class SimpleBandGraphCard extends HTMLElement {
       });
   }
 
+  /*
+    ============================================================================
+    HISTORY FETCHING
+    ============================================================================
+    Pulls historical state from the Home Assistant history API, parses numeric
+    values, downsamples where required, and stores debug/performance metadata.
+  */
   async fetchHistory() {
     this._isFetchingHistory = true;
 
@@ -346,11 +416,24 @@ class SimpleBandGraphCard extends HTMLElement {
     this.render();
   }
 
+  /*
+    ============================================================================
+    RENDERING
+    ============================================================================
+    Builds the complete card HTML/SVG. Most helper functions in this method are
+    deliberately local because they depend heavily on the current config, entity
+    state, dimensions, and render-time layout values.
+  */
   render() {
     const renderStarted = performance.now();
 
     if (!this._hass) return;
 
+    /*
+      --------------------------------------------------------------------------
+      Entity state and basic card dimensions
+      --------------------------------------------------------------------------
+    */
     const entityId = this.config.entity;
     const state = this._hass.states[entityId];
 
@@ -363,6 +446,11 @@ class SimpleBandGraphCard extends HTMLElement {
     const width = 600;
     const height = this.config.height;
 
+    /*
+      --------------------------------------------------------------------------
+      General render helpers
+      --------------------------------------------------------------------------
+    */
     const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
     const cssValue = (value, fallback, suffix = "") => {
@@ -408,6 +496,11 @@ class SimpleBandGraphCard extends HTMLElement {
       );
     };
 
+    /*
+      --------------------------------------------------------------------------
+      Value, marker, and band label formatting
+      --------------------------------------------------------------------------
+    */
     const formatValue = (number) => {
       if (!Number.isFinite(number)) return "–";
 
@@ -475,6 +568,11 @@ class SimpleBandGraphCard extends HTMLElement {
       return label;
     };
 
+    /*
+      --------------------------------------------------------------------------
+      Band lookup helpers
+      --------------------------------------------------------------------------
+    */
     const getBandForValue = (numericValue) => {
       if (!Number.isFinite(numericValue)) return null;
 
@@ -506,6 +604,13 @@ class SimpleBandGraphCard extends HTMLElement {
       return Array.from(thresholds).sort((a, b) => a - b);
     };
 
+    /*
+      --------------------------------------------------------------------------
+      Colour and background resolution
+      --------------------------------------------------------------------------
+      Modes such as "static", "band", and "none" are resolved here so drawing
+      code can use final CSS colour strings.
+    */
     const currentBand = getBandForValue(rawValue);
     const currentBandText = currentBand?.label || "";
 
@@ -553,6 +658,13 @@ class SimpleBandGraphCard extends HTMLElement {
     const topRibbonBackground = getBackgroundInfo("top_ribbon_background");
     const bottomRibbonBackground = getBackgroundInfo("bottom_ribbon_background");
 
+    /*
+      --------------------------------------------------------------------------
+      Option normalisation
+      --------------------------------------------------------------------------
+      Converts old/alias option values into the internal names used by layout
+      calculations.
+    */
     const normaliseBandLabelAlign = (align) => {
       if (align === "outside-left") return "outside_left";
       if (align === "outside-right") return "outside_right";
@@ -580,6 +692,13 @@ class SimpleBandGraphCard extends HTMLElement {
     const yAxisPosition = normaliseAxisPosition(this.config.y_axis_position, "left");
     const xAxisPosition = normaliseAxisPosition(this.config.x_axis_position, "bottom");
 
+    /*
+      --------------------------------------------------------------------------
+      Layout measurements and padding
+      --------------------------------------------------------------------------
+      Calculates how much room is needed around the plot for axes and outside band
+      labels before deriving the final plot rectangle.
+    */
     const hasOutsideLeftBandLabels = bandLabelAlign === "outside_left";
     const hasOutsideRightBandLabels = bandLabelAlign === "outside_right";
 
@@ -646,6 +765,12 @@ class SimpleBandGraphCard extends HTMLElement {
     const yMin = Number(this.config.y_min);
     const yMax = Number(this.config.y_max);
 
+    /*
+      --------------------------------------------------------------------------
+      SVG coordinate mapping
+      --------------------------------------------------------------------------
+      Converts entity values and timestamps into x/y positions within the plot.
+    */
     const yToSvg = (y) => {
       const clamped = clamp(y, yMin, yMax);
       const ratio = (clamped - yMin) / (yMax - yMin);
@@ -661,6 +786,13 @@ class SimpleBandGraphCard extends HTMLElement {
       return padding.left + clamp(ratio, 0, 1) * plotWidth;
     };
 
+    /*
+      --------------------------------------------------------------------------
+      Plot data preparation
+      --------------------------------------------------------------------------
+      Uses fetched history, then appends the current state if the latest history
+      point is not already effectively current.
+    */
     const plotData = [...this._history];
 
     const latestHistoryPoint = plotData[plotData.length - 1];
@@ -682,6 +814,11 @@ class SimpleBandGraphCard extends HTMLElement {
     this._lastLineSegmentCount = Math.max(0, plotData.length - 1);
     this._lastLineSplitSegmentCount = this._lastLineSegmentCount;
 
+    /*
+      --------------------------------------------------------------------------
+      Band label positioning
+      --------------------------------------------------------------------------
+    */
     const getBandLabelY = (bandTopY, bandBottomY) => {
       const position = normaliseBandLabelPosition(this.config.band_label_position);
       const inset = 14;
@@ -745,6 +882,11 @@ class SimpleBandGraphCard extends HTMLElement {
       };
     };
 
+    /*
+      --------------------------------------------------------------------------
+      Time and debug text formatting
+      --------------------------------------------------------------------------
+    */
     const formatHoursAgo = (hours) => {
       if (hours <= 0) return "now";
 
@@ -845,6 +987,11 @@ class SimpleBandGraphCard extends HTMLElement {
       return `${ratio.toFixed(0)}%`;
     };
 
+    /*
+      --------------------------------------------------------------------------
+      Axis tick generation and shared label colours
+      --------------------------------------------------------------------------
+    */
     const yAxisTicks = Math.max(2, Number(this.config.y_axis_ticks) || 2);
     const xAxisTicks = Math.max(2, Number(this.config.x_axis_ticks) || 3);
 
@@ -876,6 +1023,11 @@ class SimpleBandGraphCard extends HTMLElement {
       this.config.band_label_opacity
     );
 
+    /*
+      --------------------------------------------------------------------------
+      Grid SVG
+      --------------------------------------------------------------------------
+    */
     const yGridHtml = this.config.show_y_grid
       ? yTickValues
           .map((value) => {
@@ -916,6 +1068,11 @@ class SimpleBandGraphCard extends HTMLElement {
           .join("")
       : "";
 
+    /*
+      --------------------------------------------------------------------------
+      Y-axis SVG
+      --------------------------------------------------------------------------
+    */
     const yAxisX =
       yAxisPosition === "right" ? padding.left + plotWidth : padding.left;
 
@@ -961,6 +1118,11 @@ class SimpleBandGraphCard extends HTMLElement {
           .join("")
       : "";
 
+    /*
+      --------------------------------------------------------------------------
+      Band background rectangles and band labels
+      --------------------------------------------------------------------------
+    */
     const bands = this.config.show_bands
       ? this.config.bands
           .map((band) => {
@@ -1011,6 +1173,12 @@ class SimpleBandGraphCard extends HTMLElement {
           .join("")
       : "";
 
+    /*
+      --------------------------------------------------------------------------
+      Extrema detection
+      --------------------------------------------------------------------------
+      Finds historical min/max points for optional markers and ribbon slot values.
+    */
     const extrema =
       this._history.length > 0
         ? this._history.reduce(
@@ -1037,6 +1205,13 @@ class SimpleBandGraphCard extends HTMLElement {
       return point.time >= recentCutoff;
     };
 
+    /*
+      --------------------------------------------------------------------------
+      Marker rendering
+      --------------------------------------------------------------------------
+      Builds latest/min/max marker SVG, including simple label placement and
+      overlap avoidance against previously placed marker labels.
+    */
     const buildValueMarker = (point, options = {}) => {
       if (!point) {
         return {
@@ -1237,6 +1412,11 @@ class SimpleBandGraphCard extends HTMLElement {
 
     const latestMarker = latestMarkerInfo.html;
 
+    /*
+      --------------------------------------------------------------------------
+      X-axis SVG
+      --------------------------------------------------------------------------
+    */
     const xAxisY =
       xAxisPosition === "top" ? padding.top : padding.top + plotHeight;
 
@@ -1284,6 +1464,13 @@ class SimpleBandGraphCard extends HTMLElement {
       `
       : "";
 
+    /*
+      --------------------------------------------------------------------------
+      Line rendering
+      --------------------------------------------------------------------------
+      Static line mode draws one polyline. Band colour mode splits the line at
+      band thresholds and groups adjacent segments that share the same colour.
+    */
     const buildGroupedBandLineHtml = () => {
       if (plotData.length < 2) {
         this._lastLinePathCount = 0;
@@ -1427,6 +1614,11 @@ class SimpleBandGraphCard extends HTMLElement {
       this._lastLineSplitSegmentCount = 0;
     }
 
+    /*
+      --------------------------------------------------------------------------
+      Debug/status text
+      --------------------------------------------------------------------------
+    */
     const maxHistoryPointsText =
       this.config.max_history_points === "auto"
         ? "auto/500"
@@ -1476,6 +1668,13 @@ class SimpleBandGraphCard extends HTMLElement {
       ? debugLines.join("\n")
       : debugLines.join(" · ");
 
+    /*
+      --------------------------------------------------------------------------
+      Ribbon slot content
+      --------------------------------------------------------------------------
+      Slot names map to rendered text. This keeps the slot renderer simple and
+      makes it easier to add new slot keywords later.
+    */
     const minText = extrema.min ? formatMarkerLabel(extrema.min, "min") : "";
     const maxText =
       extrema.max && extrema.max !== extrema.min
@@ -1548,6 +1747,13 @@ class SimpleBandGraphCard extends HTMLElement {
       `;
     };
 
+    /*
+      --------------------------------------------------------------------------
+      Ribbon layout
+      --------------------------------------------------------------------------
+      Renders top/bottom ribbons using only the occupied slots, adjusting the grid
+      template so left/centre/right combinations stay balanced.
+    */
     const renderRibbon = (left, center, right, marginTop = 0, prefix = "top") => {
       const hasLeft = (slotContent[left] ?? "") !== "";
       const hasCenter = (slotContent[center] ?? "") !== "";
@@ -1647,6 +1853,13 @@ class SimpleBandGraphCard extends HTMLElement {
       "bottom"
     );
 
+    /*
+      --------------------------------------------------------------------------
+      Final card HTML
+      --------------------------------------------------------------------------
+      Layer order inside the SVG matters: background, grid, labels/bands, axes,
+      then line and markers.
+    */
     this.innerHTML = `
       <ha-card style="background: ${cardBackground.colour};">
         <div style="padding: 16px;">
@@ -1706,11 +1919,23 @@ class SimpleBandGraphCard extends HTMLElement {
     this._renderCount += 1;
   }
 
+  /*
+    ============================================================================
+    HOME ASSISTANT CARD SIZE
+    ============================================================================
+    Used by masonry layouts as a rough height estimate.
+  */
   getCardSize() {
     return 4;
   }
 }
 
+/*
+  ============================================================================
+  CUSTOM ELEMENT REGISTRATION
+  ============================================================================
+  Registers the card once, avoiding duplicate-definition errors during reloads.
+*/
 if (!customElements.get("simple-band-graph-card")) {
   customElements.define("simple-band-graph-card", SimpleBandGraphCard);
 }
