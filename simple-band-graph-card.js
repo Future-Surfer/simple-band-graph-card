@@ -1186,7 +1186,7 @@ class SimpleBandGraphCard extends HTMLElement {
                       y="${bandLabelY.y}"
                       text-anchor="${bandLabelX.anchor}"
                       dominant-baseline="${bandLabelY.baseline}"
-                      font-size="${cssValue(this.config.band_label_size, 11, "px")}"
+                      font-size="${cssValue(this.config.band_label_size ?? 11, 11, "px")}"
                       font-weight="${cssValue(this.config.band_label_weight, 400)}"
                       fill="${bandLabelColour}"
                     >
@@ -1366,7 +1366,7 @@ class SimpleBandGraphCard extends HTMLElement {
                   x="${labelPlacement.labelX}"
                   y="${labelPlacement.labelY}"
                   dominant-baseline="middle"
-                  font-size="${cssValue(this.config.marker_label_size, 11, "px")}"
+                  font-size="${cssValue(this.config.marker_label_size ?? 11, 11, "px")}"
                   font-weight="${cssValue(this.config.marker_label_weight, 400)}"
                   fill="${markerLabelColour}"
                 >
@@ -1465,7 +1465,7 @@ class SimpleBandGraphCard extends HTMLElement {
                 y="${xAxisLabelY}"
                 text-anchor="${anchor}"
                 dominant-baseline="middle"
-                font-size="${cssValue(this.config.axis_label_size, 11, "px")}"
+                font-size="${cssValue(this.config.axis_label_size ?? 11, 11, "px")}"
                 font-weight="${cssValue(this.config.axis_label_weight, 400)}"
                 fill="${axisLabelColour}"
               >
