@@ -69,19 +69,31 @@ class SimpleBandGraphCard extends HTMLElement {
       ribbon_color_mode: config.ribbon_color_mode ?? "static",
 
       // Ribbon slot default text styling
-      // These set predictable defaults by position. More specific per-slot
-      // styling can still be applied through ribbon_styles.
-      ribbon_left_font_size: config.ribbon_left_font_size ?? 16,
-      ribbon_center_font_size: config.ribbon_center_font_size ?? 16,
-      ribbon_right_font_size: config.ribbon_right_font_size ?? 16,
+      // These set predictable defaults for the six ribbon positions.
+      // More specific per-slot styling can still be applied through ribbon_styles.
+      top_left_font_size: config.top_left_font_size ?? 16,
+      top_center_font_size: config.top_center_font_size ?? 16,
+      top_right_font_size: config.top_right_font_size ?? 16,
 
-      ribbon_left_font_weight: config.ribbon_left_font_weight ?? 600,
-      ribbon_center_font_weight: config.ribbon_center_font_weight ?? 600,
-      ribbon_right_font_weight: config.ribbon_right_font_weight ?? 600,
+      bottom_left_font_size: config.bottom_left_font_size ?? 12,
+      bottom_center_font_size: config.bottom_center_font_size ?? 12,
+      bottom_right_font_size: config.bottom_right_font_size ?? 12,
 
-      ribbon_left_opacity: config.ribbon_left_opacity ?? 1,
-      ribbon_center_opacity: config.ribbon_center_opacity ?? 1,
-      ribbon_right_opacity: config.ribbon_right_opacity ?? 1,
+      top_left_font_weight: config.top_left_font_weight ?? 600,
+      top_center_font_weight: config.top_center_font_weight ?? 600,
+      top_right_font_weight: config.top_right_font_weight ?? 600,
+
+      bottom_left_font_weight: config.bottom_left_font_weight ?? 500,
+      bottom_center_font_weight: config.bottom_center_font_weight ?? 500,
+      bottom_right_font_weight: config.bottom_right_font_weight ?? 500,
+
+      top_left_opacity: config.top_left_opacity ?? 1,
+      top_center_opacity: config.top_center_opacity ?? 1,
+      top_right_opacity: config.top_right_opacity ?? 1,
+
+      bottom_left_opacity: config.bottom_left_opacity ?? 0.8,
+      bottom_center_opacity: config.bottom_center_opacity ?? 0.8,
+      bottom_right_opacity: config.bottom_right_opacity ?? 0.8,
 
       // History fetching and downsampling settings
       max_history_points: config.max_history_points ?? "auto",
@@ -1711,13 +1723,6 @@ class SimpleBandGraphCard extends HTMLElement {
       maximum: maxText,
     };
 
-    const getRibbonPosition = (positionKey) => {
-      if (positionKey.endsWith("_left")) return "left";
-      if (positionKey.endsWith("_center")) return "center";
-      if (positionKey.endsWith("_right")) return "right";
-      return "left";
-    };
-
     const renderSlot = (slotName, alignment, positionKey) => {
       const content = slotContent[slotName] ?? "";
 
@@ -1726,14 +1731,10 @@ class SimpleBandGraphCard extends HTMLElement {
       }
 
       const isDebug = slotName === "debug" || slotName === "status";
-      const ribbonPosition = getRibbonPosition(positionKey);
 
-      const positionFontSize =
-        this.config[`ribbon_${ribbonPosition}_font_size`] ?? 16;
-      const positionFontWeight =
-        this.config[`ribbon_${ribbonPosition}_font_weight`] ?? 600;
-      const positionOpacity =
-        this.config[`ribbon_${ribbonPosition}_opacity`] ?? 1;
+      const defaultFontSize = this.config[`${positionKey}_font_size`] ?? 16;
+      const defaultFontWeight = this.config[`${positionKey}_font_weight`] ?? 600;
+      const defaultOpacity = this.config[`${positionKey}_opacity`] ?? 1;
 
       const defaultColor = isDebug
         ? "var(--secondary-text-color)"
@@ -1741,11 +1742,11 @@ class SimpleBandGraphCard extends HTMLElement {
 
       const style = this.config.ribbon_styles?.[positionKey] || {};
 
-      const fontSize = cssValue(style.font_size, positionFontSize, "px");
-      const fontWeight = cssValue(style.font_weight, positionFontWeight);
+      const fontSize = cssValue(style.font_size ?? defaultFontSize, defaultFontSize, "px");
+      const fontWeight = cssValue(style.font_weight, defaultFontWeight);
       const colourMode = style.color_mode ?? this.config.ribbon_color_mode ?? "static";
       const colourOpacity =
-        style.color_opacity ?? style.opacity ?? positionOpacity;
+        style.color_opacity ?? style.opacity ?? defaultOpacity;
       const color = resolveColour(style.color ?? defaultColor, colourMode, colourOpacity);
       const opacity = 1;
       const textTransform = cssValue(style.text_transform, "none");
