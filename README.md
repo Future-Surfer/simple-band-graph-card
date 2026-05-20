@@ -1,5 +1,9 @@
 # Simple Band Graph Card
 
+<img width="699" height="400" alt="image" src="https://github.com/user-attachments/assets/5e072bc8-392e-4a6c-92f5-d10527977368" />
+
+
+
 A Home Assistant custom card for simple line graphs with configurable coloured threshold bands.
 
 It is designed for sensors where coloured context bands make the graph easier to read, such as CO₂, air quality, temperature, humidity, battery level, energy use, solar generation, or anything else with meaningful thresholds.
