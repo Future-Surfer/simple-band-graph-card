@@ -19,7 +19,7 @@ class SimpleBandGraphCard extends HTMLElement {
       throw new Error("You need to define an entity");
     }
 
-    /*
+      /*
       --------------------------------------------------------------------------
       User configuration + defaults
       --------------------------------------------------------------------------
@@ -67,6 +67,21 @@ class SimpleBandGraphCard extends HTMLElement {
 
       ribbon_background_radius: config.ribbon_background_radius ?? 8,
       ribbon_color_mode: config.ribbon_color_mode ?? "static",
+
+      // Ribbon slot default text styling
+      // These set predictable defaults by position. More specific per-slot
+      // styling can still be applied through ribbon_styles.
+      ribbon_left_font_size: config.ribbon_left_font_size ?? 16,
+      ribbon_center_font_size: config.ribbon_center_font_size ?? 16,
+      ribbon_right_font_size: config.ribbon_right_font_size ?? 16,
+
+      ribbon_left_font_weight: config.ribbon_left_font_weight ?? 600,
+      ribbon_center_font_weight: config.ribbon_center_font_weight ?? 600,
+      ribbon_right_font_weight: config.ribbon_right_font_weight ?? 600,
+
+      ribbon_left_opacity: config.ribbon_left_opacity ?? 1,
+      ribbon_center_opacity: config.ribbon_center_opacity ?? 1,
+      ribbon_right_opacity: config.ribbon_right_opacity ?? 1,
 
       // History fetching and downsampling settings
       max_history_points: config.max_history_points ?? "auto",
@@ -1696,6 +1711,13 @@ class SimpleBandGraphCard extends HTMLElement {
       maximum: maxText,
     };
 
+    const getRibbonPosition = (positionKey) => {
+      if (positionKey.endsWith("_left")) return "left";
+      if (positionKey.endsWith("_center")) return "center";
+      if (positionKey.endsWith("_right")) return "right";
+      return "left";
+    };
+
     const renderSlot = (slotName, alignment, positionKey) => {
       const content = slotContent[slotName] ?? "";
 
@@ -1703,23 +1725,27 @@ class SimpleBandGraphCard extends HTMLElement {
         return `<div></div>`;
       }
 
-      const isPrimary = slotName === "current";
       const isDebug = slotName === "debug" || slotName === "status";
+      const ribbonPosition = getRibbonPosition(positionKey);
 
-      const defaultFontSize = isPrimary ? "22px" : isDebug ? "12px" : "16px";
-      const defaultFontWeight =
-        isPrimary ? "700" : slotName === "name" ? "600" : "500";
-      const defaultOpacity = isDebug ? "0.65" : "1";
+      const positionFontSize =
+        this.config[`ribbon_${ribbonPosition}_font_size`] ?? 16;
+      const positionFontWeight =
+        this.config[`ribbon_${ribbonPosition}_font_weight`] ?? 600;
+      const positionOpacity =
+        this.config[`ribbon_${ribbonPosition}_opacity`] ?? 1;
+
       const defaultColor = isDebug
         ? "var(--secondary-text-color)"
         : "var(--primary-text-color)";
 
       const style = this.config.ribbon_styles?.[positionKey] || {};
 
-      const fontSize = cssValue(style.font_size, defaultFontSize, "px");
-      const fontWeight = cssValue(style.font_weight, defaultFontWeight);
+      const fontSize = cssValue(style.font_size, positionFontSize, "px");
+      const fontWeight = cssValue(style.font_weight, positionFontWeight);
       const colourMode = style.color_mode ?? this.config.ribbon_color_mode ?? "static";
-      const colourOpacity = style.color_opacity ?? style.opacity ?? defaultOpacity;
+      const colourOpacity =
+        style.color_opacity ?? style.opacity ?? positionOpacity;
       const color = resolveColour(style.color ?? defaultColor, colourMode, colourOpacity);
       const opacity = 1;
       const textTransform = cssValue(style.text_transform, "none");
