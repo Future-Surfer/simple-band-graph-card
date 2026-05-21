@@ -29,8 +29,9 @@ class SimpleBandGraphCard extends HTMLElement {
     --------------------------------------------------------------------------
     Used by Home Assistant when the user adds the card from the visual editor.
 
-    It tries to pick the first numeric entity it can find so the card is more
-    likely to work immediately without requiring the user to edit YAML first.
+    It tries to pick a sensible starter entity, prioritising battery/SOC-style
+    percentage entities, then humidity, then other percentage entities, then any
+    numeric entity.
 
     Keep these starter defaults aligned with the main setConfig defaults so the
     visual editor toggles and selectors reflect what the rendered card is already
@@ -38,11 +39,60 @@ class SimpleBandGraphCard extends HTMLElement {
   */
   static getStubConfig(hass) {
     const entities = Object.keys(hass.states || {});
+
+    const isNumericEntity = (entityId) => {
+      const state = hass.states[entityId];
+      return state && Number.isFinite(Number(state.state));
+    };
+
+    const getUnit = (entityId) =>
+      hass.states[entityId]?.attributes?.unit_of_measurement || "";
+
+    const getDeviceClass = (entityId) =>
+      hass.states[entityId]?.attributes?.device_class || "";
+
+    const getSearchText = (entityId) => {
+      const state = hass.states[entityId];
+      return `${entityId} ${state?.attributes?.friendly_name || ""}`.toLowerCase();
+    };
+
+    const batterySocEntity = entities.find((entityId) => {
+      if (!isNumericEntity(entityId)) return false;
+
+      const unit = getUnit(entityId);
+      const deviceClass = getDeviceClass(entityId);
+      const text = getSearchText(entityId);
+
+      return (
+        unit === "%" &&
+        (
+          deviceClass === "battery" ||
+          text.includes("battery") ||
+          text.includes("soc") ||
+          text.includes("state of charge") ||
+          text.includes("state_of_charge")
+        )
+      );
+    });
+
+    const humidityEntity = entities.find((entityId) => {
+      if (!isNumericEntity(entityId)) return false;
+
+      return getUnit(entityId) === "%" && getDeviceClass(entityId) === "humidity";
+    });
+
+    const percentageEntity = entities.find((entityId) => {
+      if (!isNumericEntity(entityId)) return false;
+
+      return getUnit(entityId) === "%";
+    });
+
     const numericEntity =
-      entities.find((entityId) => {
-        const state = hass.states[entityId];
-        return state && Number.isFinite(Number(state.state));
-      }) || entities[0] || "";
+      batterySocEntity ||
+      humidityEntity ||
+      percentageEntity ||
+      entities.find(isNumericEntity) ||
+      "";
 
     return {
       entity: numericEntity,
@@ -50,18 +100,18 @@ class SimpleBandGraphCard extends HTMLElement {
 
       // Core card and data range settings
       hours_to_show: 24,
-      height: 180,
+      height: 160,
       y_min: 0,
       y_max: 100,
 
       // Axis settings
-      show_x_axis: true,
+      show_x_axis: false,
       show_x_axis_labels: true,
       x_axis_position: "bottom",
       x_axis_label_mode: "relative",
       x_axis_ticks: 3,
 
-      show_y_axis: true,
+      show_y_axis: false,
       show_y_axis_labels: true,
       y_axis_position: "left",
       y_axis_ticks: 2,
@@ -71,18 +121,53 @@ class SimpleBandGraphCard extends HTMLElement {
       show_y_grid: false,
       grid_color: "var(--divider-color)",
       grid_width: 1,
-      grid_opacity: 0.35,
+      grid_opacity: 0.25,
 
       // Band display settings
       show_bands: true,
-      band_opacity: 0.2,
+      band_opacity: 0.14,
+      band_label_mode: "label",
+      band_label_unit: false,
+      band_label_position: "top",
+      band_label_align: "left",
+      hide_small_band_labels: false,
+      min_band_label_height: 18,
+
+      // Label and text settings
+      axis_label_size: 11,
+      axis_label_weight: 400,
+      axis_label_color: "var(--secondary-text-color)",
+      axis_label_color_mode: "static",
+      axis_label_opacity: 0.8,
+
+      band_label_size: 11,
+      band_label_weight: 400,
+      band_label_color: "var(--secondary-text-color)",
+      band_label_color_mode: "static",
+      band_label_opacity: 0.75,
+
+      marker_label_size: 11,
+      marker_label_weight: 400,
+      marker_label_color: "var(--primary-text-color)",
+      marker_label_color_mode: "static",
+      marker_label_opacity: 0.9,
 
       // Line appearance settings
       show_line: true,
       line_color: "var(--primary-color)",
       line_color_mode: "static",
-      line_width: 3,
-      line_opacity: 1,
+      line_width: 2.5,
+      line_opacity: 0.9,
+
+      // Ribbon slot settings
+      top_left: "name",
+      top_center: "none",
+      top_right: "duration",
+      bottom_left: "none",
+      bottom_center: "message",
+      bottom_right: "current",
+      custom_text: "",
+      duration_format: "short",
 
       // History and debug settings
       history_refresh_interval: 60,
@@ -93,19 +178,36 @@ class SimpleBandGraphCard extends HTMLElement {
       bands: [
         {
           from: 0,
-          to: 50,
-          color: "#4caf50",
+          to: 20,
+          color: "#ef4444",
           label: "Low",
+          message: "Battery is low",
+        },
+        {
+          from: 20,
+          to: 50,
+          color: "#eab308",
+          label: "Moderate",
+          message: "Battery is moderate",
         },
         {
           from: 50,
+          to: 80,
+          color: "#84cc16",
+          label: "Good",
+          message: "Battery level is good",
+        },
+        {
+          from: 80,
           to: 100,
-          color: "#f44336",
+          color: "#22c55e",
           label: "High",
+          message: "Battery level is high",
         },
       ],
     };
   }
+
   /*
     --------------------------------------------------------------------------
     Visual editor configuration form
@@ -131,6 +233,20 @@ class SimpleBandGraphCard extends HTMLElement {
       { value: "unit", label: "Unit" },
       { value: "custom", label: "Custom text" },
       { value: "debug", label: "Debug / status" },
+    ];
+
+    const colourModeOptions = [
+      { value: "static", label: "Static colour" },
+      { value: "band", label: "Use band colour" },
+      { value: "none", label: "No colour / transparent" },
+    ];
+
+    const fontWeightOptions = [
+      { value: 300, label: "Light" },
+      { value: 400, label: "Regular" },
+      { value: 500, label: "Medium" },
+      { value: 600, label: "Semi-bold" },
+      { value: 700, label: "Bold" },
     ];
 
     return {
@@ -261,6 +377,52 @@ class SimpleBandGraphCard extends HTMLElement {
                 },
               },
             },
+            {
+              name: "x_axis_label_size",
+              selector: {
+                number: {
+                  min: 8,
+                  max: 24,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "x_axis_label_weight",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: fontWeightOptions,
+                },
+              },
+            },
+            {
+              name: "x_axis_label_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "x_axis_label_color_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: colourModeOptions,
+                },
+              },
+            },
+            {
+              name: "x_axis_label_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
           ],
         },
         {
@@ -300,6 +462,52 @@ class SimpleBandGraphCard extends HTMLElement {
                   min: 2,
                   max: 12,
                   step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "y_axis_label_size",
+              selector: {
+                number: {
+                  min: 8,
+                  max: 24,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "y_axis_label_weight",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: fontWeightOptions,
+                },
+              },
+            },
+            {
+              name: "y_axis_label_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "y_axis_label_color_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: colourModeOptions,
+                },
+              },
+            },
+            {
+              name: "y_axis_label_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
                   mode: "slider",
                 },
               },
@@ -442,6 +650,52 @@ class SimpleBandGraphCard extends HTMLElement {
                 },
               },
             },
+            {
+              name: "band_label_size",
+              selector: {
+                number: {
+                  min: 8,
+                  max: 24,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "band_label_weight",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: fontWeightOptions,
+                },
+              },
+            },
+            {
+              name: "band_label_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "band_label_color_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: colourModeOptions,
+                },
+              },
+            },
+            {
+              name: "band_label_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
           ],
         },
         {
@@ -475,11 +729,7 @@ class SimpleBandGraphCard extends HTMLElement {
               selector: {
                 select: {
                   mode: "dropdown",
-                  options: [
-                    { value: "static", label: "Static colour" },
-                    { value: "band", label: "Use band colours" },
-                    { value: "none", label: "No colour" },
-                  ],
+                  options: colourModeOptions,
                 },
               },
             },
@@ -656,11 +906,21 @@ class SimpleBandGraphCard extends HTMLElement {
           x_axis_position: "X-axis position",
           x_axis_label_mode: "X-axis label mode",
           x_axis_ticks: "X-axis ticks",
+          x_axis_label_size: "X-axis label size",
+          x_axis_label_weight: "X-axis label weight",
+          x_axis_label_color: "X-axis label colour",
+          x_axis_label_color_mode: "X-axis label colour mode",
+          x_axis_label_opacity: "X-axis label opacity",
 
           show_y_axis: "Show Y-axis",
           show_y_axis_labels: "Show Y-axis labels",
           y_axis_position: "Y-axis position",
           y_axis_ticks: "Y-axis ticks",
+          y_axis_label_size: "Y-axis label size",
+          y_axis_label_weight: "Y-axis label weight",
+          y_axis_label_color: "Y-axis label colour",
+          y_axis_label_color_mode: "Y-axis label colour mode",
+          y_axis_label_opacity: "Y-axis label opacity",
 
           show_x_grid: "Show vertical grid lines",
           show_y_grid: "Show horizontal grid lines",
@@ -676,6 +936,11 @@ class SimpleBandGraphCard extends HTMLElement {
           band_label_align: "Band label alignment",
           hide_small_band_labels: "Hide labels in small bands",
           min_band_label_height: "Minimum band label height",
+          band_label_size: "Band label size",
+          band_label_weight: "Band label weight",
+          band_label_color: "Band label colour",
+          band_label_color_mode: "Band label colour mode",
+          band_label_opacity: "Band label opacity",
           bands: "Band definitions",
 
           show_line: "Show line",
@@ -717,12 +982,26 @@ class SimpleBandGraphCard extends HTMLElement {
             "Relative shows labels such as 24h ago. Clock time shows labels such as 14:30.",
           x_axis_ticks:
             "Number of labelled positions on the X-axis. Vertical grid lines use these same positions.",
+          x_axis_label_size: "Text size for X-axis labels.",
+          x_axis_label_weight: "Font weight for X-axis labels.",
+          x_axis_label_color:
+            "CSS colour for X-axis labels, such as var(--secondary-text-color), #666666, or rgba(0,0,0,0.6).",
+          x_axis_label_color_mode:
+            "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the labels transparent.",
+          x_axis_label_opacity: "Opacity of X-axis label text, from 0 to 1.",
 
           show_y_axis: "Show or hide the vertical value axis line.",
           show_y_axis_labels: "Show or hide the value labels on the Y-axis.",
           y_axis_position: "Place the Y-axis on the left or right of the graph.",
           y_axis_ticks:
             "Number of labelled positions on the Y-axis. Horizontal grid lines use these same positions.",
+          y_axis_label_size: "Text size for Y-axis labels.",
+          y_axis_label_weight: "Font weight for Y-axis labels.",
+          y_axis_label_color:
+            "CSS colour for Y-axis labels, such as var(--secondary-text-color), #666666, or rgba(0,0,0,0.6).",
+          y_axis_label_color_mode:
+            "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the labels transparent.",
+          y_axis_label_opacity: "Opacity of Y-axis label text, from 0 to 1.",
 
           show_x_grid:
             "Show vertical grid lines. The number of lines is controlled by X-axis ticks.",
@@ -746,12 +1025,19 @@ class SimpleBandGraphCard extends HTMLElement {
             "Hide labels where the band is too narrow to display text cleanly.",
           min_band_label_height:
             "Minimum band height, in pixels, before a label is shown.",
+          band_label_size: "Text size for labels shown inside or beside bands.",
+          band_label_weight: "Font weight for band labels.",
+          band_label_color:
+            "CSS colour for band labels, such as var(--secondary-text-color), #666666, or rgba(0,0,0,0.6).",
+          band_label_color_mode:
+            "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the labels transparent.",
+          band_label_opacity: "Opacity of band label text, from 0 to 1.",
           bands:
             "Edit the raw band definitions. Each band can include from, to, color, label, and message.",
 
           show_line: "Show or hide the plotted history line.",
           line_color_mode:
-            "Static uses the chosen line colour. Band colours the line using the active band. None makes the line transparent.",
+            "Static uses the chosen line colour. Use band colour follows the band matching the current value. No colour makes the line transparent.",
           line_color:
             "CSS colour for the line, such as var(--primary-color), #03a9f4, or rgb(3, 169, 244).",
           line_width: "Thickness of the plotted line.",
@@ -778,6 +1064,7 @@ class SimpleBandGraphCard extends HTMLElement {
       },
     };
   }
+
   /*
     --------------------------------------------------------------------------
     User configuration loading
@@ -789,7 +1076,7 @@ class SimpleBandGraphCard extends HTMLElement {
       throw new Error("You need to define an entity");
     }
 
-      /*
+    /*
       --------------------------------------------------------------------------
       User configuration + defaults
       --------------------------------------------------------------------------
@@ -930,11 +1217,46 @@ class SimpleBandGraphCard extends HTMLElement {
       y_axis_position: config.y_axis_position ?? "left",
       y_axis_ticks: config.y_axis_ticks ?? 2,
 
+      // Shared axis label settings
+      // Kept for backwards compatibility. New configs should prefer the separate
+      // x_axis_label_* and y_axis_label_* options below.
       axis_label_size: config.axis_label_size ?? 11,
       axis_label_weight: config.axis_label_weight ?? 400,
       axis_label_color: config.axis_label_color ?? "var(--secondary-text-color)",
       axis_label_color_mode: config.axis_label_color_mode ?? "static",
       axis_label_opacity: config.axis_label_opacity ?? 0.8,
+
+      // X-axis label settings
+      x_axis_label_size:
+        config.x_axis_label_size ?? config.axis_label_size ?? 11,
+      x_axis_label_weight:
+        config.x_axis_label_weight ?? config.axis_label_weight ?? 400,
+      x_axis_label_color:
+        config.x_axis_label_color ??
+        config.axis_label_color ??
+        "var(--secondary-text-color)",
+      x_axis_label_color_mode:
+        config.x_axis_label_color_mode ??
+        config.axis_label_color_mode ??
+        "static",
+      x_axis_label_opacity:
+        config.x_axis_label_opacity ?? config.axis_label_opacity ?? 0.8,
+
+      // Y-axis label settings
+      y_axis_label_size:
+        config.y_axis_label_size ?? config.axis_label_size ?? 11,
+      y_axis_label_weight:
+        config.y_axis_label_weight ?? config.axis_label_weight ?? 400,
+      y_axis_label_color:
+        config.y_axis_label_color ??
+        config.axis_label_color ??
+        "var(--secondary-text-color)",
+      y_axis_label_color_mode:
+        config.y_axis_label_color_mode ??
+        config.axis_label_color_mode ??
+        "static",
+      y_axis_label_opacity:
+        config.y_axis_label_opacity ?? config.axis_label_opacity ?? 0.8,
 
       // Top/bottom ribbon slot settings
       top_left: config.top_left ?? "name",
@@ -976,6 +1298,46 @@ class SimpleBandGraphCard extends HTMLElement {
 
     /*
       --------------------------------------------------------------------------
+      Backwards-compatible axis label styling
+      --------------------------------------------------------------------------
+      Older YAML used shared axis_label_* options for both X and Y labels.
+
+      New YAML can use x_axis_label_* and y_axis_label_* independently. If those
+      newer options are not set, the old shared axis_label_* options are applied
+      to both axes.
+    */
+    this.config.x_axis_label_size =
+      config.x_axis_label_size ?? config.axis_label_size ?? 11;
+    this.config.x_axis_label_weight =
+      config.x_axis_label_weight ?? config.axis_label_weight ?? 400;
+    this.config.x_axis_label_color =
+      config.x_axis_label_color ??
+      config.axis_label_color ??
+      "var(--secondary-text-color)";
+    this.config.x_axis_label_color_mode =
+      config.x_axis_label_color_mode ??
+      config.axis_label_color_mode ??
+      "static";
+    this.config.x_axis_label_opacity =
+      config.x_axis_label_opacity ?? config.axis_label_opacity ?? 0.8;
+
+    this.config.y_axis_label_size =
+      config.y_axis_label_size ?? config.axis_label_size ?? 11;
+    this.config.y_axis_label_weight =
+      config.y_axis_label_weight ?? config.axis_label_weight ?? 400;
+    this.config.y_axis_label_color =
+      config.y_axis_label_color ??
+      config.axis_label_color ??
+      "var(--secondary-text-color)";
+    this.config.y_axis_label_color_mode =
+      config.y_axis_label_color_mode ??
+      config.axis_label_color_mode ??
+      "static";
+    this.config.y_axis_label_opacity =
+      config.y_axis_label_opacity ?? config.axis_label_opacity ?? 0.8;
+
+    /*
+      --------------------------------------------------------------------------
       Backwards-compatible current_position handling
       --------------------------------------------------------------------------
       Older YAML could place the current value using current_position. This maps
@@ -997,7 +1359,6 @@ class SimpleBandGraphCard extends HTMLElement {
         this.config.top_left = "name";
       }
     }
-
     /*
       --------------------------------------------------------------------------
       Runtime state
@@ -1824,6 +2185,11 @@ class SimpleBandGraphCard extends HTMLElement {
       --------------------------------------------------------------------------
       Axis tick generation and shared label colours
       --------------------------------------------------------------------------
+      Generates X/Y tick positions and resolves label colours.
+
+      X-axis and Y-axis label styling are now handled separately. The older
+      shared axis_label_* settings are still supported through setConfig
+      fallbacks, so existing YAML remains compatible.
     */
     const yAxisTicks = Math.max(2, Number(this.config.y_axis_ticks) || 2);
     const xAxisTicks = Math.max(2, Number(this.config.x_axis_ticks) || 3);
@@ -1844,10 +2210,16 @@ class SimpleBandGraphCard extends HTMLElement {
       };
     });
 
-    const axisLabelColour = resolveColour(
-      this.config.axis_label_color,
-      this.config.axis_label_color_mode,
-      this.config.axis_label_opacity
+    const xAxisLabelColour = resolveColour(
+      this.config.x_axis_label_color,
+      this.config.x_axis_label_color_mode,
+      this.config.x_axis_label_opacity
+    );
+
+    const yAxisLabelColour = resolveColour(
+      this.config.y_axis_label_color,
+      this.config.y_axis_label_color_mode,
+      this.config.y_axis_label_opacity
     );
 
     const bandLabelColour = resolveColour(
@@ -1905,6 +2277,11 @@ class SimpleBandGraphCard extends HTMLElement {
       --------------------------------------------------------------------------
       Y-axis SVG
       --------------------------------------------------------------------------
+      Renders the vertical axis line and its value labels.
+
+      Y-axis labels use the dedicated y_axis_label_* settings, which are resolved
+      from either modern y_axis_label_* YAML or legacy shared axis_label_* YAML in
+      setConfig.
     */
     const yAxisX =
       yAxisPosition === "right" ? padding.left + plotWidth : padding.left;
@@ -1940,9 +2317,9 @@ class SimpleBandGraphCard extends HTMLElement {
                 y="${y}"
                 text-anchor="${anchor}"
                 dominant-baseline="middle"
-                font-size="${cssValue(this.config.axis_label_size, 11, "px")}"
-                font-weight="${cssValue(this.config.axis_label_weight, 400)}"
-                fill="${axisLabelColour}"
+                font-size="${cssValue(this.config.y_axis_label_size, 11, "px")}"
+                font-weight="${cssValue(this.config.y_axis_label_weight, 400)}"
+                fill="${yAxisLabelColour}"
               >
                 ${formatValue(value)}
               </text>
@@ -2252,6 +2629,10 @@ class SimpleBandGraphCard extends HTMLElement {
       --------------------------------------------------------------------------
       X-axis SVG
       --------------------------------------------------------------------------
+      Renders the horizontal time axis line and its time labels.
+
+      X-axis labels now use the dedicated x_axis_label_* settings rather than the
+      older shared axis_label_* settings.
     */
     const xAxisY =
       xAxisPosition === "top" ? padding.top : padding.top + plotHeight;
@@ -2274,9 +2655,9 @@ class SimpleBandGraphCard extends HTMLElement {
                 y="${xAxisLabelY}"
                 text-anchor="${anchor}"
                 dominant-baseline="middle"
-                font-size="${cssValue(this.config.axis_label_size ?? 11, 11, "px")}"
-                font-weight="${cssValue(this.config.axis_label_weight, 400)}"
-                fill="${axisLabelColour}"
+                font-size="${cssValue(this.config.x_axis_label_size, 11, "px")}"
+                font-weight="${cssValue(this.config.x_axis_label_weight, 400)}"
+                fill="${xAxisLabelColour}"
               >
                 ${formatXAxisLabel(tick.timestamp, tick.hoursAgo, tick.isNow)}
               </text>
