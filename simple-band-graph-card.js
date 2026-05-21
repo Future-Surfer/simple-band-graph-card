@@ -10,9 +10,77 @@ class SimpleBandGraphCard extends HTMLElement {
     ============================================================================
     CONFIGURATION
     ============================================================================
+    This section handles Home Assistant card configuration.
+
+    getStubConfig provides Home Assistant with a starter YAML configuration when
+    the card is added through the visual editor.
+
+    getConfigElement tells Home Assistant which custom editor element to open when
+    the user edits this card through the visual editor.
+
     setConfig is called by Home Assistant when the card is loaded or when the YAML
     changes. This section defines defaults, handles backwards-compatible options,
     and initialises runtime state used by history fetching and rendering.
+  */
+
+  /*
+    --------------------------------------------------------------------------
+    Visual editor starter configuration
+    --------------------------------------------------------------------------
+    Used by Home Assistant when the user adds the card from the visual editor.
+    It tries to pick the first numeric entity it can find so the card is more
+    likely to work immediately without requiring the user to edit YAML first.
+  */
+  static getStubConfig(hass) {
+    const entities = Object.keys(hass.states || {});
+    const numericEntity =
+      entities.find((entityId) => {
+        const state = hass.states[entityId];
+        return state && Number.isFinite(Number(state.state));
+      }) || entities[0] || "";
+
+    return {
+      entity: numericEntity,
+      name: numericEntity || "Simple Band Graph",
+      hours_to_show: 24,
+      height: 180,
+      y_min: 0,
+      y_max: 100,
+      show_bands: true,
+      bands: [
+        {
+          from: 0,
+          to: 50,
+          color: "#4caf50",
+          label: "Low",
+        },
+        {
+          from: 50,
+          to: 100,
+          color: "#f44336",
+          label: "High",
+        },
+      ],
+    };
+  }
+
+  /*
+    --------------------------------------------------------------------------
+    Visual editor element
+    --------------------------------------------------------------------------
+    Tells Home Assistant to use the editor custom element registered later in this
+    file. The editor element is separate from the card itself so editing controls
+    do not interfere with graph rendering.
+  */
+  static async getConfigElement() {
+    return document.createElement("simple-band-graph-card-editor");
+  }
+
+  /*
+    --------------------------------------------------------------------------
+    User configuration loading
+    --------------------------------------------------------------------------
+    Called whenever Home Assistant gives the card a YAML configuration.
   */
   setConfig(config) {
     if (!config.entity) {
@@ -2010,10 +2078,232 @@ class SimpleBandGraphCard extends HTMLElement {
 
 /*
   ============================================================================
+  VISUAL EDITOR
+  ============================================================================
+  Simple Band Graph Card editor for the Home Assistant visual card editor.
+
+  This v0.2 editor uses Home Assistant's ha-form element rather than hand-built
+  inputs. That gives us native-looking controls, proper entity picking, and a
+  cleaner configuration-change lifecycle.
+
+  The editor intentionally exposes only the safest core options for now. Advanced
+  options and detailed band definitions remain available in YAML until richer UI
+  controls are added later.
+*/
+class SimpleBandGraphCardEditor extends HTMLElement {
+  /*
+    --------------------------------------------------------------------------
+    Editor schema
+    --------------------------------------------------------------------------
+    Defines the fields shown in the Home Assistant visual editor.
+
+    selector.entity provides the native entity picker.
+    selector.text provides a standard text field.
+    selector.number provides numeric inputs.
+    selector.boolean provides a toggle.
+  */
+  get schema() {
+    return [
+      {
+        name: "entity",
+        label: "Entity",
+        required: true,
+        selector: {
+          entity: {
+            filter: [
+              { domain: "sensor" },
+              { domain: "number" },
+              { domain: "input_number" },
+            ],
+          },
+        },
+      },
+      {
+        name: "name",
+        label: "Name",
+        selector: {
+          text: {},
+        },
+      },
+      {
+        name: "hours_to_show",
+        label: "Hours to show",
+        selector: {
+          number: {
+            min: 0.1,
+            step: 0.5,
+            mode: "box",
+          },
+        },
+      },
+      {
+        name: "height",
+        label: "Card height",
+        selector: {
+          number: {
+            min: 80,
+            step: 10,
+            mode: "box",
+          },
+        },
+      },
+      {
+        name: "y_min",
+        label: "Y-axis minimum",
+        selector: {
+          number: {
+            step: 1,
+            mode: "box",
+          },
+        },
+      },
+      {
+        name: "y_max",
+        label: "Y-axis maximum",
+        selector: {
+          number: {
+            step: 1,
+            mode: "box",
+          },
+        },
+      },
+      {
+        name: "show_bands",
+        label: "Show bands",
+        selector: {
+          boolean: {},
+        },
+      },
+    ];
+  }
+
+  /*
+    --------------------------------------------------------------------------
+    Editor configuration loading
+    --------------------------------------------------------------------------
+    Home Assistant calls setConfig when the editor opens or when the card
+    configuration changes. Store a copy so the editor can preserve advanced YAML
+    options that are not exposed in the basic visual editor.
+  */
+  setConfig(config) {
+    this._config = {
+      ...config,
+      hours_to_show: config.hours_to_show ?? 24,
+      height: config.height ?? 180,
+      y_min: config.y_min ?? 0,
+      y_max: config.y_max ?? 100,
+      show_bands: config.show_bands ?? true,
+    };
+
+    this.render();
+  }
+
+  /*
+    --------------------------------------------------------------------------
+    Home Assistant state handling
+    --------------------------------------------------------------------------
+    Store the hass object for ha-form. Avoid re-rendering after the first render
+    unless the form does not exist yet, otherwise state updates can interrupt
+    typing in active editor fields.
+  */
+  set hass(hass) {
+    this._hass = hass;
+
+    const form = this.querySelector("ha-form");
+
+    if (form) {
+      form.hass = hass;
+    } else {
+      this.render();
+    }
+  }
+
+  /*
+    --------------------------------------------------------------------------
+    Config update helper
+    --------------------------------------------------------------------------
+    Receives complete form data from ha-form, merges it into the existing config,
+    preserves unknown advanced YAML options, and notifies Home Assistant.
+  */
+  updateConfig(changedConfig) {
+    const nextConfig = {
+      ...this._config,
+      ...changedConfig,
+    };
+
+    this._config = nextConfig;
+
+    this.dispatchEvent(
+      new CustomEvent("config-changed", {
+        detail: { config: nextConfig },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  /*
+    --------------------------------------------------------------------------
+    Editor rendering
+    --------------------------------------------------------------------------
+    Builds the editor UI once, then keeps the ha-form properties up to date
+    without replacing focused input elements.
+  */
+  render() {
+    if (!this._config || !this._hass) return;
+
+    if (!this._form) {
+      this.innerHTML = `
+        <div class="editor">
+          <ha-form></ha-form>
+
+          <div class="hint">
+            v0.2 editor shell: advanced options and band definitions can still be edited in YAML.
+          </div>
+        </div>
+
+        <style>
+          .editor {
+            display: grid;
+            gap: 16px;
+          }
+
+          .hint {
+            color: var(--secondary-text-color);
+            font-size: 12px;
+            line-height: 1.4;
+            padding: 0 4px;
+          }
+        </style>
+      `;
+
+      this._form = this.querySelector("ha-form");
+
+      this._form.addEventListener("value-changed", (event) => {
+        this.updateConfig(event.detail.value);
+      });
+    }
+
+    this._form.hass = this._hass;
+    this._form.schema = this.schema;
+    this._form.data = this._config;
+    this._form.computeLabel = (schema) => schema.label || schema.name;
+  }
+}
+/*
+  ============================================================================
   CUSTOM ELEMENT REGISTRATION
   ============================================================================
-  Registers the card once, avoiding duplicate-definition errors during reloads.
+  Registers the card and editor once, avoiding duplicate-definition errors during
+  reloads.
 */
+if (!customElements.get("simple-band-graph-card-editor")) {
+  customElements.define(
+    "simple-band-graph-card-editor",
+    SimpleBandGraphCardEditor
+  );
+}
+
 if (!customElements.get("simple-band-graph-card")) {
   customElements.define("simple-band-graph-card", SimpleBandGraphCard);
 }
