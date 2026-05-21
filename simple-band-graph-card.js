@@ -118,6 +118,21 @@ class SimpleBandGraphCard extends HTMLElement {
     of the card YAML, preserving the existing configuration format.
   */
   static getConfigForm() {
+    const ribbonSlotOptions = [
+      { value: "none", label: "None" },
+      { value: "name", label: "Name" },
+      { value: "current", label: "Current value" },
+      { value: "band", label: "Current band" },
+      { value: "message", label: "Band message / instruction" },
+      { value: "min", label: "Minimum" },
+      { value: "max", label: "Maximum" },
+      { value: "duration", label: "Duration" },
+      { value: "entity", label: "Entity ID" },
+      { value: "unit", label: "Unit" },
+      { value: "custom", label: "Custom text" },
+      { value: "debug", label: "Debug / status" },
+    ];
+
     return {
       schema: [
         {
@@ -500,6 +515,88 @@ class SimpleBandGraphCard extends HTMLElement {
         },
         {
           type: "expandable",
+          name: "ribbons",
+          title: "Ribbons",
+          flatten: true,
+          schema: [
+            {
+              name: "top_left",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: ribbonSlotOptions,
+                },
+              },
+            },
+            {
+              name: "top_center",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: ribbonSlotOptions,
+                },
+              },
+            },
+            {
+              name: "top_right",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: ribbonSlotOptions,
+                },
+              },
+            },
+            {
+              name: "bottom_left",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: ribbonSlotOptions,
+                },
+              },
+            },
+            {
+              name: "bottom_center",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: ribbonSlotOptions,
+                },
+              },
+            },
+            {
+              name: "bottom_right",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: ribbonSlotOptions,
+                },
+              },
+            },
+            {
+              name: "custom_text",
+              selector: {
+                text: {
+                  multiline: false,
+                },
+              },
+            },
+            {
+              name: "duration_format",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "short", label: "Short, e.g. 24h" },
+                    { value: "long", label: "Long, e.g. 24 hours" },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+        {
+          type: "expandable",
           name: "advanced",
           title: "Advanced",
           flatten: true,
@@ -587,6 +684,15 @@ class SimpleBandGraphCard extends HTMLElement {
           line_width: "Line width",
           line_opacity: "Line opacity",
 
+          top_left: "Header left",
+          top_center: "Header centre",
+          top_right: "Header right",
+          bottom_left: "Footer left",
+          bottom_center: "Footer centre",
+          bottom_right: "Footer right",
+          custom_text: "Custom text",
+          duration_format: "Duration format",
+
           history_refresh_interval: "History refresh interval",
           max_history_points: "Max history points",
           debug_level: "Debug level",
@@ -650,6 +756,17 @@ class SimpleBandGraphCard extends HTMLElement {
             "CSS colour for the line, such as var(--primary-color), #03a9f4, or rgb(3, 169, 244).",
           line_width: "Thickness of the plotted line.",
           line_opacity: "Opacity of the plotted line, from 0 to 1.",
+
+          top_left: "Choose what appears in the left position of the header ribbon.",
+          top_center: "Choose what appears in the centre position of the header ribbon.",
+          top_right: "Choose what appears in the right position of the header ribbon.",
+          bottom_left: "Choose what appears in the left position of the footer ribbon.",
+          bottom_center: "Choose what appears in the centre position of the footer ribbon.",
+          bottom_right: "Choose what appears in the right position of the footer ribbon.",
+          custom_text:
+            "Text used by any ribbon slot set to Custom text. This is shared by all custom slots.",
+          duration_format:
+            "Controls whether duration text is shown in short form, such as 24h, or long form, such as 24 hours.",
 
           history_refresh_interval: "How often the card refreshes history data.",
           max_history_points: "Use auto, or enter a number to limit plotted history points.",
