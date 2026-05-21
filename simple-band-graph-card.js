@@ -103,6 +103,7 @@ class SimpleBandGraphCard extends HTMLElement {
       height: 160,
       y_min: 0,
       y_max: 100,
+      value_decimals: "auto",
 
       // Axis settings
       show_x_axis: false,
@@ -136,6 +137,17 @@ class SimpleBandGraphCard extends HTMLElement {
       grid_color: "var(--divider-color)",
       grid_width: 1,
       grid_opacity: 0.25,
+
+      // Whole-card background settings
+      background_color: "var(--card-background-color)",
+      background_color_mode: "static",
+      background_opacity: 1,
+
+      // Plot-area background settings
+      plot_background_color: "var(--card-background-color)",
+      plot_background_color_mode: "static",
+      plot_background_opacity: 0.35,
+      plot_background_radius: 8,
 
       // Band display settings
       show_bands: true,
@@ -192,6 +204,17 @@ class SimpleBandGraphCard extends HTMLElement {
       bottom_right: "current",
       custom_text: "",
       duration_format: "short",
+
+      // Ribbon background settings
+      top_ribbon_background_color: "transparent",
+      top_ribbon_background_color_mode: "static",
+      top_ribbon_background_opacity: 0,
+
+      bottom_ribbon_background_color: "transparent",
+      bottom_ribbon_background_color_mode: "static",
+      bottom_ribbon_background_opacity: 0,
+
+      ribbon_background_radius: 8,
 
       // History and debug settings
       history_refresh_interval: 60,
@@ -343,6 +366,21 @@ class SimpleBandGraphCard extends HTMLElement {
                 number: {
                   step: 1,
                   mode: "box",
+                },
+              },
+            },
+            {
+              name: "value_decimals",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "auto", label: "Auto" },
+                    { value: 0, label: "0 decimal places" },
+                    { value: 1, label: "1 decimal place" },
+                    { value: 2, label: "2 decimal places" },
+                    { value: 3, label: "3 decimal places" },
+                  ],
                 },
               },
             },
@@ -580,6 +618,77 @@ class SimpleBandGraphCard extends HTMLElement {
                   min: 0,
                   max: 1,
                   step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+          ],
+        },
+        {
+          type: "expandable",
+          name: "backgrounds",
+          title: "Backgrounds",
+          flatten: true,
+          schema: [
+            {
+              name: "background_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "background_color_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: colourModeOptions,
+                },
+              },
+            },
+            {
+              name: "background_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "plot_background_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "plot_background_color_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: colourModeOptions,
+                },
+              },
+            },
+            {
+              name: "plot_background_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "plot_background_radius",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 32,
+                  step: 1,
                   mode: "slider",
                 },
               },
@@ -1010,6 +1119,69 @@ class SimpleBandGraphCard extends HTMLElement {
                 },
               },
             },
+            {
+              name: "top_ribbon_background_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "top_ribbon_background_color_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: colourModeOptions,
+                },
+              },
+            },
+            {
+              name: "top_ribbon_background_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "bottom_ribbon_background_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "bottom_ribbon_background_color_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: colourModeOptions,
+                },
+              },
+            },
+            {
+              name: "bottom_ribbon_background_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "ribbon_background_radius",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 32,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
           ],
         },
         {
@@ -1067,6 +1239,7 @@ class SimpleBandGraphCard extends HTMLElement {
           height: "Card height",
           y_min: "Y-axis minimum",
           y_max: "Y-axis maximum",
+          value_decimals: "Value decimal places",
 
           show_x_axis: "Show X-axis",
           show_x_axis_labels: "Show X-axis labels",
@@ -1094,6 +1267,14 @@ class SimpleBandGraphCard extends HTMLElement {
           grid_color: "Grid colour",
           grid_width: "Grid line width",
           grid_opacity: "Grid opacity",
+
+          background_color: "Card background colour",
+          background_color_mode: "Card background colour mode",
+          background_opacity: "Card background opacity",
+          plot_background_color: "Plot background colour",
+          plot_background_color_mode: "Plot background colour mode",
+          plot_background_opacity: "Plot background opacity",
+          plot_background_radius: "Plot background corner radius",
 
           show_bands: "Show bands",
           band_opacity: "Band opacity",
@@ -1142,6 +1323,14 @@ class SimpleBandGraphCard extends HTMLElement {
           custom_text: "Custom text",
           duration_format: "Duration format",
 
+          top_ribbon_background_color: "Header background colour",
+          top_ribbon_background_color_mode: "Header background colour mode",
+          top_ribbon_background_opacity: "Header background opacity",
+          bottom_ribbon_background_color: "Footer background colour",
+          bottom_ribbon_background_color_mode: "Footer background colour mode",
+          bottom_ribbon_background_opacity: "Footer background opacity",
+          ribbon_background_radius: "Ribbon background corner radius",
+
           history_refresh_interval: "History refresh interval",
           max_history_points: "Max history points",
           debug_level: "Debug level",
@@ -1158,6 +1347,8 @@ class SimpleBandGraphCard extends HTMLElement {
           height: "The graph height in pixels.",
           y_min: "The lowest value shown on the y-axis.",
           y_max: "The highest value shown on the y-axis.",
+          value_decimals:
+            "Controls decimal places for value labels. Auto uses fewer decimals for larger numbers.",
 
           show_x_axis: "Show or hide the horizontal time axis line.",
           show_x_axis_labels: "Show or hide the time labels on the X-axis.",
@@ -1195,6 +1386,21 @@ class SimpleBandGraphCard extends HTMLElement {
             "CSS colour for grid lines, such as var(--divider-color), #999999, or rgba(0,0,0,0.2).",
           grid_width: "Thickness of the grid lines.",
           grid_opacity: "Opacity of the grid lines, from 0 to 1.",
+
+          background_color:
+            "CSS colour for the whole card background, such as var(--card-background-color), transparent, #222222, or rgba(0,0,0,0.2).",
+          background_color_mode:
+            "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the card background transparent.",
+          background_opacity:
+            "Opacity of the whole card background, from 0 to 1.",
+          plot_background_color:
+            "CSS colour for the graph plotting area, such as var(--card-background-color), transparent, #222222, or rgba(0,0,0,0.2).",
+          plot_background_color_mode:
+            "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the plot background transparent.",
+          plot_background_opacity:
+            "Opacity of the plot background, from 0 to 1.",
+          plot_background_radius:
+            "Corner radius for the plot background area.",
 
           band_opacity: "Opacity for the coloured background bands, from 0 to 1.",
           band_label_mode:
@@ -1262,6 +1468,21 @@ class SimpleBandGraphCard extends HTMLElement {
           duration_format:
             "Controls whether duration text is shown in short form, such as 24h, or long form, such as 24 hours.",
 
+          top_ribbon_background_color:
+            "CSS colour for the header ribbon background, such as transparent, var(--card-background-color), #222222, or rgba(0,0,0,0.2).",
+          top_ribbon_background_color_mode:
+            "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the header background transparent.",
+          top_ribbon_background_opacity:
+            "Opacity of the header ribbon background, from 0 to 1.",
+          bottom_ribbon_background_color:
+            "CSS colour for the footer ribbon background, such as transparent, var(--card-background-color), #222222, or rgba(0,0,0,0.2).",
+          bottom_ribbon_background_color_mode:
+            "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the footer background transparent.",
+          bottom_ribbon_background_opacity:
+            "Opacity of the footer ribbon background, from 0 to 1.",
+          ribbon_background_radius:
+            "Corner radius for header and footer ribbon background areas.",
+
           history_refresh_interval: "How often the card refreshes history data.",
           max_history_points: "Use auto, or enter a number to limit plotted history points.",
           debug_level:
@@ -1299,6 +1520,7 @@ class SimpleBandGraphCard extends HTMLElement {
       y_min: config.y_min ?? 0,
       y_max: config.y_max ?? 100,
       bands: config.bands || [],
+      value_decimals: config.value_decimals ?? "auto",
 
       // Band display settings
       show_bands: config.show_bands ?? true,
@@ -1799,7 +2021,6 @@ class SimpleBandGraphCard extends HTMLElement {
     const renderStarted = performance.now();
 
     if (!this._hass) return;
-
     /*
       --------------------------------------------------------------------------
       Entity state and basic card dimensions
@@ -1812,7 +2033,6 @@ class SimpleBandGraphCard extends HTMLElement {
     const rawValue = state ? Number(state.state) : NaN;
     const value = state ? state.state : "unknown";
     const unit = state?.attributes?.unit_of_measurement || "";
-    const currentText = `${value}${unit}`;
 
     const width = 600;
     const height = this.config.height;
@@ -1871,9 +2091,22 @@ class SimpleBandGraphCard extends HTMLElement {
       --------------------------------------------------------------------------
       Value, marker, and band label formatting
       --------------------------------------------------------------------------
+      formatValue is the shared formatter for graph values, axis values, band
+      ranges, marker labels, and the current value used in ribbon slots.
     */
     const formatValue = (number) => {
       if (!Number.isFinite(number)) return "–";
+
+      if (this.config.value_decimals !== "auto") {
+        const decimals = Math.min(
+          3,
+          Math.max(0, Number(this.config.value_decimals))
+        );
+
+        if (Number.isFinite(decimals)) {
+          return number.toFixed(decimals);
+        }
+      }
 
       if (Math.abs(number) >= 100) {
         return number.toFixed(0);
@@ -1885,6 +2118,10 @@ class SimpleBandGraphCard extends HTMLElement {
 
       return number.toFixed(2);
     };
+
+    const currentText = Number.isFinite(rawValue)
+      ? `${formatValue(rawValue)}${unit}`
+      : `${value}${unit}`;
 
     const formatMarkerLabel = (point, markerType = "value") => {
       if (!point) return "";
