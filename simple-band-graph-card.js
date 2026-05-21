@@ -645,6 +645,7 @@ class SimpleBandGraphCard extends HTMLElement {
     */
     const currentBand = getBandForValue(rawValue);
     const currentBandText = currentBand?.label || "";
+    const currentBandMessage = currentBand?.message || "";
 
     const resolveColour = (
       configuredColour,
@@ -1752,6 +1753,10 @@ class SimpleBandGraphCard extends HTMLElement {
       name,
       current: currentText,
       band: currentBandText,
+      message: currentBandMessage,
+      band_message: currentBandMessage,
+      instruction: currentBandMessage,
+      instructions: currentBandMessage,
       debug: debugText,
       status: debugText,
       entity: entityId,
