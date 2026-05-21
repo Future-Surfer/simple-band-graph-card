@@ -195,6 +195,12 @@ class SimpleBandGraphCard extends HTMLElement {
       marker_label_color_mode: "static",
       marker_label_opacity: 0.9,
 
+      // Marker label background settings
+      marker_label_background_color: "var(--card-background-color)",
+      marker_label_background_mode: "card",
+      marker_label_background_opacity: 0.75,
+
+
       // Ribbon slot settings
       top_left: "name",
       top_center: "none",
@@ -1037,6 +1043,37 @@ class SimpleBandGraphCard extends HTMLElement {
                 },
               },
             },
+            {
+              name: "marker_label_background_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "marker_label_background_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "card", label: "Use card background" },
+                    { value: "static", label: "Static colour" },
+                    { value: "band", label: "Use band colour" },
+                    { value: "none", label: "No background / transparent" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "marker_label_background_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
           ],
         },
         {
@@ -1313,6 +1350,9 @@ class SimpleBandGraphCard extends HTMLElement {
           marker_label_color: "Marker label colour",
           marker_label_color_mode: "Marker label colour mode",
           marker_label_opacity: "Marker label opacity",
+          marker_label_background_color: "Marker label background colour",
+          marker_label_background_mode: "Marker label background mode",
+          marker_label_background_opacity: "Marker label background opacity",
 
           top_left: "Header left",
           top_center: "Header centre",
@@ -1456,6 +1496,13 @@ class SimpleBandGraphCard extends HTMLElement {
           marker_label_color_mode:
             "Static uses the chosen colour. Use band colour follows the marker value's band. No colour makes the labels transparent.",
           marker_label_opacity: "Opacity of marker label text, from 0 to 1.",
+          marker_label_background_color:
+            "CSS colour for the background behind marker labels, such as var(--card-background-color), #222222, or rgba(0,0,0,0.2).",
+          marker_label_background_mode:
+            "Card uses the card background colour. Static uses the chosen colour. Use band colour follows the marker value's band. No background makes it transparent.",
+          marker_label_background_opacity:
+            "Opacity of the marker label background, from 0 to 1.",
+
 
           top_left: "Choose what appears in the left position of the header ribbon.",
           top_center: "Choose what appears in the centre position of the header ribbon.",
