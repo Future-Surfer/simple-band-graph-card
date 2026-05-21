@@ -75,7 +75,26 @@ url: /local/simple-band-graph-card.js
 type: module
 ```
 
-## Examples
+## Visual editor
+
+Simple Band Graph Card includes a Home Assistant visual editor for the most commonly used options.
+
+The visual editor can configure:
+
+- Entity, name, history window, graph height and value decimal places
+- Y-axis range
+- X/Y axes, tick labels and grid lines
+- Card and plot backgrounds
+- Band visibility, label display and band label styling
+- Raw band definitions
+- Line colour, width, opacity and band-driven line colouring
+- Current/latest, minimum and maximum markers
+- Marker label text and background styling
+- Top and bottom ribbon slot content
+- Header/footer ribbon backgrounds
+- Basic debug and history refresh settings
+
+Some advanced YAML options, especially detailed per-slot ribbon text overrides, remain YAML-only for now.
 
 ## Examples
 
@@ -496,7 +515,8 @@ band_label_opacity: 0.85
 show_x_axis: true
 show_x_axis_labels: true
 x_axis_ticks: 3
-axis_label_size: 13
+x_axis_label_size: 13
+y_axis_label_size: 13
 
 show_y_axis: false
 show_y_axis_labels: false
@@ -707,8 +727,11 @@ bands:
 | `height` | No | `180` | Graph height in pixels. |
 | `y_min` | No | `0` | Minimum Y-axis value. |
 | `y_max` | No | `100` | Maximum Y-axis value. |
+| `value_decimals` | No | `auto` | Decimal places for displayed values. Options: `auto`, `0`, `1`, `2`, `3`. |
 | `bands` | No | `[]` | List of coloured threshold bands. |
 | `show_bands` | No | `true` | Show or hide the visible coloured band areas. Bands can still be used for labels and colour logic when hidden. |
+
+`value_decimals` affects value labels such as axis values, marker labels, band ranges and current values shown in ribbon slots. `auto` uses fewer decimal places for larger numbers.
 
 ### History and performance options
 
@@ -830,15 +853,30 @@ line_opacity: 1
 | `x_axis_position` | `bottom` | X-axis position. Options: `bottom`, `top`. |
 | `x_axis_label_mode` | `relative` | X-axis label mode. Options: `relative`, `time`. |
 | `x_axis_ticks` | `3` | Number of X-axis tick labels. |
+| `x_axis_label_size` | `11` | X-axis label font size. |
+| `x_axis_label_weight` | `400` | X-axis label font weight. |
+| `x_axis_label_color` | `var(--secondary-text-color)` | X-axis label colour. |
+| `x_axis_label_color_mode` | `static` | Options: `static`, `band`, `none`. |
+| `x_axis_label_opacity` | `0.8` | X-axis label opacity. |
 | `show_y_axis` | `true` | Show or hide the Y-axis line. |
 | `show_y_axis_labels` | `true` | Show or hide Y-axis labels. |
 | `y_axis_position` | `left` | Y-axis position. Options: `left`, `right`. |
 | `y_axis_ticks` | `2` | Number of Y-axis tick labels. |
-| `axis_label_size` | `11` | Shared axis label font size. |
-| `axis_label_weight` | `400` | Shared axis label font weight. |
-| `axis_label_color` | `var(--secondary-text-color)` | Shared axis label colour. |
-| `axis_label_color_mode` | `static` | Options: `static`, `band`, `none`. |
-| `axis_label_opacity` | `0.8` | Shared axis label opacity. |
+| `y_axis_label_size` | `11` | Y-axis label font size. |
+| `y_axis_label_weight` | `400` | Y-axis label font weight. |
+| `y_axis_label_color` | `var(--secondary-text-color)` | Y-axis label colour. |
+| `y_axis_label_color_mode` | `static` | Options: `static`, `band`, `none`. |
+| `y_axis_label_opacity` | `0.8` | Y-axis label opacity. |
+
+Legacy shared axis label options are still supported for backwards compatibility:
+
+| Legacy option | Description |
+|---|---|
+| `axis_label_size` | Applies to both X and Y labels unless the newer X/Y-specific option is set. |
+| `axis_label_weight` | Applies to both X and Y labels unless the newer X/Y-specific option is set. |
+| `axis_label_color` | Applies to both X and Y labels unless the newer X/Y-specific option is set. |
+| `axis_label_color_mode` | Applies to both X and Y labels unless the newer X/Y-specific option is set. |
+| `axis_label_opacity` | Applies to both X and Y labels unless the newer X/Y-specific option is set. |
 
 ### Grid options
 
@@ -1029,7 +1067,7 @@ Extrema label modes:
 | `marker_label_opacity` | `0.9` | Marker label opacity. |
 | `marker_label_background_color` | `var(--card-background-color)` | Marker label background colour. |
 | `marker_label_background_opacity` | `0.75` | Marker label background opacity. |
-| `marker_label_background_mode` | `card` | Background mode. Options: `card`, `band`. |
+| `marker_label_background_mode` | `card` | Background mode. Options: `card`, `static`, `band`, `none`. |
 
 Use this to match marker label backgrounds to the relevant marker value band:
 
@@ -1043,7 +1081,7 @@ Use this to match marker label text to the relevant marker value band:
 marker_label_color_mode: band
 ```
 
-If the marker value is outside all configured bands, it falls back to `marker_label_color`.
+If the marker value is outside all configured bands, band-driven marker label colours fall back to the configured static colour.
 
 ## Debug output
 
@@ -1099,17 +1137,21 @@ If you use `*_color_mode: band`, the configured `bands` are still required even 
 
 Work in progress, but functional. The card can load Home Assistant history and render a configurable threshold-banded line graph with optional markers, axes, grid lines, ribbon content, band-driven colours and debug diagnostics.
 
+A basic Home Assistant visual editor is now included for common configuration options. Advanced styling, especially detailed per-slot ribbon overrides, may still require YAML.
+
 ## Roadmap
 
 Planned or possible future features:
 
-- Visual editor support in the Home Assistant UI
+- Expand visual editor support for more advanced styling options
+- Better UI controls for editing individual bands
 - More marker dot styling options
 - Optional area graph / line graph toggle
 - Area fill colour modes, including band-driven area fill
 - Optional hover / tooltip features
 - More compact presets
-- Optional dynamic messages based on the current threshold band
+- Optional dynamic defaults based on entity device class
+- Optional band templates for common sensors such as CO₂, humidity, battery and temperature
 - More examples and screenshots
 - Better handling for marker values outside configured bands
 - Packaging/polish for a wider HACS release
