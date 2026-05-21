@@ -66,15 +66,201 @@ class SimpleBandGraphCard extends HTMLElement {
 
   /*
     --------------------------------------------------------------------------
-    Visual editor element
+    Visual editor configuration form
     --------------------------------------------------------------------------
-    Tells Home Assistant to use the editor custom element registered later in this
-    file. The editor element is separate from the card itself so editing controls
-    do not interfere with graph rendering.
+    Uses Home Assistant's built-in form editor rather than a custom editor
+    element. This gives us native entity pickers, number controls, dropdowns, and
+    documented expandable sections without maintaining our own editor lifecycle.
+
+    The expandable panels use flatten: true so the values remain at the top level
+    of the card YAML, preserving the existing configuration format.
   */
-  static async getConfigElement() {
-    return document.createElement("simple-band-graph-card-editor");
+  static getConfigForm() {
+    return {
+      schema: [
+        {
+          type: "expandable",
+          name: "basic",
+          title: "Basic",
+          flatten: true,
+          schema: [
+            {
+              name: "entity",
+              required: true,
+              selector: {
+                entity: {
+                  filter: [
+                    { domain: "sensor" },
+                    { domain: "number" },
+                    { domain: "input_number" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "name",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "hours_to_show",
+              selector: {
+                number: {
+                  min: 0.1,
+                  step: 0.5,
+                  mode: "box",
+                },
+              },
+            },
+            {
+              name: "height",
+              selector: {
+                number: {
+                  min: 80,
+                  step: 10,
+                  mode: "box",
+                },
+              },
+            },
+          ],
+        },
+        {
+          type: "expandable",
+          name: "scale",
+          title: "Scale",
+          flatten: true,
+          schema: [
+            {
+              name: "y_min",
+              selector: {
+                number: {
+                  step: 1,
+                  mode: "box",
+                },
+              },
+            },
+            {
+              name: "y_max",
+              selector: {
+                number: {
+                  step: 1,
+                  mode: "box",
+                },
+              },
+            },
+          ],
+        },
+        {
+          type: "expandable",
+          name: "bands",
+          title: "Bands",
+          flatten: true,
+          schema: [
+            {
+              name: "show_bands",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "band_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+          ],
+        },
+        {
+          type: "expandable",
+          name: "advanced",
+          title: "Advanced",
+          flatten: true,
+          schema: [
+            {
+              name: "history_refresh_interval",
+              selector: {
+                number: {
+                  min: 5,
+                  step: 5,
+                  mode: "box",
+                  unit_of_measurement: "s",
+                },
+              },
+            },
+            {
+              name: "max_history_points",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "debug_level",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "off", label: "Off" },
+                    { value: "basic", label: "Basic" },
+                    { value: "performance", label: "Performance" },
+                    { value: "verbose", label: "Verbose" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "debug_multiline",
+              selector: {
+                boolean: {},
+              },
+            },
+          ],
+        },
+      ],
+
+      computeLabel: (schema) => {
+        const labels = {
+          entity: "Entity",
+          name: "Name",
+          hours_to_show: "Hours to show",
+          height: "Card height",
+          y_min: "Y-axis minimum",
+          y_max: "Y-axis maximum",
+          show_bands: "Show bands",
+          band_opacity: "Band opacity",
+          history_refresh_interval: "History refresh interval",
+          max_history_points: "Max history points",
+          debug_level: "Debug level",
+          debug_multiline: "Debug multiline",
+        };
+
+        return labels[schema.name];
+      },
+
+      computeHelper: (schema) => {
+        const helpers = {
+          entity: "The numeric entity to plot.",
+          hours_to_show: "How many hours of history to show.",
+          height: "The graph height in pixels.",
+          y_min: "The lowest value shown on the y-axis.",
+          y_max: "The highest value shown on the y-axis.",
+          band_opacity: "Opacity for the coloured background bands, from 0 to 1.",
+          history_refresh_interval: "How often the card refreshes history data.",
+          max_history_points: "Use auto, or enter a number to limit plotted history points.",
+          debug_level:
+            "Controls how much status information is shown when a ribbon slot uses debug or status.",
+        };
+
+        return helpers[schema.name];
+      },
+    };
   }
+
 
   /*
     --------------------------------------------------------------------------
@@ -2078,232 +2264,32 @@ class SimpleBandGraphCard extends HTMLElement {
 
 /*
   ============================================================================
-  VISUAL EDITOR
-  ============================================================================
-  Simple Band Graph Card editor for the Home Assistant visual card editor.
-
-  This v0.2 editor uses Home Assistant's ha-form element rather than hand-built
-  inputs. That gives us native-looking controls, proper entity picking, and a
-  cleaner configuration-change lifecycle.
-
-  The editor intentionally exposes only the safest core options for now. Advanced
-  options and detailed band definitions remain available in YAML until richer UI
-  controls are added later.
-*/
-class SimpleBandGraphCardEditor extends HTMLElement {
-  /*
-    --------------------------------------------------------------------------
-    Editor schema
-    --------------------------------------------------------------------------
-    Defines the fields shown in the Home Assistant visual editor.
-
-    selector.entity provides the native entity picker.
-    selector.text provides a standard text field.
-    selector.number provides numeric inputs.
-    selector.boolean provides a toggle.
-  */
-  get schema() {
-    return [
-      {
-        name: "entity",
-        label: "Entity",
-        required: true,
-        selector: {
-          entity: {
-            filter: [
-              { domain: "sensor" },
-              { domain: "number" },
-              { domain: "input_number" },
-            ],
-          },
-        },
-      },
-      {
-        name: "name",
-        label: "Name",
-        selector: {
-          text: {},
-        },
-      },
-      {
-        name: "hours_to_show",
-        label: "Hours to show",
-        selector: {
-          number: {
-            min: 0.1,
-            step: 0.5,
-            mode: "box",
-          },
-        },
-      },
-      {
-        name: "height",
-        label: "Card height",
-        selector: {
-          number: {
-            min: 80,
-            step: 10,
-            mode: "box",
-          },
-        },
-      },
-      {
-        name: "y_min",
-        label: "Y-axis minimum",
-        selector: {
-          number: {
-            step: 1,
-            mode: "box",
-          },
-        },
-      },
-      {
-        name: "y_max",
-        label: "Y-axis maximum",
-        selector: {
-          number: {
-            step: 1,
-            mode: "box",
-          },
-        },
-      },
-      {
-        name: "show_bands",
-        label: "Show bands",
-        selector: {
-          boolean: {},
-        },
-      },
-    ];
-  }
-
-  /*
-    --------------------------------------------------------------------------
-    Editor configuration loading
-    --------------------------------------------------------------------------
-    Home Assistant calls setConfig when the editor opens or when the card
-    configuration changes. Store a copy so the editor can preserve advanced YAML
-    options that are not exposed in the basic visual editor.
-  */
-  setConfig(config) {
-    this._config = {
-      ...config,
-      hours_to_show: config.hours_to_show ?? 24,
-      height: config.height ?? 180,
-      y_min: config.y_min ?? 0,
-      y_max: config.y_max ?? 100,
-      show_bands: config.show_bands ?? true,
-    };
-
-    this.render();
-  }
-
-  /*
-    --------------------------------------------------------------------------
-    Home Assistant state handling
-    --------------------------------------------------------------------------
-    Store the hass object for ha-form. Avoid re-rendering after the first render
-    unless the form does not exist yet, otherwise state updates can interrupt
-    typing in active editor fields.
-  */
-  set hass(hass) {
-    this._hass = hass;
-
-    const form = this.querySelector("ha-form");
-
-    if (form) {
-      form.hass = hass;
-    } else {
-      this.render();
-    }
-  }
-
-  /*
-    --------------------------------------------------------------------------
-    Config update helper
-    --------------------------------------------------------------------------
-    Receives complete form data from ha-form, merges it into the existing config,
-    preserves unknown advanced YAML options, and notifies Home Assistant.
-  */
-  updateConfig(changedConfig) {
-    const nextConfig = {
-      ...this._config,
-      ...changedConfig,
-    };
-
-    this._config = nextConfig;
-
-    this.dispatchEvent(
-      new CustomEvent("config-changed", {
-        detail: { config: nextConfig },
-        bubbles: true,
-        composed: true,
-      })
-    );
-  }
-
-  /*
-    --------------------------------------------------------------------------
-    Editor rendering
-    --------------------------------------------------------------------------
-    Builds the editor UI once, then keeps the ha-form properties up to date
-    without replacing focused input elements.
-  */
-  render() {
-    if (!this._config || !this._hass) return;
-
-    if (!this._form) {
-      this.innerHTML = `
-        <div class="editor">
-          <ha-form></ha-form>
-
-          <div class="hint">
-            v0.2 editor shell: advanced options and band definitions can still be edited in YAML.
-          </div>
-        </div>
-
-        <style>
-          .editor {
-            display: grid;
-            gap: 16px;
-          }
-
-          .hint {
-            color: var(--secondary-text-color);
-            font-size: 12px;
-            line-height: 1.4;
-            padding: 0 4px;
-          }
-        </style>
-      `;
-
-      this._form = this.querySelector("ha-form");
-
-      this._form.addEventListener("value-changed", (event) => {
-        this.updateConfig(event.detail.value);
-      });
-    }
-
-    this._form.hass = this._hass;
-    this._form.schema = this.schema;
-    this._form.data = this._config;
-    this._form.computeLabel = (schema) => schema.label || schema.name;
-  }
-}
-/*
-  ============================================================================
   CUSTOM ELEMENT REGISTRATION
   ============================================================================
-  Registers the card and editor once, avoiding duplicate-definition errors during
-  reloads.
+  Registers the card once, avoiding duplicate-definition errors during reloads.
 */
-if (!customElements.get("simple-band-graph-card-editor")) {
-  customElements.define(
-    "simple-band-graph-card-editor",
-    SimpleBandGraphCardEditor
-  );
-}
-
 if (!customElements.get("simple-band-graph-card")) {
   customElements.define("simple-band-graph-card", SimpleBandGraphCard);
 }
+
+/*
+  ============================================================================
+  CARD PICKER REGISTRATION
+  ============================================================================
+  Adds the card to Home Assistant's "Add card" picker.
+
+  This is separate from customElements.define. The custom element registration
+  makes the card usable when YAML says type: custom:simple-band-graph-card.
+  The window.customCards entry makes it discoverable in the visual card picker.
+*/
+window.customCards = window.customCards || [];
+
+window.customCards.push({
+  type: "simple-band-graph-card",
+  name: "Simple Band Graph",
+  preview: true,
+  description:
+    "Plot a numeric entity against configurable coloured bands, with optional axes, markers, ribbons, and debug information.",
+  documentationURL:
+    "https://github.com/Future-Surfer/simple-band-graph-card",
+});
