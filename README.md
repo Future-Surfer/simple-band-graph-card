@@ -15,7 +15,7 @@ It is designed for sensors where coloured context bands make the graph easier to
 - Display recent Home Assistant entity history as a clean line graph
 - Define custom coloured threshold bands with configurable labels
 - Set graph duration and Y-axis range with `hours_to_show`, `y_min` and `y_max`
-- Configure top and bottom ribbon content, including name, current value, band, min/max, debug text, custom text and graph duration
+- Configure top and bottom ribbon content, including name, current value, band, min/max, debug text, custom text, graph duration and band-specific messages
 - Style ribbon text, backgrounds and band-driven colours
 - Configure separate backgrounds for the card, plot area, top ribbon and bottom ribbon
 - Optionally drive card, plot or ribbon background colours from the current band
@@ -730,8 +730,9 @@ Each band supports:
 |---|---|
 | `from` | Lower value for the band. |
 | `to` | Upper value for the band. |
-| `color` | Band colour. Hex colours with alpha work well for visible bands/backgrounds, e.g. `#2ecc7133`. Solid colours work better for text and line colour modes, e.g. `#2ecc71`. |
+| `color` | Band colour. Solid colours are recommended, e.g. `#2ecc71`, with transparency controlled using `band_opacity`. |
 | `label` | Optional label for the band. |
+| `message` | Optional message or instruction for the band. This can be shown in a ribbon slot using `message`, `band_message`, `instruction` or `instructions`. |
 
 ### Colour modes
 
@@ -885,6 +886,10 @@ Supported slot values:
 | `name` | Card name. |
 | `current` | Current entity value and unit. |
 | `band` | Current threshold band label. |
+| `message` | Message from the current threshold band. |
+| `band_message` | Alias for `message`. |
+| `instruction` | Alias for `message`. |
+| `instructions` | Alias for `message`. |
 | `custom` | Custom text from `custom_text`. |
 | `text` | Alias for `custom`. |
 | `duration` | Selected graph duration based on `hours_to_show`. |
