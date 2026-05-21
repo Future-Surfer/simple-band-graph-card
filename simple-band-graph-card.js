@@ -116,6 +116,20 @@ class SimpleBandGraphCard extends HTMLElement {
       y_axis_position: "left",
       y_axis_ticks: 2,
 
+      // X-axis label settings
+      x_axis_label_size: 11,
+      x_axis_label_weight: 400,
+      x_axis_label_color: "var(--secondary-text-color)",
+      x_axis_label_color_mode: "static",
+      x_axis_label_opacity: 0.8,
+
+      // Y-axis label settings
+      y_axis_label_size: 11,
+      y_axis_label_weight: 400,
+      y_axis_label_color: "var(--secondary-text-color)",
+      y_axis_label_color_mode: "static",
+      y_axis_label_opacity: 0.8,
+
       // Grid-line settings
       show_x_grid: false,
       show_y_grid: false,
@@ -133,24 +147,12 @@ class SimpleBandGraphCard extends HTMLElement {
       hide_small_band_labels: false,
       min_band_label_height: 18,
 
-      // Label and text settings
-      axis_label_size: 11,
-      axis_label_weight: 400,
-      axis_label_color: "var(--secondary-text-color)",
-      axis_label_color_mode: "static",
-      axis_label_opacity: 0.8,
-
+      // Band label settings
       band_label_size: 11,
       band_label_weight: 400,
       band_label_color: "var(--secondary-text-color)",
       band_label_color_mode: "static",
       band_label_opacity: 0.75,
-
-      marker_label_size: 11,
-      marker_label_weight: 400,
-      marker_label_color: "var(--primary-text-color)",
-      marker_label_color_mode: "static",
-      marker_label_opacity: 0.9,
 
       // Line appearance settings
       show_line: true,
@@ -158,6 +160,28 @@ class SimpleBandGraphCard extends HTMLElement {
       line_color_mode: "static",
       line_width: 2.5,
       line_opacity: 0.9,
+
+      // Marker settings
+      show_latest: false,
+      show_latest_label: true,
+      latest_marker_size: 4,
+
+      show_min: false,
+      show_max: false,
+      show_extrema_labels: true,
+      extrema_marker_size: 4,
+      extrema_label_mode: "value",
+
+      hide_recent_min: true,
+      hide_recent_max: false,
+      recent_extrema_minutes: 30,
+
+      // Marker label settings
+      marker_label_size: 11,
+      marker_label_weight: 400,
+      marker_label_color: "var(--primary-text-color)",
+      marker_label_color_mode: "static",
+      marker_label_opacity: 0.9,
 
       // Ribbon slot settings
       top_left: "name",
@@ -765,6 +789,149 @@ class SimpleBandGraphCard extends HTMLElement {
         },
         {
           type: "expandable",
+          name: "markers",
+          title: "Markers",
+          flatten: true,
+          schema: [
+            {
+              name: "show_latest",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "show_latest_label",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "latest_marker_size",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 16,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "show_min",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "show_max",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "show_extrema_labels",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "extrema_marker_size",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 16,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "extrema_label_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "value", label: "Value only" },
+                    { value: "prefixed", label: "Prefixed, e.g. Min 42" },
+                    { value: "compact", label: "Compact, e.g. ↓ 42" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "hide_recent_min",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "hide_recent_max",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "recent_extrema_minutes",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 240,
+                  step: 5,
+                  mode: "slider",
+                  unit_of_measurement: "min",
+                },
+              },
+            },
+            {
+              name: "marker_label_size",
+              selector: {
+                number: {
+                  min: 8,
+                  max: 24,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "marker_label_weight",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: fontWeightOptions,
+                },
+              },
+            },
+            {
+              name: "marker_label_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "marker_label_color_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: colourModeOptions,
+                },
+              },
+            },
+            {
+              name: "marker_label_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+          ],
+        },
+        {
+          type: "expandable",
           name: "ribbons",
           title: "Ribbons",
           flatten: true,
@@ -949,6 +1116,23 @@ class SimpleBandGraphCard extends HTMLElement {
           line_width: "Line width",
           line_opacity: "Line opacity",
 
+          show_latest: "Show current marker",
+          show_latest_label: "Show current label",
+          latest_marker_size: "Current marker size",
+          show_min: "Show minimum marker",
+          show_max: "Show maximum marker",
+          show_extrema_labels: "Show min/max labels",
+          extrema_marker_size: "Min/max marker size",
+          extrema_label_mode: "Min/max label mode",
+          hide_recent_min: "Hide recent minimum",
+          hide_recent_max: "Hide recent maximum",
+          recent_extrema_minutes: "Recent threshold",
+          marker_label_size: "Marker label size",
+          marker_label_weight: "Marker label weight",
+          marker_label_color: "Marker label colour",
+          marker_label_color_mode: "Marker label colour mode",
+          marker_label_opacity: "Marker label opacity",
+
           top_left: "Header left",
           top_center: "Header centre",
           top_right: "Header right",
@@ -1042,6 +1226,30 @@ class SimpleBandGraphCard extends HTMLElement {
             "CSS colour for the line, such as var(--primary-color), #03a9f4, or rgb(3, 169, 244).",
           line_width: "Thickness of the plotted line.",
           line_opacity: "Opacity of the plotted line, from 0 to 1.",
+
+          show_latest:
+            "Show a marker at the current/latest plotted value. This uses the existing show_latest YAML option.",
+          show_latest_label: "Show or hide the label beside the current marker.",
+          latest_marker_size: "Size of the current marker dot.",
+          show_min: "Show a marker at the lowest value in the visible history.",
+          show_max: "Show a marker at the highest value in the visible history.",
+          show_extrema_labels: "Show or hide labels beside the min/max markers.",
+          extrema_marker_size: "Size of the minimum and maximum marker dots.",
+          extrema_label_mode:
+            "Choose whether min/max labels show only the value, use Min/Max prefixes, or compact arrow prefixes.",
+          hide_recent_min:
+            "Hide the minimum marker if it is too close to the current/latest value.",
+          hide_recent_max:
+            "Hide the maximum marker if it is too close to the current/latest value.",
+          recent_extrema_minutes:
+            "How recent a min/max point can be before it is hidden, when recent hiding is enabled.",
+          marker_label_size: "Text size for current, min, and max marker labels.",
+          marker_label_weight: "Font weight for marker labels.",
+          marker_label_color:
+            "CSS colour for marker labels, such as var(--primary-text-color), #333333, or rgba(0,0,0,0.8).",
+          marker_label_color_mode:
+            "Static uses the chosen colour. Use band colour follows the marker value's band. No colour makes the labels transparent.",
+          marker_label_opacity: "Opacity of marker label text, from 0 to 1.",
 
           top_left: "Choose what appears in the left position of the header ribbon.",
           top_center: "Choose what appears in the centre position of the header ribbon.",
