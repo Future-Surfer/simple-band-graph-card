@@ -362,6 +362,85 @@ class SimpleBandGraphCard extends HTMLElement {
                 },
               },
             },
+            {
+              name: "band_label_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "label", label: "Label" },
+                    { value: "range", label: "Range" },
+                    { value: "threshold", label: "Threshold" },
+                    { value: "hide", label: "Hide labels" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "band_label_unit",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "band_label_position",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "top", label: "Top" },
+                    { value: "middle", label: "Middle" },
+                    { value: "bottom", label: "Bottom" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "band_label_align",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "left", label: "Left" },
+                    { value: "center", label: "Centre" },
+                    { value: "right", label: "Right" },
+                    { value: "outside_left", label: "Outside left" },
+                    { value: "outside_right", label: "Outside right" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "hide_small_band_labels",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "min_band_label_height",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 80,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+          ],
+        },
+        {
+          type: "expandable",
+          name: "band_definitions",
+          title: "Band definitions",
+          flatten: true,
+          schema: [
+            {
+              name: "bands",
+              selector: {
+                object: {},
+              },
+            },
           ],
         },
         {
@@ -494,6 +573,13 @@ class SimpleBandGraphCard extends HTMLElement {
 
           show_bands: "Show bands",
           band_opacity: "Band opacity",
+          band_label_mode: "Band label mode",
+          band_label_unit: "Show units in band labels",
+          band_label_position: "Band label position",
+          band_label_align: "Band label alignment",
+          hide_small_band_labels: "Hide labels in small bands",
+          min_band_label_height: "Minimum band label height",
+          bands: "Band definitions",
 
           show_line: "Show line",
           line_color_mode: "Line colour mode",
@@ -523,21 +609,39 @@ class SimpleBandGraphCard extends HTMLElement {
           x_axis_position: "Place the X-axis at the top or bottom of the graph.",
           x_axis_label_mode:
             "Relative shows labels such as 24h ago. Clock time shows labels such as 14:30.",
-          x_axis_ticks: "Number of labelled positions on the X-axis.",
+          x_axis_ticks:
+            "Number of labelled positions on the X-axis. Vertical grid lines use these same positions.",
 
           show_y_axis: "Show or hide the vertical value axis line.",
           show_y_axis_labels: "Show or hide the value labels on the Y-axis.",
           y_axis_position: "Place the Y-axis on the left or right of the graph.",
-          y_axis_ticks: "Number of labelled positions on the Y-axis.",
+          y_axis_ticks:
+            "Number of labelled positions on the Y-axis. Horizontal grid lines use these same positions.",
 
-          show_x_grid: "Show vertical grid lines aligned to the X-axis ticks.",
-          show_y_grid: "Show horizontal grid lines aligned to the Y-axis ticks.",
+          show_x_grid:
+            "Show vertical grid lines. The number of lines is controlled by X-axis ticks.",
+          show_y_grid:
+            "Show horizontal grid lines. The number of lines is controlled by Y-axis ticks.",
           grid_color:
             "CSS colour for grid lines, such as var(--divider-color), #999999, or rgba(0,0,0,0.2).",
           grid_width: "Thickness of the grid lines.",
           grid_opacity: "Opacity of the grid lines, from 0 to 1.",
 
           band_opacity: "Opacity for the coloured background bands, from 0 to 1.",
+          band_label_mode:
+            "Choose whether band labels show the label text, numeric range, threshold, or are hidden.",
+          band_label_unit:
+            "Add the entity unit to numeric band labels when using range or threshold mode.",
+          band_label_position:
+            "Place band labels near the top, middle, or bottom of each band.",
+          band_label_align:
+            "Align band labels inside the plot, or place them just outside the plot area.",
+          hide_small_band_labels:
+            "Hide labels where the band is too narrow to display text cleanly.",
+          min_band_label_height:
+            "Minimum band height, in pixels, before a label is shown.",
+          bands:
+            "Edit the raw band definitions. Each band can include from, to, color, label, and message.",
 
           show_line: "Show or hide the plotted history line.",
           line_color_mode:
