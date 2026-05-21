@@ -28,8 +28,13 @@ class SimpleBandGraphCard extends HTMLElement {
     Visual editor starter configuration
     --------------------------------------------------------------------------
     Used by Home Assistant when the user adds the card from the visual editor.
+
     It tries to pick the first numeric entity it can find so the card is more
     likely to work immediately without requiring the user to edit YAML first.
+
+    Keep these starter defaults aligned with the main setConfig defaults so the
+    visual editor toggles and selectors reflect what the rendered card is already
+    doing.
   */
   static getStubConfig(hass) {
     const entities = Object.keys(hass.states || {});
@@ -42,11 +47,49 @@ class SimpleBandGraphCard extends HTMLElement {
     return {
       entity: numericEntity,
       name: numericEntity || "Simple Band Graph",
+
+      // Core card and data range settings
       hours_to_show: 24,
       height: 180,
       y_min: 0,
       y_max: 100,
+
+      // Axis settings
+      show_x_axis: true,
+      show_x_axis_labels: true,
+      x_axis_position: "bottom",
+      x_axis_label_mode: "relative",
+      x_axis_ticks: 3,
+
+      show_y_axis: true,
+      show_y_axis_labels: true,
+      y_axis_position: "left",
+      y_axis_ticks: 2,
+
+      // Grid-line settings
+      show_x_grid: false,
+      show_y_grid: false,
+      grid_color: "var(--divider-color)",
+      grid_width: 1,
+      grid_opacity: 0.35,
+
+      // Band display settings
       show_bands: true,
+      band_opacity: 0.2,
+
+      // Line appearance settings
+      show_line: true,
+      line_color: "var(--primary-color)",
+      line_color_mode: "static",
+      line_width: 3,
+      line_opacity: 1,
+
+      // History and debug settings
+      history_refresh_interval: 60,
+      max_history_points: "auto",
+      debug_level: "basic",
+      debug_multiline: false,
+
       bands: [
         {
           from: 0,
@@ -63,7 +106,6 @@ class SimpleBandGraphCard extends HTMLElement {
       ],
     };
   }
-
   /*
     --------------------------------------------------------------------------
     Visual editor configuration form
@@ -153,6 +195,152 @@ class SimpleBandGraphCard extends HTMLElement {
         },
         {
           type: "expandable",
+          name: "x_axis",
+          title: "X-axis",
+          flatten: true,
+          schema: [
+            {
+              name: "show_x_axis",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "show_x_axis_labels",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "x_axis_position",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "bottom", label: "Bottom" },
+                    { value: "top", label: "Top" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "x_axis_label_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "relative", label: "Relative time" },
+                    { value: "time", label: "Clock time" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "x_axis_ticks",
+              selector: {
+                number: {
+                  min: 2,
+                  max: 12,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+          ],
+        },
+        {
+          type: "expandable",
+          name: "y_axis",
+          title: "Y-axis",
+          flatten: true,
+          schema: [
+            {
+              name: "show_y_axis",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "show_y_axis_labels",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "y_axis_position",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "left", label: "Left" },
+                    { value: "right", label: "Right" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "y_axis_ticks",
+              selector: {
+                number: {
+                  min: 2,
+                  max: 12,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+          ],
+        },
+        {
+          type: "expandable",
+          name: "grid",
+          title: "Grid",
+          flatten: true,
+          schema: [
+            {
+              name: "show_x_grid",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "show_y_grid",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "grid_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "grid_width",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 5,
+                  step: 0.5,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "grid_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+          ],
+        },
+        {
+          type: "expandable",
           name: "bands",
           title: "Bands",
           flatten: true,
@@ -165,6 +353,61 @@ class SimpleBandGraphCard extends HTMLElement {
             },
             {
               name: "band_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+          ],
+        },
+        {
+          type: "expandable",
+          name: "line",
+          title: "Line",
+          flatten: true,
+          schema: [
+            {
+              name: "show_line",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "line_color_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "static", label: "Static colour" },
+                    { value: "band", label: "Use band colours" },
+                    { value: "none", label: "No colour" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "line_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "line_width",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 12,
+                  step: 0.5,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "line_opacity",
               selector: {
                 number: {
                   min: 0,
@@ -231,8 +474,33 @@ class SimpleBandGraphCard extends HTMLElement {
           height: "Card height",
           y_min: "Y-axis minimum",
           y_max: "Y-axis maximum",
+
+          show_x_axis: "Show X-axis",
+          show_x_axis_labels: "Show X-axis labels",
+          x_axis_position: "X-axis position",
+          x_axis_label_mode: "X-axis label mode",
+          x_axis_ticks: "X-axis ticks",
+
+          show_y_axis: "Show Y-axis",
+          show_y_axis_labels: "Show Y-axis labels",
+          y_axis_position: "Y-axis position",
+          y_axis_ticks: "Y-axis ticks",
+
+          show_x_grid: "Show vertical grid lines",
+          show_y_grid: "Show horizontal grid lines",
+          grid_color: "Grid colour",
+          grid_width: "Grid line width",
+          grid_opacity: "Grid opacity",
+
           show_bands: "Show bands",
           band_opacity: "Band opacity",
+
+          show_line: "Show line",
+          line_color_mode: "Line colour mode",
+          line_color: "Line colour",
+          line_width: "Line width",
+          line_opacity: "Line opacity",
+
           history_refresh_interval: "History refresh interval",
           max_history_points: "Max history points",
           debug_level: "Debug level",
@@ -249,7 +517,36 @@ class SimpleBandGraphCard extends HTMLElement {
           height: "The graph height in pixels.",
           y_min: "The lowest value shown on the y-axis.",
           y_max: "The highest value shown on the y-axis.",
+
+          show_x_axis: "Show or hide the horizontal time axis line.",
+          show_x_axis_labels: "Show or hide the time labels on the X-axis.",
+          x_axis_position: "Place the X-axis at the top or bottom of the graph.",
+          x_axis_label_mode:
+            "Relative shows labels such as 24h ago. Clock time shows labels such as 14:30.",
+          x_axis_ticks: "Number of labelled positions on the X-axis.",
+
+          show_y_axis: "Show or hide the vertical value axis line.",
+          show_y_axis_labels: "Show or hide the value labels on the Y-axis.",
+          y_axis_position: "Place the Y-axis on the left or right of the graph.",
+          y_axis_ticks: "Number of labelled positions on the Y-axis.",
+
+          show_x_grid: "Show vertical grid lines aligned to the X-axis ticks.",
+          show_y_grid: "Show horizontal grid lines aligned to the Y-axis ticks.",
+          grid_color:
+            "CSS colour for grid lines, such as var(--divider-color), #999999, or rgba(0,0,0,0.2).",
+          grid_width: "Thickness of the grid lines.",
+          grid_opacity: "Opacity of the grid lines, from 0 to 1.",
+
           band_opacity: "Opacity for the coloured background bands, from 0 to 1.",
+
+          show_line: "Show or hide the plotted history line.",
+          line_color_mode:
+            "Static uses the chosen line colour. Band colours the line using the active band. None makes the line transparent.",
+          line_color:
+            "CSS colour for the line, such as var(--primary-color), #03a9f4, or rgb(3, 169, 244).",
+          line_width: "Thickness of the plotted line.",
+          line_opacity: "Opacity of the plotted line, from 0 to 1.",
+
           history_refresh_interval: "How often the card refreshes history data.",
           max_history_points: "Use auto, or enter a number to limit plotted history points.",
           debug_level:
@@ -260,8 +557,6 @@ class SimpleBandGraphCard extends HTMLElement {
       },
     };
   }
-
-
   /*
     --------------------------------------------------------------------------
     User configuration loading
