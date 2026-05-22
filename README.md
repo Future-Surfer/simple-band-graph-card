@@ -136,6 +136,56 @@ bands:
 </details>
 
 <details>
+<summary>Compact status graph example</summary>
+
+<img width="328" height="282" alt="image" src="https://github.com/user-attachments/assets/9667e07c-c4b1-47c2-829a-7dd83b4f9a82" />
+
+
+A compact layout that behaves more like a status tile, with a band-coloured value ribbon and a small contextual graph underneath.
+
+```yaml
+type: custom:simple-band-graph-card
+entity: sensor.example_co2
+y_min: 400
+y_max: 2000
+hours_to_show: 12
+
+grid_options:
+  columns: 6
+  rows: 3
+
+band_opacity: 0.18
+
+show_x_axis: false
+show_x_axis_labels: false
+show_y_axis: false
+show_y_axis_labels: false
+
+top_left: none
+top_center: current
+top_right: none
+
+top_ribbon_background_color_mode: band
+top_ribbon_background_opacity: 0.7
+
+show_line: true
+line_color_mode: band
+
+bands:
+  - from: 400
+    to: 800
+    color: "#2ecc71"
+  - from: 800
+    to: 1100
+    color: "#f1c40f"
+  - from: 1100
+    to: 1500
+    color: "#e67e22"
+  - from: 1500
+    to: 2000
+    color: "#e74c3c"
+
+<details>
 <summary>Ribbon message example</summary>
 <img width="721" height="507" alt="image" src="https://github.com/user-attachments/assets/c8beef94-b952-4374-95f5-5673f7fd0e10" />
 
