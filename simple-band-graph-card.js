@@ -330,6 +330,7 @@ class SimpleBandGraphCard extends HTMLElement {
   static getConfigForm() {
     const ribbonSlotOptions = [
       { value: "none", label: "None" },
+      { value: "area", label: "Area" },
       { value: "name", label: "Name" },
       { value: "current", label: "Current value" },
       { value: "band", label: "Current band" },
@@ -2448,6 +2449,12 @@ class SimpleBandGraphCard extends HTMLElement {
     this._resizeObserver = null;
     this._plotResizeObserver = null;
     this._resizeRenderQueued = false;
+
+    // Home Assistant area lookup state
+    this._areaName = "";
+    this._areaLookupEntity = "";
+    this._areaLookupDone = false;
+
   }
 
   /*
@@ -2568,6 +2575,14 @@ class SimpleBandGraphCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+
+    /*
+      Resolve the Home Assistant area for the configured entity.
+
+      This is asynchronous and cached. It does not block rendering; the card will
+      render first, then re-render once the area name has been resolved.
+    */
+    this._resolveAreaName();
 
     const key = [
       this.config.entity,
@@ -4311,6 +4326,10 @@ class SimpleBandGraphCard extends HTMLElement {
       --------------------------------------------------------------------------
       Slot names map to rendered text. This keeps the slot renderer simple and
       makes it easier to add new slot keywords later.
+
+      Template placeholders can be used in band messages and custom text:
+      {area}, {name}, {current}, {band}, {unit}, {entity}, {min}, {max},
+      and {duration}.
     */
     const minText = extrema.min ? formatMarkerLabel(extrema.min, "min") : "";
     const durationText = formatDurationLabel();
@@ -4319,15 +4338,39 @@ class SimpleBandGraphCard extends HTMLElement {
         ? formatMarkerLabel(extrema.max, "max")
         : "";
 
+    const areaText = this._areaName || "";
+
+    const formatTemplateText = (text = "") => {
+      const replacements = {
+        area: areaText,
+        name,
+        current: currentText,
+        band: currentBandText,
+        unit,
+        entity: entityId,
+        min: minText,
+        max: maxText,
+        duration: durationText,
+      };
+
+      return String(text).replace(/\{([a-zA-Z0-9_]+)\}/g, (match, key) =>
+        replacements[key] ?? match
+      );
+    };
+
+    const formattedBandMessage = formatTemplateText(currentBandMessage);
+    const formattedCustomText = formatTemplateText(this.config.custom_text);
+
     const slotContent = {
       none: "",
       name,
+      area: areaText,
       current: currentText,
       band: currentBandText,
-      message: currentBandMessage,
-      band_message: currentBandMessage,
-      instruction: currentBandMessage,
-      instructions: currentBandMessage,
+      message: formattedBandMessage,
+      band_message: formattedBandMessage,
+      instruction: formattedBandMessage,
+      instructions: formattedBandMessage,
       debug: debugText,
       status: debugText,
       entity: entityId,
@@ -4336,10 +4379,10 @@ class SimpleBandGraphCard extends HTMLElement {
       minimum: minText,
       max: maxText,
       maximum: maxText,
-    
+
       // Extra ribbon slot content
-      custom: this.config.custom_text,
-      text: this.config.custom_text,
+      custom: formattedCustomText,
+      text: formattedCustomText,
       duration: durationText,
       hours: durationText,
       range: durationText,
@@ -4749,6 +4792,86 @@ class SimpleBandGraphCard extends HTMLElement {
     );
   }
 
+
+  /*
+    ============================================================================
+    AREA LOOKUP
+    ============================================================================
+    Resolves the Home Assistant area name for the configured entity.
+
+    The lookup uses Home Assistant registries:
+    entity -> entity registry -> device registry -> area registry.
+
+    Registry lists are cached at class level so multiple card instances do not
+    repeatedly fetch the same registry data.
+  */
+  async _resolveAreaName() {
+    try {
+      if (!this._hass?.callWS || !this.config?.entity) {
+        return;
+      }
+
+      const entityId = this.config.entity;
+
+      // Do not re-run the lookup if this card has already resolved this entity.
+      if (this._areaLookupEntity === entityId && this._areaLookupDone) {
+        return;
+      }
+
+      this._areaLookupEntity = entityId;
+      this._areaLookupDone = true;
+
+      const registries = await SimpleBandGraphCard._getAreaLookupRegistries(
+        this._hass
+      );
+
+      const entityEntry = registries.entityRegistry.find(
+        (entry) => entry.entity_id === entityId
+      );
+
+      const deviceEntry = entityEntry?.device_id
+        ? registries.deviceRegistry.find(
+            (device) => device.id === entityEntry.device_id
+          )
+        : null;
+
+      const areaId = entityEntry?.area_id || deviceEntry?.area_id || null;
+
+      const areaEntry = areaId
+        ? registries.areaRegistry.find((area) => area.area_id === areaId)
+        : null;
+
+      const resolvedAreaName = areaEntry?.name || "";
+
+      if (this._areaName !== resolvedAreaName) {
+        this._areaName = resolvedAreaName;
+
+        // Re-render once the async area name is available.
+        if (this._hass) {
+          this.render();
+        }
+      }
+    } catch (error) {
+      console.warn("[Simple Band Graph] Area lookup failed:", error);
+      this._areaName = "";
+    }
+  }
+
+  static async _getAreaLookupRegistries(hass) {
+    if (!SimpleBandGraphCard._areaLookupRegistryPromise) {
+      SimpleBandGraphCard._areaLookupRegistryPromise = Promise.all([
+        hass.callWS({ type: "config/entity_registry/list" }),
+        hass.callWS({ type: "config/device_registry/list" }),
+        hass.callWS({ type: "config/area_registry/list" }),
+      ]).then(([entityRegistry, deviceRegistry, areaRegistry]) => ({
+        entityRegistry,
+        deviceRegistry,
+        areaRegistry,
+      }));
+    }
+
+    return SimpleBandGraphCard._areaLookupRegistryPromise;
+  }
   /*
     ============================================================================
     HOME ASSISTANT CARD SIZE
