@@ -514,9 +514,9 @@ background_color_mode: static
 background_color: var(--card-background-color)
 background_opacity: 1
 
-plot_background_color_mode: static
-plot_background_color: var(--card-background-color)
-plot_background_opacity: 0.35
+plot_background_color_mode: none
+plot_background_color: transparent
+plot_background_opacity: 0
 plot_background_radius: 10
 
 bottom_ribbon_background_color_mode: band
@@ -585,8 +585,9 @@ extrema_label_mode: compact
 hide_recent_max: false
 
 marker_label_color_mode: static
-marker_label_background_mode: card
-marker_label_background_opacity: 0.8
+marker_label_background_mode: none
+marker_label_background_color: transparent
+marker_label_background_opacity: 0
 marker_label_size: 13
 marker_label_weight: 600
 
