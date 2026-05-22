@@ -2201,33 +2201,46 @@ class SimpleBandGraphCard extends HTMLElement {
     const unit = state?.attributes?.unit_of_measurement || "";
 
     /*
-      Use the measured plot area when available.
+      Use measured plot dimensions when Home Assistant has provided an explicit
+      grid height via grid_options.
 
-      The plot wrapper is laid out by CSS between the top and bottom ribbons, then
-      measured with ResizeObserver. This means the SVG viewBox can match the real
-      space available to the graph, rather than guessing based on card height or
-      fixed chrome estimates.
+      In vertical stacks and older/masonry-style layouts, there may be no useful
+      allocated row height. In those cases, the plot wrapper can measure as tiny
+      or zero. We therefore fall back to the configured graph height so stacked
+      cards keep a healthy default size.
 
-      The configured height is now treated as a legacy/fallback minimum for older
-      layouts or early renders before the plot wrapper has been measured.
+      In Sections layouts with grid_options.rows, measured plot height is allowed
+      to drive the SVG height, including compact 1-row status-tile layouts.
     */
     const configuredHeight = Number(this.config.height) || 180;
 
+    const gridRows = Number(this.config.grid_options?.rows);
+    const hasExplicitGridRows = Number.isFinite(gridRows) && gridRows > 0;
+
     const measuredPlotWidth = Number(this._plotWidth);
     const measuredPlotHeight = Number(this._plotHeight);
-
     const measuredCardWidth = Number(this._cardWidth);
 
-    const width = Number.isFinite(measuredPlotWidth) && measuredPlotWidth > 0
-      ? Math.max(260, Math.round(measuredPlotWidth))
-      : Number.isFinite(measuredCardWidth) && measuredCardWidth > 0
-        ? Math.max(260, Math.round(measuredCardWidth))
-        : 600;
+    const width =
+      Number.isFinite(measuredPlotWidth) && measuredPlotWidth > 0
+        ? Math.max(260, Math.round(measuredPlotWidth))
+        : Number.isFinite(measuredCardWidth) && measuredCardWidth > 0
+          ? Math.max(260, Math.round(measuredCardWidth))
+          : 600;
 
     const height =
-      Number.isFinite(measuredPlotHeight) && measuredPlotHeight > 0
-        ? Math.max(60, Math.round(measuredPlotHeight))
+      hasExplicitGridRows &&
+      Number.isFinite(measuredPlotHeight) &&
+      measuredPlotHeight > 0
+        ? Math.max(40, Math.round(measuredPlotHeight))
         : configuredHeight;
+
+    /*
+      The plot wrapper needs a real minimum height in stacks/older layouts, but
+      must be allowed to shrink in Sections layouts where grid rows control the
+      allocated height.
+    */
+    const plotWrapMinHeight = hasExplicitGridRows ? 0 : configuredHeight;
     /*
       --------------------------------------------------------------------------
       General render helpers
@@ -3757,7 +3770,7 @@ class SimpleBandGraphCard extends HTMLElement {
 
         .sbgc-plot-wrap {
           flex: 1 1 0;
-          min-height: 60px;
+          min-height: ${plotWrapMinHeight}px;
           margin-top: 12px;
           min-width: 0;
           overflow: visible;
