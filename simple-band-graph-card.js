@@ -200,17 +200,49 @@ class SimpleBandGraphCard extends HTMLElement {
       marker_label_background_mode: "static",
       marker_label_background_opacity: 0.8,
 
-      // Ribbon slot settings
+      // Header visibility, slot, background, and text settings
+      show_header: true,
+      header_left: "name",
+      header_center: "none",
+      header_right: "duration",
+
+      header_background_color: "transparent",
+      header_background_color_mode: "static",
+      header_background_opacity: 0,
+
+      header_font_size: 16,
+      header_font_weight: 600,
+      header_opacity: 1,
+
+      // Footer visibility, slot, background, and text settings
+      show_footer: true,
+      footer_left: "none",
+      footer_center: "message",
+      footer_right: "current",
+
+      footer_background_color: "transparent",
+      footer_background_color_mode: "static",
+      footer_background_opacity: 0,
+
+      footer_font_size: 12,
+      footer_font_weight: 500,
+      footer_opacity: 0.8,
+
+      // Legacy ribbon slot settings
+      // Kept aligned with header/footer defaults for backwards compatibility.
       top_left: "name",
       top_center: "none",
       top_right: "duration",
       bottom_left: "none",
       bottom_center: "message",
       bottom_right: "current",
+
+      // Shared ribbon content settings
       custom_text: "",
       duration_format: "short",
 
-      // Ribbon background settings
+      // Legacy ribbon background settings
+      // Kept aligned with header/footer defaults for backwards compatibility.
       top_ribbon_background_color: "transparent",
       top_ribbon_background_color_mode: "static",
       top_ribbon_background_opacity: 0,
@@ -259,6 +291,7 @@ class SimpleBandGraphCard extends HTMLElement {
       ],
     };
   }
+
   /*
     --------------------------------------------------------------------------
     Visual editor configuration form
@@ -1076,12 +1109,18 @@ class SimpleBandGraphCard extends HTMLElement {
         },
         {
           type: "expandable",
-          name: "ribbons",
-          title: "Ribbons",
+          name: "header",
+          title: "Header",
           flatten: true,
           schema: [
             {
-              name: "top_left",
+              name: "show_header",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "header_left",
               selector: {
                 select: {
                   mode: "dropdown",
@@ -1090,7 +1129,7 @@ class SimpleBandGraphCard extends HTMLElement {
               },
             },
             {
-              name: "top_center",
+              name: "header_center",
               selector: {
                 select: {
                   mode: "dropdown",
@@ -1099,7 +1138,7 @@ class SimpleBandGraphCard extends HTMLElement {
               },
             },
             {
-              name: "top_right",
+              name: "header_right",
               selector: {
                 select: {
                   mode: "dropdown",
@@ -1108,29 +1147,70 @@ class SimpleBandGraphCard extends HTMLElement {
               },
             },
             {
-              name: "bottom_left",
+              name: "header_font_size",
               selector: {
-                select: {
-                  mode: "dropdown",
-                  options: ribbonSlotOptions,
+                number: {
+                  min: 8,
+                  max: 32,
+                  step: 1,
+                  mode: "slider",
                 },
               },
             },
             {
-              name: "bottom_center",
+              name: "header_font_weight",
               selector: {
                 select: {
                   mode: "dropdown",
-                  options: ribbonSlotOptions,
+                  options: fontWeightOptions,
                 },
               },
             },
             {
-              name: "bottom_right",
+              name: "header_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "header_background_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "header_background_color_mode",
               selector: {
                 select: {
                   mode: "dropdown",
-                  options: ribbonSlotOptions,
+                  options: colourModeOptions,
+                },
+              },
+            },
+            {
+              name: "header_background_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "ribbon_background_radius",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 32,
+                  step: 1,
+                  mode: "slider",
                 },
               },
             },
@@ -1154,65 +1234,100 @@ class SimpleBandGraphCard extends HTMLElement {
                 },
               },
             },
+          ],
+        },
+        {
+          type: "expandable",
+          name: "footer",
+          title: "Footer",
+          flatten: true,
+          schema: [
             {
-              name: "top_ribbon_background_color",
+              name: "show_footer",
               selector: {
-                text: {},
+                boolean: {},
               },
             },
             {
-              name: "top_ribbon_background_color_mode",
+              name: "footer_left",
               selector: {
                 select: {
                   mode: "dropdown",
-                  options: colourModeOptions,
+                  options: ribbonSlotOptions,
                 },
               },
             },
             {
-              name: "top_ribbon_background_opacity",
-              selector: {
-                number: {
-                  min: 0,
-                  max: 1,
-                  step: 0.05,
-                  mode: "slider",
-                },
-              },
-            },
-            {
-              name: "bottom_ribbon_background_color",
-              selector: {
-                text: {},
-              },
-            },
-            {
-              name: "bottom_ribbon_background_color_mode",
+              name: "footer_center",
               selector: {
                 select: {
                   mode: "dropdown",
-                  options: colourModeOptions,
+                  options: ribbonSlotOptions,
                 },
               },
             },
             {
-              name: "bottom_ribbon_background_opacity",
+              name: "footer_right",
               selector: {
-                number: {
-                  min: 0,
-                  max: 1,
-                  step: 0.05,
-                  mode: "slider",
+                select: {
+                  mode: "dropdown",
+                  options: ribbonSlotOptions,
                 },
               },
             },
             {
-              name: "ribbon_background_radius",
+              name: "footer_font_size",
               selector: {
                 number: {
-                  min: 0,
+                  min: 8,
                   max: 32,
                   step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "footer_font_weight",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: fontWeightOptions,
+                },
+              },
+            },
+            {
+              name: "footer_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "footer_background_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "footer_background_color_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: colourModeOptions,
+                },
+              },
+            },
+            {
+              name: "footer_background_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
                   mode: "slider",
                 },
               },
@@ -1265,13 +1380,12 @@ class SimpleBandGraphCard extends HTMLElement {
           ],
         },
       ],
-
       computeLabel: (schema) => {
         const labels = {
           entity: "Entity",
           name: "Name",
           hours_to_show: "Hours to show",
-          height: "Card height",
+          height: "Fallback graph height",
           y_min: "Y-axis minimum",
           y_max: "Y-axis maximum",
           value_decimals: "Value decimal places",
@@ -1352,22 +1466,45 @@ class SimpleBandGraphCard extends HTMLElement {
           marker_label_background_mode: "Marker label background mode",
           marker_label_background_opacity: "Marker label background opacity",
 
+          show_header: "Show header",
+          header_left: "Header left",
+          header_center: "Header centre",
+          header_right: "Header right",
+          header_font_size: "Header text size",
+          header_font_weight: "Header text weight",
+          header_opacity: "Header text opacity",
+          header_background_color: "Header background colour",
+          header_background_color_mode: "Header background colour mode",
+          header_background_opacity: "Header background opacity",
+
+          show_footer: "Show footer",
+          footer_left: "Footer left",
+          footer_center: "Footer centre",
+          footer_right: "Footer right",
+          footer_font_size: "Footer text size",
+          footer_font_weight: "Footer text weight",
+          footer_opacity: "Footer text opacity",
+          footer_background_color: "Footer background colour",
+          footer_background_color_mode: "Footer background colour mode",
+          footer_background_opacity: "Footer background opacity",
+
+          custom_text: "Custom text",
+          duration_format: "Duration format",
+          ribbon_background_radius: "Header/footer background corner radius",
+
+          // Legacy names retained for backwards compatibility if surfaced.
           top_left: "Header left",
           top_center: "Header centre",
           top_right: "Header right",
           bottom_left: "Footer left",
           bottom_center: "Footer centre",
           bottom_right: "Footer right",
-          custom_text: "Custom text",
-          duration_format: "Duration format",
-
           top_ribbon_background_color: "Header background colour",
           top_ribbon_background_color_mode: "Header background colour mode",
           top_ribbon_background_opacity: "Header background opacity",
           bottom_ribbon_background_color: "Footer background colour",
           bottom_ribbon_background_color_mode: "Footer background colour mode",
           bottom_ribbon_background_opacity: "Footer background opacity",
-          ribbon_background_radius: "Ribbon background corner radius",
 
           history_refresh_interval: "History refresh interval",
           max_history_points: "Max history points",
@@ -1382,7 +1519,8 @@ class SimpleBandGraphCard extends HTMLElement {
         const helpers = {
           entity: "The numeric entity to plot.",
           hours_to_show: "How many hours of history to show.",
-          height: "The graph height in pixels.",
+          height:
+            "Fallback graph height in pixels. In resizable Sections layouts, grid rows can control the actual card height.",
           y_min: "The lowest value shown on the y-axis.",
           y_max: "The highest value shown on the y-axis.",
           value_decimals:
@@ -1432,7 +1570,7 @@ class SimpleBandGraphCard extends HTMLElement {
           background_opacity:
             "Opacity of the whole card background, from 0 to 1.",
           plot_background_color:
-            "CSS colour for the graph plotting area, such as var(--card-background-color), transparent, #222222, or rgba(0,0,0,0.2).",
+            "CSS colour for the graph plotting area, such as transparent, var(--card-background-color), #222222, or rgba(0,0,0,0.2).",
           plot_background_color_mode:
             "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the plot background transparent.",
           plot_background_opacity:
@@ -1495,50 +1633,87 @@ class SimpleBandGraphCard extends HTMLElement {
             "Static uses the chosen colour. Use band colour follows the marker value's band. No colour makes the labels transparent.",
           marker_label_opacity: "Opacity of marker label text, from 0 to 1.",
           marker_label_background_color:
-            "CSS colour for the background behind marker labels, such as var(--card-background-color), #222222, or rgba(0,0,0,0.2).",
+            "CSS colour for the background behind marker labels, such as #ffffff, var(--card-background-color), #222222, or rgba(0,0,0,0.2).",
           marker_label_background_mode:
-            "Card uses the card background colour. Static uses the chosen colour. Use band colour follows the marker value's band. No background makes it transparent.",
+            "Static uses the chosen colour. Card uses the card background colour. Use band colour follows the marker value's band. No background makes it transparent.",
           marker_label_background_opacity:
             "Opacity of the marker label background, from 0 to 1.",
 
+          show_header:
+            "Show or hide the header without clearing the configured header slots.",
+          header_left: "Choose what appears in the left position of the header.",
+          header_center:
+            "Choose what appears in the centre position of the header.",
+          header_right:
+            "Choose what appears in the right position of the header.",
+          header_font_size: "Text size for all header slots.",
+          header_font_weight: "Font weight for all header slots.",
+          header_opacity: "Opacity of header text, from 0 to 1.",
+          header_background_color:
+            "CSS colour for the header background, such as transparent, var(--card-background-color), #222222, or rgba(0,0,0,0.2).",
+          header_background_color_mode:
+            "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the header background transparent.",
+          header_background_opacity:
+            "Opacity of the header background, from 0 to 1.",
 
-          top_left: "Choose what appears in the left position of the header ribbon.",
-          top_center: "Choose what appears in the centre position of the header ribbon.",
-          top_right: "Choose what appears in the right position of the header ribbon.",
-          bottom_left: "Choose what appears in the left position of the footer ribbon.",
-          bottom_center: "Choose what appears in the centre position of the footer ribbon.",
-          bottom_right: "Choose what appears in the right position of the footer ribbon.",
+          show_footer:
+            "Show or hide the footer without clearing the configured footer slots.",
+          footer_left: "Choose what appears in the left position of the footer.",
+          footer_center:
+            "Choose what appears in the centre position of the footer.",
+          footer_right:
+            "Choose what appears in the right position of the footer.",
+          footer_font_size: "Text size for all footer slots.",
+          footer_font_weight: "Font weight for all footer slots.",
+          footer_opacity: "Opacity of footer text, from 0 to 1.",
+          footer_background_color:
+            "CSS colour for the footer background, such as transparent, var(--card-background-color), #222222, or rgba(0,0,0,0.2).",
+          footer_background_color_mode:
+            "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the footer background transparent.",
+          footer_background_opacity:
+            "Opacity of the footer background, from 0 to 1.",
+
           custom_text:
-            "Text used by any ribbon slot set to Custom text. This is shared by all custom slots.",
+            "Text used by any header or footer slot set to Custom text. This is shared by all custom slots.",
           duration_format:
             "Controls whether duration text is shown in short form, such as 24h, or long form, such as 24 hours.",
+          ribbon_background_radius:
+            "Corner radius for header and footer background areas.",
 
+          // Legacy helpers retained in case legacy fields are surfaced.
+          top_left: "Choose what appears in the left position of the header.",
+          top_center:
+            "Choose what appears in the centre position of the header.",
+          top_right: "Choose what appears in the right position of the header.",
+          bottom_left:
+            "Choose what appears in the left position of the footer.",
+          bottom_center:
+            "Choose what appears in the centre position of the footer.",
+          bottom_right:
+            "Choose what appears in the right position of the footer.",
           top_ribbon_background_color:
-            "CSS colour for the header ribbon background, such as transparent, var(--card-background-color), #222222, or rgba(0,0,0,0.2).",
+            "CSS colour for the header background, such as transparent, var(--card-background-color), #222222, or rgba(0,0,0,0.2).",
           top_ribbon_background_color_mode:
             "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the header background transparent.",
           top_ribbon_background_opacity:
-            "Opacity of the header ribbon background, from 0 to 1.",
+            "Opacity of the header background, from 0 to 1.",
           bottom_ribbon_background_color:
-            "CSS colour for the footer ribbon background, such as transparent, var(--card-background-color), #222222, or rgba(0,0,0,0.2).",
+            "CSS colour for the footer background, such as transparent, var(--card-background-color), #222222, or rgba(0,0,0,0.2).",
           bottom_ribbon_background_color_mode:
             "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the footer background transparent.",
           bottom_ribbon_background_opacity:
-            "Opacity of the footer ribbon background, from 0 to 1.",
-          ribbon_background_radius:
-            "Corner radius for header and footer ribbon background areas.",
+            "Opacity of the footer background, from 0 to 1.",
 
           history_refresh_interval: "How often the card refreshes history data.",
           max_history_points: "Use auto, or enter a number to limit plotted history points.",
           debug_level:
-            "Controls how much status information is shown when a ribbon slot uses debug or status.",
+            "Controls how much status information is shown when a header/footer slot uses debug or status.",
         };
 
         return helpers[schema.name];
       },
     };
   }
-
   /*
     --------------------------------------------------------------------------
     User configuration loading
@@ -1556,8 +1731,17 @@ class SimpleBandGraphCard extends HTMLElement {
       --------------------------------------------------------------------------
       Keep these grouped by feature area so new YAML options can be added in the
       right place and documented more easily.
+
+      The newer header/footer names are preferred for user-facing config, but
+      older top/bottom ribbon names are still supported for backwards
+      compatibility.
     */
     this.config = {
+      // Allow unknown/future config options through for compatibility.
+      // Known options below deliberately override this raw copy with resolved
+      // defaults and backwards-compatible aliases.
+      ...config,
+
       // Core card and data range settings
       name: config.name || config.entity,
       height: config.height ?? 180,
@@ -1583,51 +1767,121 @@ class SimpleBandGraphCard extends HTMLElement {
       plot_background_color_mode: config.plot_background_color_mode ?? "none",
       plot_background_radius: config.plot_background_radius ?? 8,
 
-      // Top ribbon background settings
-      top_ribbon_background_color:
-        config.top_ribbon_background_color ?? "transparent",
-      top_ribbon_background_opacity:
-        config.top_ribbon_background_opacity ?? 0,
-      top_ribbon_background_color_mode:
-        config.top_ribbon_background_color_mode ?? "static",
+      // Header/footer visibility settings
+      show_header: config.show_header ?? true,
+      show_footer: config.show_footer ?? true,
 
-      // Bottom ribbon background settings
+      // Header background settings
+      header_background_color:
+        config.header_background_color ??
+        config.top_ribbon_background_color ??
+        "transparent",
+      header_background_opacity:
+        config.header_background_opacity ??
+        config.top_ribbon_background_opacity ??
+        0,
+      header_background_color_mode:
+        config.header_background_color_mode ??
+        config.top_ribbon_background_color_mode ??
+        "static",
+
+      // Footer background settings
+      footer_background_color:
+        config.footer_background_color ??
+        config.bottom_ribbon_background_color ??
+        "transparent",
+      footer_background_opacity:
+        config.footer_background_opacity ??
+        config.bottom_ribbon_background_opacity ??
+        0,
+      footer_background_color_mode:
+        config.footer_background_color_mode ??
+        config.bottom_ribbon_background_color_mode ??
+        "static",
+
+      // Legacy top/bottom ribbon background names used internally for now.
+      top_ribbon_background_color:
+        config.header_background_color ??
+        config.top_ribbon_background_color ??
+        "transparent",
+      top_ribbon_background_opacity:
+        config.header_background_opacity ??
+        config.top_ribbon_background_opacity ??
+        0,
+      top_ribbon_background_color_mode:
+        config.header_background_color_mode ??
+        config.top_ribbon_background_color_mode ??
+        "static",
+
       bottom_ribbon_background_color:
-        config.bottom_ribbon_background_color ?? "transparent",
+        config.footer_background_color ??
+        config.bottom_ribbon_background_color ??
+        "transparent",
       bottom_ribbon_background_opacity:
-        config.bottom_ribbon_background_opacity ?? 0,
+        config.footer_background_opacity ??
+        config.bottom_ribbon_background_opacity ??
+        0,
       bottom_ribbon_background_color_mode:
-        config.bottom_ribbon_background_color_mode ?? "static",
+        config.footer_background_color_mode ??
+        config.bottom_ribbon_background_color_mode ??
+        "static",
 
       ribbon_background_radius: config.ribbon_background_radius ?? 8,
       ribbon_color_mode: config.ribbon_color_mode ?? "static",
 
-      // Ribbon slot default text styling
-      // These set predictable defaults for the six ribbon positions.
-      // More specific per-slot styling can still be applied through ribbon_styles.
-      top_left_font_size: config.top_left_font_size ?? 16,
-      top_center_font_size: config.top_center_font_size ?? 16,
-      top_right_font_size: config.top_right_font_size ?? 16,
+      // Shared header/footer text styling.
+      // These are the preferred UI-facing controls.
+      header_font_size: config.header_font_size ?? 16,
+      header_font_weight: config.header_font_weight ?? 600,
+      header_opacity: config.header_opacity ?? 1,
 
-      bottom_left_font_size: config.bottom_left_font_size ?? 12,
-      bottom_center_font_size: config.bottom_center_font_size ?? 12,
-      bottom_right_font_size: config.bottom_right_font_size ?? 12,
+      footer_font_size: config.footer_font_size ?? 12,
+      footer_font_weight: config.footer_font_weight ?? 500,
+      footer_opacity: config.footer_opacity ?? 0.8,
 
-      top_left_font_weight: config.top_left_font_weight ?? 600,
-      top_center_font_weight: config.top_center_font_weight ?? 600,
-      top_right_font_weight: config.top_right_font_weight ?? 600,
+      // Per-slot ribbon text styling.
+      // Legacy per-slot options still override shared header/footer styling.
+      top_left_font_size:
+        config.top_left_font_size ?? config.header_font_size ?? 16,
+      top_center_font_size:
+        config.top_center_font_size ?? config.header_font_size ?? 16,
+      top_right_font_size:
+        config.top_right_font_size ?? config.header_font_size ?? 16,
 
-      bottom_left_font_weight: config.bottom_left_font_weight ?? 500,
-      bottom_center_font_weight: config.bottom_center_font_weight ?? 500,
-      bottom_right_font_weight: config.bottom_right_font_weight ?? 500,
+      bottom_left_font_size:
+        config.bottom_left_font_size ?? config.footer_font_size ?? 12,
+      bottom_center_font_size:
+        config.bottom_center_font_size ?? config.footer_font_size ?? 12,
+      bottom_right_font_size:
+        config.bottom_right_font_size ?? config.footer_font_size ?? 12,
 
-      top_left_opacity: config.top_left_opacity ?? 1,
-      top_center_opacity: config.top_center_opacity ?? 1,
-      top_right_opacity: config.top_right_opacity ?? 1,
+      top_left_font_weight:
+        config.top_left_font_weight ?? config.header_font_weight ?? 600,
+      top_center_font_weight:
+        config.top_center_font_weight ?? config.header_font_weight ?? 600,
+      top_right_font_weight:
+        config.top_right_font_weight ?? config.header_font_weight ?? 600,
 
-      bottom_left_opacity: config.bottom_left_opacity ?? 0.8,
-      bottom_center_opacity: config.bottom_center_opacity ?? 0.8,
-      bottom_right_opacity: config.bottom_right_opacity ?? 0.8,
+      bottom_left_font_weight:
+        config.bottom_left_font_weight ?? config.footer_font_weight ?? 500,
+      bottom_center_font_weight:
+        config.bottom_center_font_weight ?? config.footer_font_weight ?? 500,
+      bottom_right_font_weight:
+        config.bottom_right_font_weight ?? config.footer_font_weight ?? 500,
+
+      top_left_opacity:
+        config.top_left_opacity ?? config.header_opacity ?? 1,
+      top_center_opacity:
+        config.top_center_opacity ?? config.header_opacity ?? 1,
+      top_right_opacity:
+        config.top_right_opacity ?? config.header_opacity ?? 1,
+
+      bottom_left_opacity:
+        config.bottom_left_opacity ?? config.footer_opacity ?? 0.8,
+      bottom_center_opacity:
+        config.bottom_center_opacity ?? config.footer_opacity ?? 0.8,
+      bottom_right_opacity:
+        config.bottom_right_opacity ?? config.footer_opacity ?? 0.8,
 
       // History fetching and downsampling settings
       max_history_points: config.max_history_points ?? "auto",
@@ -1738,13 +1992,23 @@ class SimpleBandGraphCard extends HTMLElement {
       y_axis_label_opacity:
         config.y_axis_label_opacity ?? config.axis_label_opacity ?? 0.8,
 
-      // Top/bottom ribbon slot settings
-      top_left: config.top_left ?? "name",
-      top_center: config.top_center ?? "none",
-      top_right: config.top_right ?? "current",
-      bottom_left: config.bottom_left ?? "none",
-      bottom_center: config.bottom_center ?? "none",
-      bottom_right: config.bottom_right ?? "none",
+      // Preferred header/footer slot settings
+      header_left: config.header_left ?? config.top_left ?? "name",
+      header_center: config.header_center ?? config.top_center ?? "none",
+      header_right: config.header_right ?? config.top_right ?? "current",
+
+      footer_left: config.footer_left ?? config.bottom_left ?? "none",
+      footer_center: config.footer_center ?? config.bottom_center ?? "none",
+      footer_right: config.footer_right ?? config.bottom_right ?? "none",
+
+      // Legacy top/bottom ribbon slot settings used internally for now.
+      top_left: config.header_left ?? config.top_left ?? "name",
+      top_center: config.header_center ?? config.top_center ?? "none",
+      top_right: config.header_right ?? config.top_right ?? "current",
+
+      bottom_left: config.footer_left ?? config.bottom_left ?? "none",
+      bottom_center: config.footer_center ?? config.bottom_center ?? "none",
+      bottom_right: config.footer_right ?? config.bottom_right ?? "none",
 
       // Extra ribbon slot content
       custom_text: config.custom_text ?? "",
@@ -1771,9 +2035,6 @@ class SimpleBandGraphCard extends HTMLElement {
       hide_recent_min: config.hide_recent_min ?? config.hide_recent_extrema ?? true,
       hide_recent_max: config.hide_recent_max ?? config.hide_recent_extrema ?? false,
       recent_extrema_minutes: config.recent_extrema_minutes ?? 30,
-
-      // Allow unknown/future config options through for compatibility.
-      ...config,
     };
 
     /*
@@ -1821,23 +2082,61 @@ class SimpleBandGraphCard extends HTMLElement {
       Backwards-compatible current_position handling
       --------------------------------------------------------------------------
       Older YAML could place the current value using current_position. This maps
-      that setting onto the newer ribbon slot system.
+      that setting onto the newer header/footer slot system while also keeping the
+      legacy top/bottom slot names in sync for the current renderer.
     */
     if (this.config.current_position) {
-      this.config.top_left = "name";
-      this.config.top_center = "none";
-      this.config.top_right = "none";
-      this.config.bottom_left = "none";
-      this.config.bottom_center = "none";
-      this.config.bottom_right = "none";
+      const currentPosition = String(this.config.current_position).replace("-", "_");
+
+      this.config.header_left = "name";
+      this.config.header_center = "none";
+      this.config.header_right = "none";
+      this.config.footer_left = "none";
+      this.config.footer_center = "none";
+      this.config.footer_right = "none";
 
       if (this.config.show_current && this.config.current_position !== "hidden") {
-        this.config[this.config.current_position.replace("-", "_")] = "current";
+        if (
+          [
+            "header_left",
+            "header_center",
+            "header_right",
+            "footer_left",
+            "footer_center",
+            "footer_right",
+          ].includes(currentPosition)
+        ) {
+          this.config[currentPosition] = "current";
+        } else if (
+          [
+            "top_left",
+            "top_center",
+            "top_right",
+            "bottom_left",
+            "bottom_center",
+            "bottom_right",
+          ].includes(currentPosition)
+        ) {
+          const mappedPosition = currentPosition
+            .replace("top_", "header_")
+            .replace("bottom_", "footer_");
+
+          this.config[mappedPosition] = "current";
+        }
       }
 
-      if (!["top-left", "bottom-left"].includes(this.config.current_position)) {
-        this.config.top_left = "name";
+      if (!["top-left", "bottom-left", "header-left", "footer-left"].includes(this.config.current_position)) {
+        this.config.header_left = "name";
       }
+
+      // Keep legacy internal slot names aligned with the newer header/footer names.
+      this.config.top_left = this.config.header_left;
+      this.config.top_center = this.config.header_center;
+      this.config.top_right = this.config.header_right;
+
+      this.config.bottom_left = this.config.footer_left;
+      this.config.bottom_center = this.config.footer_center;
+      this.config.bottom_right = this.config.footer_right;
     }
     /*
       --------------------------------------------------------------------------
@@ -3675,8 +3974,12 @@ class SimpleBandGraphCard extends HTMLElement {
       --------------------------------------------------------------------------
       Ribbon layout
       --------------------------------------------------------------------------
-      Renders top/bottom ribbons using only the occupied slots, adjusting the grid
-      template so left/centre/right combinations stay balanced.
+      Renders header/footer ribbons using only the occupied slots, adjusting the
+      grid template so left/centre/right combinations stay balanced.
+
+      show_header and show_footer skip rendering without clearing the configured
+      slot values, so users can hide a header/footer and later restore it without
+      losing their layout choices.
     */
     const renderRibbon = (left, center, right, marginTop = 0, prefix = "top") => {
       const hasLeft = (slotContent[left] ?? "") !== "";
@@ -3761,21 +4064,25 @@ class SimpleBandGraphCard extends HTMLElement {
       `;
     };
 
-    const topRibbonHtml = renderRibbon(
-      this.config.top_left,
-      this.config.top_center,
-      this.config.top_right,
-      0,
-      "top"
-    );
+    const topRibbonHtml = this.config.show_header
+      ? renderRibbon(
+          this.config.top_left,
+          this.config.top_center,
+          this.config.top_right,
+          0,
+          "top"
+        )
+      : "";
 
-    const bottomRibbonHtml = renderRibbon(
-      this.config.bottom_left,
-      this.config.bottom_center,
-      this.config.bottom_right,
-      6,
-      "bottom"
-    );
+    const bottomRibbonHtml = this.config.show_footer
+      ? renderRibbon(
+          this.config.bottom_left,
+          this.config.bottom_center,
+          this.config.bottom_right,
+          6,
+          "bottom"
+        )
+      : "";
 
     /*
       --------------------------------------------------------------------------
