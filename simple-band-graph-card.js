@@ -3514,19 +3514,34 @@ class SimpleBandGraphCard extends HTMLElement {
       Y-axis labels use the dedicated y_axis_label_* settings, which are resolved
       from either modern y_axis_label_* YAML or legacy shared axis_label_* YAML in
       setConfig.
+
+      When both axes are visible, the axis lines overlap very slightly at the
+      plot corner so thicker lines form a clean joined edge.
     */
     const yAxisX =
       yAxisPosition === "right" ? padding.left + plotWidth : padding.left;
+
+    const xAxisLineWidth = Number(this.config.x_axis_line_width) || 1;
+    const yAxisCornerOverlap = this.config.show_x_axis ? xAxisLineWidth / 2 : 0;
+
+    const yAxisY1 =
+      padding.top - (xAxisPosition === "top" ? yAxisCornerOverlap : 0);
+
+    const yAxisY2 =
+      padding.top +
+      plotHeight +
+      (xAxisPosition === "bottom" ? yAxisCornerOverlap : 0);
 
     const yAxisHtml = this.config.show_y_axis
       ? `
         <line
           x1="${yAxisX}"
-          y1="${padding.top}"
+          y1="${yAxisY1}"
           x2="${yAxisX}"
-          y2="${padding.top + plotHeight}"
+          y2="${yAxisY2}"
           stroke="${cssValue(this.config.y_axis_line_color, "var(--divider-color)")}"
           stroke-width="${cssValue(this.config.y_axis_line_width, 1)}"
+          stroke-linecap="butt"
           opacity="${cssValue(this.config.y_axis_line_opacity, 1)}"
         ></line>
       `
@@ -3560,7 +3575,6 @@ class SimpleBandGraphCard extends HTMLElement {
           })
           .join("")
       : "";
-
     /*
       --------------------------------------------------------------------------
       Band background rectangles, separators, and band labels
@@ -3957,13 +3971,27 @@ class SimpleBandGraphCard extends HTMLElement {
       --------------------------------------------------------------------------
       Renders the horizontal time axis line and its time labels.
 
-      X-axis labels now use the dedicated x_axis_label_* settings rather than the
+      X-axis labels use the dedicated x_axis_label_* settings rather than the
       older shared axis_label_* settings.
+
+      When both axes are visible, the axis lines overlap very slightly at the
+      plot corner so thicker lines form a clean joined edge.
     */
     const xAxisY =
       xAxisPosition === "top" ? padding.top : padding.top + plotHeight;
 
     const xAxisLabelY = xAxisPosition === "top" ? xAxisY - 14 : xAxisY + 18;
+
+    const yAxisLineWidth = Number(this.config.y_axis_line_width) || 1;
+    const xAxisCornerOverlap = this.config.show_y_axis ? yAxisLineWidth / 2 : 0;
+
+    const xAxisX1 =
+      padding.left - (yAxisPosition === "left" ? xAxisCornerOverlap : 0);
+
+    const xAxisX2 =
+      padding.left +
+      plotWidth +
+      (yAxisPosition === "right" ? xAxisCornerOverlap : 0);
 
     const xAxisLabelsHtml = this.config.show_x_axis_labels
       ? xTickValues
@@ -3995,17 +4023,17 @@ class SimpleBandGraphCard extends HTMLElement {
     const xAxisHtml = this.config.show_x_axis
       ? `
         <line
-          x1="${padding.left}"
+          x1="${xAxisX1}"
           y1="${xAxisY}"
-          x2="${padding.left + plotWidth}"
+          x2="${xAxisX2}"
           y2="${xAxisY}"
           stroke="${cssValue(this.config.x_axis_line_color, "var(--divider-color)")}"
           stroke-width="${cssValue(this.config.x_axis_line_width, 1)}"
+          stroke-linecap="butt"
           opacity="${cssValue(this.config.x_axis_line_opacity, 1)}"
         ></line>
       `
       : "";
-
     /*
       --------------------------------------------------------------------------
       Line rendering
