@@ -1869,7 +1869,13 @@ class SimpleBandGraphCard extends HTMLElement {
     // Responsive layout state
     this._cardWidth = 600;
     this._cardHeight = null;
+
+    this._plotWidth = 600;
+    this._plotHeight = Number(this.config.height) || 180;
+
     this._resizeObserver = null;
+    this._plotResizeObserver = null;
+    this._resizeRenderQueued = false;
   }
 
   /*
@@ -1884,8 +1890,11 @@ class SimpleBandGraphCard extends HTMLElement {
     --------------------------------------------------------------------------
     Responsive layout lifecycle
     --------------------------------------------------------------------------
-    Watches the rendered card size so SVG layout calculations can use the real
-    available dashboard width and height instead of a fixed design size.
+    Watches the host card size and, once rendered, the actual plot area.
+
+    The host measurement gives a reliable width fallback. The plot-area
+    measurement is the important one for native resizing, because it measures the
+    real space left between the top and bottom ribbons.
   */
   connectedCallback() {
     if (this._resizeObserver) return;
@@ -1911,8 +1920,8 @@ class SimpleBandGraphCard extends HTMLElement {
         this._cardHeight = measuredHeight;
       }
 
-      if ((widthChanged || heightChanged) && this._hass) {
-        this.render();
+      if (widthChanged || heightChanged) {
+        this._scheduleResponsiveRender();
       }
     });
 
@@ -1924,6 +1933,65 @@ class SimpleBandGraphCard extends HTMLElement {
       this._resizeObserver.disconnect();
       this._resizeObserver = null;
     }
+
+    if (this._plotResizeObserver) {
+      this._plotResizeObserver.disconnect();
+      this._plotResizeObserver = null;
+    }
+
+    this._resizeRenderQueued = false;
+  }
+
+  _scheduleResponsiveRender() {
+    if (!this._hass || this._resizeRenderQueued) return;
+
+    this._resizeRenderQueued = true;
+
+    requestAnimationFrame(() => {
+      this._resizeRenderQueued = false;
+
+      if (this._hass) {
+        this.render();
+      }
+    });
+  }
+
+  _observePlotArea() {
+    const plotWrap = this.querySelector(".sbgc-plot-wrap");
+
+    if (!plotWrap) return;
+
+    if (this._plotResizeObserver) {
+      this._plotResizeObserver.disconnect();
+    }
+
+    this._plotResizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0];
+
+      const measuredPlotWidth = Math.round(entry?.contentRect?.width || 0);
+      const measuredPlotHeight = Math.round(entry?.contentRect?.height || 0);
+
+      const plotWidthChanged =
+        measuredPlotWidth && Math.abs(measuredPlotWidth - this._plotWidth) >= 2;
+
+      const plotHeightChanged =
+        measuredPlotHeight &&
+        Math.abs(measuredPlotHeight - this._plotHeight) >= 2;
+
+      if (plotWidthChanged) {
+        this._plotWidth = measuredPlotWidth;
+      }
+
+      if (plotHeightChanged) {
+        this._plotHeight = measuredPlotHeight;
+      }
+
+      if (plotWidthChanged || plotHeightChanged) {
+        this._scheduleResponsiveRender();
+      }
+    });
+
+    this._plotResizeObserver.observe(plotWrap);
   }
 
   set hass(hass) {
@@ -2133,61 +2201,33 @@ class SimpleBandGraphCard extends HTMLElement {
     const unit = state?.attributes?.unit_of_measurement || "";
 
     /*
-      Use the measured card width from ResizeObserver when available.
+      Use the measured plot area when available.
 
-      The lower bound avoids collapsed/zero-width renders during dashboard
-      loading, while still allowing the card to adapt in narrow sections layouts.
-    */
-    const measuredWidth = Number(this._cardWidth);
-    const width = Number.isFinite(measuredWidth)
-      ? Math.max(260, Math.round(measuredWidth))
-      : 600;
+      The plot wrapper is laid out by CSS between the top and bottom ribbons, then
+      measured with ResizeObserver. This means the SVG viewBox can match the real
+      space available to the graph, rather than guessing based on card height or
+      fixed chrome estimates.
 
-    /*
-      Height uses the configured height as a legacy/fallback minimum, but can
-      expand when Home Assistant gives the card more vertical space in a
-      resizable Sections layout.
-
-      The chrome estimate accounts for card padding, SVG margin, and the top and
-      bottom ribbon areas. This lets the SVG fill the remaining useful space
-      instead of leaving the graph pinned to the top of a taller card.
+      The configured height is now treated as a legacy/fallback minimum for older
+      layouts or early renders before the plot wrapper has been measured.
     */
     const configuredHeight = Number(this.config.height) || 180;
-    const measuredHeight = Number(this._cardHeight);
 
-    const hasTopRibbon =
-      this.config.top_left !== "none" ||
-      this.config.top_center !== "none" ||
-      this.config.top_right !== "none";
+    const measuredPlotWidth = Number(this._plotWidth);
+    const measuredPlotHeight = Number(this._plotHeight);
 
-    const hasBottomRibbon =
-      this.config.bottom_left !== "none" ||
-      this.config.bottom_center !== "none" ||
-      this.config.bottom_right !== "none";
+    const measuredCardWidth = Number(this._cardWidth);
 
-    const cardPaddingY = 32;
-    const svgTopMargin = hasTopRibbon ? 12 : 0;
-    const ribbonGap = hasBottomRibbon ? 12 : 0;
+    const width = Number.isFinite(measuredPlotWidth) && measuredPlotWidth > 0
+      ? Math.max(260, Math.round(measuredPlotWidth))
+      : Number.isFinite(measuredCardWidth) && measuredCardWidth > 0
+        ? Math.max(260, Math.round(measuredCardWidth))
+        : 600;
 
-    const estimatedTopRibbonHeight = hasTopRibbon ? 28 : 0;
-    const estimatedBottomRibbonHeight = hasBottomRibbon ? 48 : 0;
-
-    const cardChromeHeightEstimate =
-      cardPaddingY +
-      svgTopMargin +
-      ribbonGap +
-      estimatedTopRibbonHeight +
-      estimatedBottomRibbonHeight;
-
-    const availableMeasuredGraphHeight =
-      Number.isFinite(measuredHeight) && measuredHeight > 0
-        ? measuredHeight - cardChromeHeightEstimate
+    const height =
+      Number.isFinite(measuredPlotHeight) && measuredPlotHeight > 0
+        ? Math.max(60, Math.round(measuredPlotHeight))
         : configuredHeight;
-
-    const height = Math.max(
-      configuredHeight,
-      Math.round(availableMeasuredGraphHeight || configuredHeight)
-    );
     /*
       --------------------------------------------------------------------------
       General render helpers
@@ -3686,14 +3726,18 @@ class SimpleBandGraphCard extends HTMLElement {
       then line and markers.
 
       The host/card/wrapper styles allow the card to participate properly in
-      Home Assistant's resizable Sections layout while preserving the configured
-      SVG graph height as a fallback for older layouts.
+      Home Assistant's resizable Sections layout.
+
+      The plot wrapper is the important responsive layer: it fills the remaining
+      space between the top and bottom ribbons, then ResizeObserver measures it
+      so the SVG viewBox can be recalculated using the real plot area size.
     */
     this.innerHTML = `
       <style>
         :host {
           display: block;
           height: 100%;
+          min-height: 0;
         }
 
         ha-card {
@@ -3708,13 +3752,22 @@ class SimpleBandGraphCard extends HTMLElement {
           padding: 16px;
           display: flex;
           flex-direction: column;
+          min-height: 0;
+        }
+
+        .sbgc-plot-wrap {
+          flex: 1 1 0;
+          min-height: 60px;
+          margin-top: 12px;
+          min-width: 0;
+          overflow: visible;
         }
 
         .sbgc-svg {
           width: 100%;
-          height: ${height}px;
+          height: 100%;
           display: block;
-          margin-top: 12px;
+          min-width: 0;
           min-height: 0;
         }
       </style>
@@ -3723,55 +3776,59 @@ class SimpleBandGraphCard extends HTMLElement {
         <div class="sbgc-inner">
           ${topRibbonHtml}
 
-          <svg
-            class="sbgc-svg"
-            viewBox="0 0 ${width} ${height}"
-            preserveAspectRatio="none"
-          >
-            <rect
-              x="${padding.left}"
-              y="${padding.top}"
-              width="${plotWidth}"
-              height="${plotHeight}"
-              rx="${Number(this.config.plot_background_radius) || 0}"
-              fill="${plotBackground.colour}"
-            ></rect>
+          <div class="sbgc-plot-wrap">
+            <svg
+              class="sbgc-svg"
+              viewBox="0 0 ${width} ${height}"
+              preserveAspectRatio="none"
+            >
+              <rect
+                x="${padding.left}"
+                y="${padding.top}"
+                width="${plotWidth}"
+                height="${plotHeight}"
+                rx="${Number(this.config.plot_background_radius) || 0}"
+                fill="${plotBackground.colour}"
+              ></rect>
 
-            ${yGridHtml}
-            ${xGridHtml}
+              ${yGridHtml}
+              ${xGridHtml}
 
-            ${yAxisLabelsHtml}
+              ${yAxisLabelsHtml}
 
-            ${bands}
+              ${bands}
 
-            ${yAxisHtml}
-            ${xAxisHtml}
+              ${yAxisHtml}
+              ${xAxisHtml}
 
-            ${
-              points
-                ? `
-                  ${lineHtml}
-                  ${extremaMarkers}
-                  ${latestMarker}
-                `
-                : `
-                  <text
-                    x="${padding.left + plotWidth / 2}"
-                    y="${padding.top + plotHeight / 2}"
-                    text-anchor="middle"
-                    font-size="13"
-                    fill="var(--secondary-text-color)"
-                  >
-                    No data
-                  </text>
-                `
-            }
-          </svg>
+              ${
+                points
+                  ? `
+                    ${lineHtml}
+                    ${extremaMarkers}
+                    ${latestMarker}
+                  `
+                  : `
+                    <text
+                      x="${padding.left + plotWidth / 2}"
+                      y="${padding.top + plotHeight / 2}"
+                      text-anchor="middle"
+                      font-size="13"
+                      fill="var(--secondary-text-color)"
+                    >
+                      No data
+                    </text>
+                  `
+              }
+            </svg>
+          </div>
 
           ${bottomRibbonHtml}
         </div>
       </ha-card>
     `;
+
+    this._observePlotArea();
 
     this._lastRenderDurationMs = Math.round(performance.now() - renderStarted);
     this._renderCount += 1;
@@ -3792,10 +3849,10 @@ class SimpleBandGraphCard extends HTMLElement {
     return {
       columns: 6,
       rows: 4,
-      min_columns: 3,
-      min_rows: 3,
+      min_columns: 1,
+      min_rows: 1,
       max_columns: 12,
-      max_rows: 8,
+      max_rows: 12,
     };
   }
 
@@ -3803,7 +3860,6 @@ class SimpleBandGraphCard extends HTMLElement {
     return 4;
   }
 }
-
 /*
   ============================================================================
   CUSTOM ELEMENT REGISTRATION
