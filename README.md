@@ -12,18 +12,25 @@ It is designed for sensors where coloured context bands make the graph easier to
 
 ## Features
 
-- Display recent Home Assistant entity history as a clean line graph
-- Define custom coloured threshold bands with configurable labels
+- Display recent Home Assistant entity history as a clean, responsive line graph
+- Define custom coloured threshold bands with configurable labels and messages
 - Set graph duration and Y-axis range with `hours_to_show`, `y_min` and `y_max`
-- Configure top and bottom ribbon content, including name, current value, band, min/max, debug text, custom text, graph duration and band-specific messages
-- Style ribbon text, backgrounds and band-driven colours
-- Configure separate backgrounds for the card, plot area, top ribbon and bottom ribbon
-- Optionally drive card, plot or ribbon background colours from the current band
+- Resize cleanly in Home Assistant Sections layouts, including compact one-row status cards
+- Configure header and footer content slots, including name, current value, band, min/max, debug text, custom text, graph duration and band-specific messages
+- Show or hide the header and footer independently
+- Style header/footer text, backgrounds and band-driven colours
+- Configure separate backgrounds for the card and plot area
+- Optionally drive card, plot, header or footer background colours from the current band
+- Clip bands and line content to the rounded plot area
 - Show, hide and position band labels inside or outside the graph area
+- Add optional band separator lines with configurable colour, width, opacity and line style
 - Show optional latest, minimum and maximum value markers with configurable labels
-- Configure X/Y axes, tick labels and optional grid lines
+- Configure X/Y axis lines and labels independently
+- Configure axis line colour, width and opacity separately for X and Y axes
+- Add optional grid lines with solid, dashed or dotted styles
 - Customise graph line colour, width and opacity
 - Use `line_color_mode: band` to colour the graph line by threshold band
+- Add standard Home Assistant card interactions with `tap_action`, `hold_action` and `double_tap_action`
 - Automatically downsample large history responses for better performance
 - Show optional debug and performance diagnostics
 
@@ -81,20 +88,23 @@ Simple Band Graph Card includes a Home Assistant visual editor for the most comm
 
 The visual editor can configure:
 
-- Entity, name, history window, graph height and value decimal places
+- Entity, name, history window, fallback graph height and value decimal places
 - Y-axis range
-- X/Y axes, tick labels and grid lines
+- X/Y axis lines, tick labels, positions and label styling
+- Separate X/Y axis line colour, width and opacity
+- Grid visibility, colour, width, opacity and line style
 - Card and plot backgrounds
-- Band visibility, label display and band label styling
+- Band visibility, band labels and band label styling
+- Band separator visibility, colour, width, opacity and style
 - Raw band definitions
 - Line colour, width, opacity and band-driven line colouring
 - Current/latest, minimum and maximum markers
 - Marker label text and background styling
-- Top and bottom ribbon slot content
-- Header/footer ribbon backgrounds
+- Header and footer visibility, slot content, text styling and backgrounds
+- Standard card interactions
 - Basic debug and history refresh settings
 
-Some advanced YAML options, especially detailed per-slot ribbon text overrides, remain YAML-only for now.
+Some advanced YAML options, especially detailed per-slot header/footer text overrides, remain YAML-only for now.
 
 ## Examples
 
@@ -184,6 +194,7 @@ bands:
   - from: 1500
     to: 2000
     color: "#e74c3c"
+</details>
 
 <details>
 <summary>Ribbon message example</summary>
@@ -836,17 +847,19 @@ If a marker value is outside all configured bands, `marker_label_color_mode: ban
 | `background_color` | `var(--card-background-color)` | Outer card background colour. |
 | `background_opacity` | `1` | Outer card background opacity. |
 | `background_color_mode` | `static` | Options: `static`, `band`, `none`. |
-| `plot_background_color` | `var(--card-background-color)` | Plot area background colour. |
-| `plot_background_opacity` | `0.35` | Plot area background opacity. |
-| `plot_background_color_mode` | `static` | Options: `static`, `band`, `none`. |
-| `plot_background_radius` | `8` | Plot area background corner radius. |
-| `top_ribbon_background_color` | `transparent` | Top ribbon background colour. |
-| `top_ribbon_background_opacity` | `0` | Top ribbon background opacity. |
-| `top_ribbon_background_color_mode` | `static` | Options: `static`, `band`, `none`. |
-| `bottom_ribbon_background_color` | `transparent` | Bottom ribbon background colour. |
-| `bottom_ribbon_background_opacity` | `0` | Bottom ribbon background opacity. |
-| `bottom_ribbon_background_color_mode` | `static` | Options: `static`, `band`, `none`. |
-| `ribbon_background_radius` | `8` | Ribbon background corner radius. |
+| `plot_background_color` | `transparent` | Plot area background colour. |
+| `plot_background_opacity` | `0` | Plot area background opacity. |
+| `plot_background_color_mode` | `none` | Options: `static`, `band`, `none`. |
+| `plot_background_radius` | `8` | Plot area background corner radius. Bands and line content are clipped to this rounded plot shape. |
+| `header_background_color` | `transparent` | Header background colour. |
+| `header_background_opacity` | `0` | Header background opacity. |
+| `header_background_color_mode` | `static` | Options: `static`, `band`, `none`. |
+| `footer_background_color` | `transparent` | Footer background colour. |
+| `footer_background_opacity` | `0` | Footer background opacity. |
+| `footer_background_color_mode` | `static` | Options: `static`, `band`, `none`. |
+| `ribbon_background_radius` | `8` | Header/footer background corner radius. |
+
+Legacy `top_ribbon_background_*` and `bottom_ribbon_background_*` options are still supported for backwards compatibility, but `header_background_*` and `footer_background_*` are preferred for new YAML.
 
 ### Band label options
 
@@ -875,6 +888,28 @@ Band label modes:
 | `threshold` | `Good 400+` |
 | `range` | `Good 400–800` |
 
+### Band separator options
+
+Band separators draw horizontal lines at internal band thresholds. They are useful when you want the threshold boundaries to be visible without enabling regular grid lines.
+
+| Option | Default | Description |
+|---|---:|---|
+| `show_band_separators` | `false` | Draw separator lines between adjacent bands. |
+| `band_separator_color` | `var(--divider-color)` | Band separator line colour. |
+| `band_separator_width` | `1` | Band separator line width. |
+| `band_separator_opacity` | `0.5` | Band separator opacity. |
+| `band_separator_style` | `dashed` | Separator style. Options: `solid`, `dashed`, `dotted`. |
+
+Example:
+
+```yaml
+show_band_separators: true
+band_separator_color: "#111111"
+band_separator_width: 2
+band_separator_opacity: 0.45
+band_separator_style: dashed
+```
+
 ### Line options
 
 | Option | Default | Description |
@@ -897,6 +932,8 @@ line_opacity: 1
 
 ### Axis options
 
+X-axis and Y-axis lines are controlled separately from their labels. For example, you can hide the axis line while keeping the labels visible.
+
 | Option | Default | Description |
 |---|---:|---|
 | `show_x_axis` | `true` | Show or hide the X-axis line. |
@@ -904,6 +941,9 @@ line_opacity: 1
 | `x_axis_position` | `bottom` | X-axis position. Options: `bottom`, `top`. |
 | `x_axis_label_mode` | `relative` | X-axis label mode. Options: `relative`, `time`. |
 | `x_axis_ticks` | `3` | Number of X-axis tick labels. |
+| `x_axis_line_color` | `var(--divider-color)` | X-axis line colour. |
+| `x_axis_line_width` | `1` | X-axis line width. |
+| `x_axis_line_opacity` | `1` | X-axis line opacity. |
 | `x_axis_label_size` | `11` | X-axis label font size. |
 | `x_axis_label_weight` | `400` | X-axis label font weight. |
 | `x_axis_label_color` | `var(--secondary-text-color)` | X-axis label colour. |
@@ -913,11 +953,16 @@ line_opacity: 1
 | `show_y_axis_labels` | `true` | Show or hide Y-axis labels. |
 | `y_axis_position` | `left` | Y-axis position. Options: `left`, `right`. |
 | `y_axis_ticks` | `2` | Number of Y-axis tick labels. |
+| `y_axis_line_color` | `var(--divider-color)` | Y-axis line colour. |
+| `y_axis_line_width` | `1` | Y-axis line width. |
+| `y_axis_line_opacity` | `1` | Y-axis line opacity. |
 | `y_axis_label_size` | `11` | Y-axis label font size. |
 | `y_axis_label_weight` | `400` | Y-axis label font weight. |
 | `y_axis_label_color` | `var(--secondary-text-color)` | Y-axis label colour. |
 | `y_axis_label_color_mode` | `static` | Options: `static`, `band`, `none`. |
 | `y_axis_label_opacity` | `0.8` | Y-axis label opacity. |
+
+When both axis lines are visible, the card slightly overlaps the line ends so thicker X/Y axes form a clean joined corner.
 
 Legacy shared axis label options are still supported for backwards compatibility:
 
@@ -938,34 +983,42 @@ Legacy shared axis label options are still supported for backwards compatibility
 | `grid_color` | `var(--divider-color)` | Grid line colour. |
 | `grid_width` | `1` | Grid line width. |
 | `grid_opacity` | `0.35` | Grid line opacity. |
+| `grid_line_style` | `solid` | Grid line style. Options: `solid`, `dashed`, `dotted`. |
 
-Grid lines use the same intervals as `x_axis_ticks` and `y_axis_ticks`.
+Grid lines use the same intervals as `x_axis_ticks` and `y_axis_ticks`, but skip the first and last ticks so grid lines appear inside the plot area rather than on the outer boundary.
 
-### Ribbon options
+### Header and footer options
 
-The card has six configurable ribbon slots:
+The card has two configurable text areas: a header above the graph and a footer below it. Each has left, centre and right slots.
+
+Preferred YAML:
 
 ```yaml
-top_left: name
-top_center: band
-top_right: current
-bottom_left: debug
-bottom_center: none
-bottom_right: none
+header_left: name
+header_center: band
+header_right: current
+
+footer_left: debug
+footer_center: none
+footer_right: none
 ```
 
 | Option | Default | Description |
 |---|---:|---|
-| `top_left` | `name` | Content for the top-left ribbon slot. |
-| `top_center` | `none` | Content for the top-centre ribbon slot. |
-| `top_right` | `current` | Content for the top-right ribbon slot. |
-| `bottom_left` | `none` | Content for the bottom-left ribbon slot. |
-| `bottom_center` | `none` | Content for the bottom-centre ribbon slot. |
-| `bottom_right` | `none` | Content for the bottom-right ribbon slot. |
-| `custom_text` | `""` | Custom text shown when a ribbon slot is set to `custom` or `text`. |
+| `show_header` | `true` | Show or hide the header without clearing its configured slots. |
+| `show_footer` | `true` | Show or hide the footer without clearing its configured slots. |
+| `header_left` | `name` | Content for the header-left slot. |
+| `header_center` | `none` | Content for the header-centre slot. |
+| `header_right` | `current` | Content for the header-right slot. |
+| `footer_left` | `none` | Content for the footer-left slot. |
+| `footer_center` | `none` | Content for the footer-centre slot. |
+| `footer_right` | `none` | Content for the footer-right slot. |
+| `custom_text` | `""` | Custom text shown when a slot is set to `custom` or `text`. |
 | `duration_format` | `short` | Duration label format. Options: `short`, `long`. |
-| `ribbon_color_mode` | `static` | Global ribbon text colour mode. Options: `static`, `band`, `none`. |
+| `ribbon_color_mode` | `static` | Global header/footer text colour mode. Options: `static`, `band`, `none`. |
 | `ribbon_styles` | `{}` | Advanced per-slot style overrides. |
+
+Legacy `top_left`, `top_center`, `top_right`, `bottom_left`, `bottom_center` and `bottom_right` options are still supported, but the `header_*` and `footer_*` names are preferred for new YAML.
 
 Supported slot values:
 
@@ -997,57 +1050,41 @@ Duration labels are based on `hours_to_show`.
 
 ```yaml
 hours_to_show: 0.5
-bottom_left: duration
+footer_left: duration
 duration_format: short
 ```
-This shows 30m.
-```
+
+This shows `30m`.
+
+```yaml
 hours_to_show: 48
-bottom_left: duration
+footer_left: duration
 duration_format: long
 ```
-This shows 2 days.
 
-Each ribbon position has simple font size, weight and opacity options:
+This shows `2 days`.
+
+Shared header/footer text controls:
 
 | Option | Default | Description |
 |---|---:|---|
-| `top_left_font_size` | `16` | Top-left ribbon font size. |
-| `top_center_font_size` | `16` | Top-centre ribbon font size. |
-| `top_right_font_size` | `16` | Top-right ribbon font size. |
-| `bottom_left_font_size` | `12` | Bottom-left ribbon font size. |
-| `bottom_center_font_size` | `12` | Bottom-centre ribbon font size. |
-| `bottom_right_font_size` | `12` | Bottom-right ribbon font size. |
-| `top_left_font_weight` | `600` | Top-left ribbon font weight. |
-| `top_center_font_weight` | `600` | Top-centre ribbon font weight. |
-| `top_right_font_weight` | `600` | Top-right ribbon font weight. |
-| `bottom_left_font_weight` | `500` | Bottom-left ribbon font weight. |
-| `bottom_center_font_weight` | `500` | Bottom-centre ribbon font weight. |
-| `bottom_right_font_weight` | `500` | Bottom-right ribbon font weight. |
-| `top_left_opacity` | `1` | Top-left ribbon text opacity. |
-| `top_center_opacity` | `1` | Top-centre ribbon text opacity. |
-| `top_right_opacity` | `1` | Top-right ribbon text opacity. |
-| `bottom_left_opacity` | `0.8` | Bottom-left ribbon text opacity. |
-| `bottom_center_opacity` | `0.8` | Bottom-centre ribbon text opacity. |
-| `bottom_right_opacity` | `0.8` | Bottom-right ribbon text opacity. |
+| `header_font_size` | `16` | Header slot font size. |
+| `header_font_weight` | `600` | Header slot font weight. |
+| `header_opacity` | `1` | Header slot text opacity. |
+| `footer_font_size` | `12` | Footer slot font size. |
+| `footer_font_weight` | `500` | Footer slot font weight. |
+| `footer_opacity` | `0.8` | Footer slot text opacity. |
 
-Example:
+Legacy per-slot font controls are still supported for backwards compatibility and advanced YAML use:
 
 ```yaml
 top_left_font_size: 16
-top_center_font_size: 16
-top_right_font_size: 18
-
-bottom_left_font_size: 12
-bottom_center_font_size: 12
-bottom_right_font_size: 12
-
 top_left_font_weight: 600
-top_center_font_weight: 600
-top_right_font_weight: 700
+bottom_center_font_size: 15
+bottom_center_font_weight: 700
 ```
 
-For more advanced styling, each ribbon position can also be overridden with `ribbon_styles`:
+For more advanced styling, each slot can also be overridden with `ribbon_styles`:
 
 ```yaml
 ribbon_styles:
@@ -1070,7 +1107,7 @@ ribbon_styles:
     opacity: 0.7
 ```
 
-Supported advanced ribbon style options:
+Supported advanced style options:
 
 | Option | Description |
 |---|---|
@@ -1082,6 +1119,32 @@ Supported advanced ribbon style options:
 | `opacity` | Backwards-compatible opacity value. |
 | `text_transform` | CSS text transform, e.g. `uppercase`. |
 | `letter_spacing` | CSS letter spacing. |
+
+### Interaction options
+
+The card supports standard Home Assistant card interactions.
+
+| Option | Default | Description |
+|---|---:|---|
+| `tap_action` | `{ action: more-info }` | Action to run when the card is tapped. |
+| `hold_action` | `{ action: none }` | Action to run when the card is pressed and held. |
+| `double_tap_action` | `{ action: none }` | Action to run when the card is double tapped. |
+
+Supported actions include `more-info`, `navigate`, `url`, `call-service`, `toggle` and `none`.
+
+Example:
+
+```yaml
+tap_action:
+  action: navigate
+  navigation_path: /dashboard-air-quality
+
+hold_action:
+  action: more-info
+
+double_tap_action:
+  action: none
+```
 
 ### Latest, minimum and maximum markers
 
@@ -1116,9 +1179,9 @@ Extrema label modes:
 | `marker_label_color` | `var(--primary-text-color)` | Marker label text colour. |
 | `marker_label_color_mode` | `static` | Options: `static`, `band`, `none`. |
 | `marker_label_opacity` | `0.9` | Marker label opacity. |
-| `marker_label_background_color` | `var(--card-background-color)` | Marker label background colour. |
-| `marker_label_background_opacity` | `0.75` | Marker label background opacity. |
-| `marker_label_background_mode` | `card` | Background mode. Options: `card`, `static`, `band`, `none`. |
+| `marker_label_background_color` | `#ffffff` | Marker label background colour. |
+| `marker_label_background_opacity` | `0.8` | Marker label background opacity. |
+| `marker_label_background_mode` | `static` | Background mode. Options: `card`, `static`, `band`, `none`. |
 
 Use this to match marker label backgrounds to the relevant marker value band:
 
@@ -1136,10 +1199,10 @@ If the marker value is outside all configured bands, band-driven marker label co
 
 ## Debug output
 
-The debug slot can be added to any ribbon position:
+The debug slot can be added to any header or footer position:
 
 ```yaml
-bottom_left: debug
+footer_left: debug
 debug_multiline: true
 debug_level: performance
 ```
@@ -1184,17 +1247,18 @@ Minimum and maximum markers are calculated from real Home Assistant history only
 
 If you use `*_color_mode: band`, the configured `bands` are still required even when `show_bands: false`.
 
+New YAML should prefer `header_*` and `footer_*` options, but older `top_*`, `bottom_*`, `top_ribbon_background_*` and `bottom_ribbon_background_*` options remain supported for backwards compatibility.
+
 ## Status
 
-Work in progress, but functional. The card can load Home Assistant history and render a configurable threshold-banded line graph with optional markers, axes, grid lines, ribbon content, band-driven colours and debug diagnostics.
+Work in progress, but functional. The card can load Home Assistant history and render a configurable threshold-banded line graph with optional markers, axes, grid lines, header/footer content, band-driven colours, interactions and debug diagnostics.
 
-A basic Home Assistant visual editor is now included for common configuration options. Advanced styling, especially detailed per-slot ribbon overrides, may still require YAML.
+A Home Assistant visual editor is included for common configuration options, including content, range, axes, grid, appearance, bands, line, markers, header, footer, interactions and advanced/debug settings. Detailed per-slot overrides and complex band editing may still require YAML.
 
 ## Roadmap
 
 Planned or possible future features:
 
-- Expand visual editor support for more advanced styling options
 - Better UI controls for editing individual bands
 - More marker dot styling options
 - Optional area graph / line graph toggle
@@ -1203,6 +1267,7 @@ Planned or possible future features:
 - More compact presets
 - Optional dynamic defaults based on entity device class
 - Optional band templates for common sensors such as CO₂, humidity, battery and temperature
+- More debug information for responsive layout, SVG path generation and rendered dimensions
 - More examples and screenshots
 - Better handling for marker values outside configured bands
 - Packaging/polish for a wider HACS release
