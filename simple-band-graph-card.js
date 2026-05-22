@@ -357,7 +357,8 @@ class SimpleBandGraphCard extends HTMLElement {
         {
           type: "expandable",
           name: "basic",
-          title: "Basic",
+          title: "Content",
+          icon: "mdi:card-text-outline",
           flatten: true,
           schema: [
             {
@@ -404,7 +405,8 @@ class SimpleBandGraphCard extends HTMLElement {
         {
           type: "expandable",
           name: "scale",
-          title: "Scale",
+          title: "Range",
+          icon: "mdi:arrow-expand-vertical",
           flatten: true,
           schema: [
             {
@@ -446,6 +448,7 @@ class SimpleBandGraphCard extends HTMLElement {
           type: "expandable",
           name: "x_axis",
           title: "X-axis",
+          icon: "mdi:axis-arrow",
           flatten: true,
           schema: [
             {
@@ -576,6 +579,7 @@ class SimpleBandGraphCard extends HTMLElement {
           type: "expandable",
           name: "y_axis",
           title: "Y-axis",
+          icon: "mdi:axis-arrow",
           flatten: true,
           schema: [
             {
@@ -694,6 +698,7 @@ class SimpleBandGraphCard extends HTMLElement {
           type: "expandable",
           name: "grid",
           title: "Grid",
+          icon: "mdi:grid",
           flatten: true,
           schema: [
             {
@@ -754,7 +759,8 @@ class SimpleBandGraphCard extends HTMLElement {
         {
           type: "expandable",
           name: "backgrounds",
-          title: "Backgrounds",
+          title: "Appearance",
+          icon: "mdi:palette-outline",
           flatten: true,
           schema: [
             {
@@ -826,6 +832,7 @@ class SimpleBandGraphCard extends HTMLElement {
           type: "expandable",
           name: "bands",
           title: "Bands",
+          icon: "mdi:format-color-fill",
           flatten: true,
           schema: [
             {
@@ -1009,6 +1016,7 @@ class SimpleBandGraphCard extends HTMLElement {
           type: "expandable",
           name: "band_definitions",
           title: "Band definitions",
+          icon: "mdi:tune-variant",
           flatten: true,
           schema: [
             {
@@ -1023,6 +1031,7 @@ class SimpleBandGraphCard extends HTMLElement {
           type: "expandable",
           name: "line",
           title: "Line",
+          icon: "mdi:chart-line",
           flatten: true,
           schema: [
             {
@@ -1074,6 +1083,7 @@ class SimpleBandGraphCard extends HTMLElement {
           type: "expandable",
           name: "markers",
           title: "Markers",
+          icon: "mdi:map-marker-outline",
           flatten: true,
           schema: [
             {
@@ -1248,6 +1258,7 @@ class SimpleBandGraphCard extends HTMLElement {
           type: "expandable",
           name: "header",
           title: "Header",
+          icon: "mdi:page-layout-header",
           flatten: true,
           schema: [
             {
@@ -1377,6 +1388,7 @@ class SimpleBandGraphCard extends HTMLElement {
           type: "expandable",
           name: "footer",
           title: "Footer",
+          icon: "mdi:page-layout-footer",
           flatten: true,
           schema: [
             {
@@ -1475,6 +1487,7 @@ class SimpleBandGraphCard extends HTMLElement {
           type: "expandable",
           name: "advanced",
           title: "Advanced",
+          icon: "mdi:cog-outline",
           flatten: true,
           schema: [
             {
