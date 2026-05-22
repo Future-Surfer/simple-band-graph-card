@@ -260,6 +260,11 @@ class SimpleBandGraphCard extends HTMLElement {
       custom_text: "",
       duration_format: "short",
 
+      // Interaction settings
+      tap_action: { action: "more-info" },
+      hold_action: { action: "none" },
+      double_tap_action: { action: "none" },
+
       // Legacy ribbon background settings
       // Kept aligned with header/footer defaults for backwards compatibility.
       top_ribbon_background_color: "transparent",
@@ -1485,6 +1490,39 @@ class SimpleBandGraphCard extends HTMLElement {
         },
         {
           type: "expandable",
+          name: "interactions",
+          title: "Interactions",
+          icon: "mdi:gesture-tap",
+          flatten: true,
+          schema: [
+            {
+              name: "tap_action",
+              selector: {
+                ui_action: {
+                  actions: ["more-info", "toggle", "navigate", "url", "call-service", "none"],
+                },
+              },
+            },
+            {
+              name: "hold_action",
+              selector: {
+                ui_action: {
+                  actions: ["more-info", "toggle", "navigate", "url", "call-service", "none"],
+                },
+              },
+            },
+            {
+              name: "double_tap_action",
+              selector: {
+                ui_action: {
+                  actions: ["more-info", "toggle", "navigate", "url", "call-service", "none"],
+                },
+              },
+            },
+          ],
+        },
+        {
+          type: "expandable",
           name: "advanced",
           title: "Advanced",
           icon: "mdi:cog-outline",
@@ -1656,6 +1694,10 @@ class SimpleBandGraphCard extends HTMLElement {
           custom_text: "Custom text",
           duration_format: "Duration format",
           ribbon_background_radius: "Header/footer background corner radius",
+
+          tap_action: "Tap behaviour",
+          hold_action: "Hold behaviour",
+          double_tap_action: "Double tap behaviour",
 
           // Legacy names retained for backwards compatibility if surfaced.
           top_left: "Header left",
@@ -1870,6 +1912,13 @@ class SimpleBandGraphCard extends HTMLElement {
           ribbon_background_radius:
             "Corner radius for header and footer background areas.",
 
+          tap_action:
+            "Action to run when the card is tapped.",
+          hold_action:
+            "Action to run when the card is pressed and held.",
+          double_tap_action:
+            "Action to run when the card is double tapped.",
+
           // Legacy helpers retained in case legacy fields are surfaced.
           top_left: "Choose what appears in the left position of the header.",
           top_center:
@@ -1940,6 +1989,11 @@ class SimpleBandGraphCard extends HTMLElement {
       y_max: config.y_max ?? 100,
       bands: config.bands || [],
       value_decimals: config.value_decimals ?? "auto",
+
+      // Interaction settings
+      tap_action: config.tap_action ?? { action: "more-info" },
+      hold_action: config.hold_action ?? { action: "none" },
+      double_tap_action: config.double_tap_action ?? { action: "none" },
 
       // Band display settings
       show_bands: config.show_bands ?? true,
@@ -4605,9 +4659,96 @@ class SimpleBandGraphCard extends HTMLElement {
 
     this._observePlotArea();
 
+    this._attachActionHandlers();
+
     this._lastRenderDurationMs = Math.round(performance.now() - renderStarted);
     this._renderCount += 1;
   }
+  /*
+    ============================================================================
+    CARD INTERACTIONS
+    ============================================================================
+    Provides standard Home Assistant-style card interactions.
+
+    The visual editor uses tap_action, hold_action, and double_tap_action.
+    These methods translate browser pointer/click events into Home Assistant's
+    hass-action event so Lovelace can handle more-info, navigate, url, toggle,
+    call-service, and none actions.
+  */
+  _attachActionHandlers() {
+    const card = this.querySelector("ha-card");
+
+    if (!card) return;
+
+    card.style.cursor = "pointer";
+
+    let holdTimer = null;
+    let holdFired = false;
+
+    const clearHoldTimer = () => {
+      if (holdTimer) {
+        clearTimeout(holdTimer);
+        holdTimer = null;
+      }
+    };
+
+    card.onpointerdown = () => {
+      holdFired = false;
+      clearHoldTimer();
+
+      holdTimer = setTimeout(() => {
+        holdFired = true;
+        this._fireAction("hold");
+      }, 500);
+    };
+
+    card.onpointerup = () => {
+      clearHoldTimer();
+    };
+
+    card.onpointerleave = () => {
+      clearHoldTimer();
+    };
+
+    card.onclick = (event) => {
+      if (holdFired) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+
+      this._fireAction("tap");
+    };
+
+    card.ondblclick = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this._fireAction("double_tap");
+    };
+  }
+
+  _fireAction(action) {
+    const actionConfig =
+      action === "hold"
+        ? this.config.hold_action
+        : action === "double_tap"
+          ? this.config.double_tap_action
+          : this.config.tap_action;
+
+    if (!actionConfig || actionConfig.action === "none") return;
+
+    this.dispatchEvent(
+      new CustomEvent("hass-action", {
+        bubbles: true,
+        composed: true,
+        detail: {
+          config: this.config,
+          action,
+        },
+      })
+    );
+  }
+
   /*
     ============================================================================
     HOME ASSISTANT CARD SIZE
@@ -4634,6 +4775,7 @@ class SimpleBandGraphCard extends HTMLElement {
     return 4;
   }
 }
+
 /*
   ============================================================================
   CUSTOM ELEMENT REGISTRATION
