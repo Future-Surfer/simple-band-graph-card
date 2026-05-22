@@ -144,9 +144,9 @@ class SimpleBandGraphCard extends HTMLElement {
       background_opacity: 1,
 
       // Plot-area background settings
-      plot_background_color: "var(--card-background-color)",
-      plot_background_color_mode: "static",
-      plot_background_opacity: 0.35,
+      plot_background_color: "transparent",
+      plot_background_color_mode: "none",
+      plot_background_opacity: 0,
       plot_background_radius: 8,
 
       // Band display settings
@@ -196,10 +196,9 @@ class SimpleBandGraphCard extends HTMLElement {
       marker_label_opacity: 0.9,
 
       // Marker label background settings
-      marker_label_background_color: "var(--card-background-color)",
-      marker_label_background_mode: "card",
-      marker_label_background_opacity: 0.75,
-
+      marker_label_background_color: "transparent",
+      marker_label_background_mode: "none",
+      marker_label_background_opacity: 0,
 
       // Ribbon slot settings
       top_left: "name",
@@ -260,7 +259,6 @@ class SimpleBandGraphCard extends HTMLElement {
       ],
     };
   }
-
   /*
     --------------------------------------------------------------------------
     Visual editor configuration form
@@ -1562,7 +1560,7 @@ class SimpleBandGraphCard extends HTMLElement {
     this.config = {
       // Core card and data range settings
       name: config.name || config.entity,
-      height: config.height || 180,
+      height: config.height ?? 180,
       hours_to_show: config.hours_to_show ?? 24,
       y_min: config.y_min ?? 0,
       y_max: config.y_max ?? 100,
@@ -1579,9 +1577,10 @@ class SimpleBandGraphCard extends HTMLElement {
       background_color_mode: config.background_color_mode ?? "static",
 
       // Plot-area background settings
-      plot_background_color: config.plot_background_color ?? "var(--card-background-color)",
-      plot_background_opacity: config.plot_background_opacity ?? 0.35,
-      plot_background_color_mode: config.plot_background_color_mode ?? "static",
+      // Default is transparent so the plot area does not appear as a dark block.
+      plot_background_color: config.plot_background_color ?? "transparent",
+      plot_background_opacity: config.plot_background_opacity ?? 0,
+      plot_background_color_mode: config.plot_background_color_mode ?? "none",
       plot_background_radius: config.plot_background_radius ?? 8,
 
       // Top ribbon background settings
@@ -1676,11 +1675,15 @@ class SimpleBandGraphCard extends HTMLElement {
       marker_label_color: config.marker_label_color ?? "var(--primary-text-color)",
       marker_label_color_mode: config.marker_label_color_mode ?? "static",
       marker_label_opacity: config.marker_label_opacity ?? 0.9,
+
+      // Marker label background settings
+      // Default is transparent so marker labels do not create dark boxes.
       marker_label_background_color:
-        config.marker_label_background_color ?? "var(--card-background-color)",
+        config.marker_label_background_color ?? "transparent",
       marker_label_background_opacity:
-        config.marker_label_background_opacity ?? 0.75,
-      marker_label_background_mode: config.marker_label_background_mode ?? "card",
+        config.marker_label_background_opacity ?? 0,
+      marker_label_background_mode:
+        config.marker_label_background_mode ?? "none",
 
       // Axis settings
       show_x_axis: config.show_x_axis ?? true,
@@ -2215,17 +2218,60 @@ class SimpleBandGraphCard extends HTMLElement {
     const configuredHeight = Number(this.config.height) || 180;
 
     const gridRows = Number(this.config.grid_options?.rows);
-    const hasExplicitGridRows = Number.isFinite(gridRows) && gridRows > 0;
+
+    const hasGridRowStyle = (() => {
+      let element = this;
+
+      for (let depth = 0; depth < 5 && element; depth += 1) {
+        const inlineGridRow =
+          element.style?.gridRow ||
+          element.style?.gridRowEnd ||
+          element.style?.getPropertyValue?.("grid-row") ||
+          element.style?.getPropertyValue?.("grid-row-end") ||
+          "";
+
+        const computedStyle =
+          typeof getComputedStyle === "function"
+            ? getComputedStyle(element)
+            : null;
+
+        const computedGridRow =
+          computedStyle?.gridRow ||
+          computedStyle?.gridRowEnd ||
+          "";
+
+        if (
+          String(inlineGridRow).includes("span") ||
+          String(computedGridRow).includes("span")
+        ) {
+          return true;
+        }
+
+        element = element.parentElement;
+      }
+
+      return false;
+    })();
+
+    const hasExplicitGridRows =
+      (Number.isFinite(gridRows) && gridRows > 0) || hasGridRowStyle;
 
     const measuredPlotWidth = Number(this._plotWidth);
     const measuredPlotHeight = Number(this._plotHeight);
     const measuredCardWidth = Number(this._cardWidth);
 
+    /*
+      Keep the SVG viewBox close to the actual rendered width.
+
+      Avoid a large minimum width here. If the viewBox is wider than the actual
+      rendered card, SVG text gets horizontally compressed, which makes axis,
+      marker and band labels look squashed in narrow cards.
+    */
     const width =
       Number.isFinite(measuredPlotWidth) && measuredPlotWidth > 0
-        ? Math.max(260, Math.round(measuredPlotWidth))
+        ? Math.max(80, Math.round(measuredPlotWidth))
         : Number.isFinite(measuredCardWidth) && measuredCardWidth > 0
-          ? Math.max(260, Math.round(measuredCardWidth))
+          ? Math.max(80, Math.round(measuredCardWidth))
           : 600;
 
     const height =
@@ -3744,19 +3790,26 @@ class SimpleBandGraphCard extends HTMLElement {
       The plot wrapper is the important responsive layer: it fills the remaining
       space between the top and bottom ribbons, then ResizeObserver measures it
       so the SVG viewBox can be recalculated using the real plot area size.
+
+      Card background is applied inline to ha-card. This matches the older working
+      behaviour and avoids the host painting outside the real card surface.
     */
     this.innerHTML = `
       <style>
         :host {
           display: block;
+          width: 100%;
           height: 100%;
           min-height: 0;
         }
 
         ha-card {
+          display: block;
+          width: 100%;
           height: 100%;
           box-sizing: border-box;
-          background: ${cardBackground.colour};
+          border-radius: var(--ha-card-border-radius, 12px);
+          overflow: hidden;
         }
 
         .sbgc-inner {
@@ -3785,7 +3838,14 @@ class SimpleBandGraphCard extends HTMLElement {
         }
       </style>
 
-      <ha-card>
+      <ha-card
+        style="
+          background: ${cardBackground.colour};
+          background-color: ${cardBackground.colour};
+          --ha-card-background: ${cardBackground.colour};
+          --card-background-color: ${cardBackground.colour};
+        "
+      >
         <div class="sbgc-inner">
           ${topRibbonHtml}
 
@@ -3846,7 +3906,6 @@ class SimpleBandGraphCard extends HTMLElement {
     this._lastRenderDurationMs = Math.round(performance.now() - renderStarted);
     this._renderCount += 1;
   }
-
   /*
     ============================================================================
     HOME ASSISTANT CARD SIZE
