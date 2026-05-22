@@ -153,6 +153,14 @@ class SimpleBandGraphCard extends HTMLElement {
       // Band display settings
       show_bands: true,
       band_opacity: 0.14,
+
+      // Band separator settings
+      show_band_separators: false,
+      band_separator_color: "var(--divider-color)",
+      band_separator_width: 1,
+      band_separator_opacity: 0.5,
+      band_separator_style: "dashed",
+
       band_label_mode: "label",
       band_label_unit: false,
       band_label_position: "top",
@@ -760,6 +768,53 @@ class SimpleBandGraphCard extends HTMLElement {
             },
             {
               name: "band_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "show_band_separators",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "band_separator_style",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "solid", label: "Solid" },
+                    { value: "dashed", label: "Dashed" },
+                    { value: "dotted", label: "Dotted" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "band_separator_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "band_separator_width",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 8,
+                  step: 0.5,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "band_separator_opacity",
               selector: {
                 number: {
                   min: 0,
@@ -1455,6 +1510,12 @@ class SimpleBandGraphCard extends HTMLElement {
           band_label_opacity: "Band label opacity",
           bands: "Band definitions",
 
+          show_band_separators: "Show band separators",
+          band_separator_style: "Band separator style",
+          band_separator_color: "Band separator colour",
+          band_separator_width: "Band separator width",
+          band_separator_opacity: "Band separator opacity",
+
           show_line: "Show line",
           line_color_mode: "Line colour mode",
           line_color: "Line colour",
@@ -1618,6 +1679,17 @@ class SimpleBandGraphCard extends HTMLElement {
           bands:
             "Edit the raw band definitions. Each band can include from, to, color, label, and message.",
 
+          show_band_separators:
+            "Draw separator lines at internal band thresholds.",
+          band_separator_style:
+            "Choose whether band separator lines are solid, dashed, or dotted.",
+          band_separator_color:
+            "CSS colour for band separator lines, such as var(--divider-color), #111111, or rgba(0,0,0,0.5).",
+          band_separator_width:
+            "Thickness of the band separator lines.",
+          band_separator_opacity:
+            "Opacity of the band separator lines, from 0 to 1.",
+
           show_line: "Show or hide the plotted history line.",
           line_color_mode:
             "Static uses the chosen line colour. Use band colour follows the band matching the current value. No colour makes the line transparent.",
@@ -1771,6 +1843,13 @@ class SimpleBandGraphCard extends HTMLElement {
       // Band display settings
       show_bands: config.show_bands ?? true,
       band_opacity: config.band_opacity ?? 0.2,
+
+      // Band separator settings
+      show_band_separators: config.show_band_separators ?? false,
+      band_separator_color: config.band_separator_color ?? "var(--divider-color)",
+      band_separator_width: config.band_separator_width ?? 1,
+      band_separator_opacity: config.band_separator_opacity ?? 0.5,
+      band_separator_style: config.band_separator_style ?? "dashed",
 
       // Whole-card background settings
       background_color: config.background_color ?? "var(--card-background-color)",
@@ -3385,29 +3464,76 @@ class SimpleBandGraphCard extends HTMLElement {
 
     /*
       --------------------------------------------------------------------------
-      Band background rectangles and band labels
+      Band background rectangles, separators, and band labels
       --------------------------------------------------------------------------
+      Bands are built in three layers:
+      1. band rectangles
+      2. optional band separator lines at internal thresholds
+      3. band labels
+
+      This keeps the separators visually above the coloured fills, while allowing
+      labels to sit on top of both.
     */
-    const bands = this.config.show_bands
-      ? this.config.bands
-          .map((band) => {
-            const from = Number(band.from);
-            const to = Number(band.to);
+    const getBandSeparatorDashArray = (style) => {
+      if (style === "dashed") return "8 6";
+      if (style === "dotted") return "1 5";
+      return "";
+    };
 
-            const y1 = yToSvg(to);
-            const y2 = yToSvg(from);
-            const bandHeight = y2 - y1;
-            const bandLabel = formatBandLabel(band);
-            const bandLabelY = getBandLabelY(y1, y2);
-            const bandLabelX = getBandLabelX();
+    const bandSeparatorDashArray = getBandSeparatorDashArray(
+      this.config.band_separator_style
+    );
 
-            const shouldHideSmallLabel =
-              this.config.hide_small_band_labels &&
-              bandHeight < Number(this.config.min_band_label_height);
+    const bandSeparatorLineCap =
+      this.config.band_separator_style === "dotted" ? "round" : "butt";
 
-            if (bandHeight <= 0) return "";
+    const validBands = (this.config.bands || [])
+      .map((band) => {
+        const from = Number(band.from);
+        const to = Number(band.to);
 
-            return `
+        if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) {
+          return null;
+        }
+
+        const y1 = yToSvg(to);
+        const y2 = yToSvg(from);
+        const bandHeight = y2 - y1;
+
+        if (bandHeight <= 0) return null;
+
+        const bandLabel = formatBandLabel(band);
+        const bandLabelY = getBandLabelY(y1, y2);
+        const bandLabelX = getBandLabelX();
+
+        const shouldHideSmallLabel =
+          this.config.hide_small_band_labels &&
+          bandHeight < Number(this.config.min_band_label_height);
+
+        return {
+          band,
+          from,
+          to,
+          y1,
+          y2,
+          bandHeight,
+          bandLabel,
+          bandLabelY,
+          bandLabelX,
+          shouldHideSmallLabel,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.from - b.from);
+
+    const bandRects = this.config.show_bands
+      ? validBands
+          .map(
+            ({
+              band,
+              y1,
+              bandHeight,
+            }) => `
               <rect
                 x="${padding.left}"
                 y="${y1}"
@@ -3418,29 +3544,75 @@ class SimpleBandGraphCard extends HTMLElement {
                   this.config.band_opacity
                 )}"
               ></rect>
-
-              ${
-                bandLabel && !shouldHideSmallLabel
-                  ? `
-                    <text
-                      x="${bandLabelX.x}"
-                      y="${bandLabelY.y}"
-                      text-anchor="${bandLabelX.anchor}"
-                      dominant-baseline="${bandLabelY.baseline}"
-                      font-size="${cssValue(this.config.band_label_size ?? 11, 11, "px")}"
-                      font-weight="${cssValue(this.config.band_label_weight, 400)}"
-                      fill="${bandLabelColour}"
-                    >
-                      ${bandLabel}
-                    </text>
-                  `
-                  : ""
-              }
-            `;
-          })
+            `
+          )
           .join("")
       : "";
 
+    const bandSeparators =
+      this.config.show_bands &&
+      this.config.show_band_separators &&
+      validBands.length > 1
+        ? validBands
+            .slice(0, -1)
+            .map((bandInfo) => {
+              const y = yToSvg(bandInfo.to);
+
+              return `
+                <line
+                  x1="${padding.left}"
+                  y1="${y}"
+                  x2="${padding.left + plotWidth}"
+                  y2="${y}"
+                  stroke="${cssValue(
+                    this.config.band_separator_color,
+                    "var(--divider-color)"
+                  )}"
+                  stroke-width="${cssValue(
+                    this.config.band_separator_width,
+                    1
+                  )}"
+                  stroke-dasharray="${bandSeparatorDashArray}"
+                  stroke-linecap="${bandSeparatorLineCap}"
+                  opacity="${cssValue(
+                    this.config.band_separator_opacity,
+                    0.5
+                  )}"
+                ></line>
+              `;
+            })
+            .join("")
+        : "";
+
+    const bandLabels = this.config.show_bands
+      ? validBands
+          .map(
+            ({
+              bandLabel,
+              shouldHideSmallLabel,
+              bandLabelX,
+              bandLabelY,
+            }) =>
+              bandLabel && !shouldHideSmallLabel
+                ? `
+                  <text
+                    x="${bandLabelX.x}"
+                    y="${bandLabelY.y}"
+                    text-anchor="${bandLabelX.anchor}"
+                    dominant-baseline="${bandLabelY.baseline}"
+                    font-size="${cssValue(this.config.band_label_size ?? 11, 11, "px")}"
+                    font-weight="${cssValue(this.config.band_label_weight, 400)}"
+                    fill="${bandLabelColour}"
+                  >
+                    ${bandLabel}
+                  </text>
+                `
+                : ""
+          )
+          .join("")
+      : "";
+
+    const bands = `${bandRects}${bandSeparators}${bandLabels}`;
     /*
       --------------------------------------------------------------------------
       Extrema detection
