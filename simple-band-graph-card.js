@@ -1841,7 +1841,7 @@ class SimpleBandGraphCard extends HTMLElement {
       Runtime state
       --------------------------------------------------------------------------
       These are internal values, not user-facing config. They track fetched history,
-      performance/debug information, and render statistics.
+      performance/debug information, render statistics, and measured layout size.
     */
     this._history = [];
     this._rawHistoryCount = 0;
@@ -1865,6 +1865,11 @@ class SimpleBandGraphCard extends HTMLElement {
     this._lastLineSplitSegmentCount = 0;
     this._lastLinePathCount = 0;
     this._renderCount = 0;
+
+    // Responsive layout state
+    this._cardWidth = 600;
+    this._cardHeight = null;
+    this._resizeObserver = null;
   }
 
   /*
@@ -1874,6 +1879,53 @@ class SimpleBandGraphCard extends HTMLElement {
     Called whenever Home Assistant provides updated state. This decides whether
     history needs to be refreshed and then triggers a render.
   */
+
+  /*
+    --------------------------------------------------------------------------
+    Responsive layout lifecycle
+    --------------------------------------------------------------------------
+    Watches the rendered card size so SVG layout calculations can use the real
+    available dashboard width and height instead of a fixed design size.
+  */
+  connectedCallback() {
+    if (this._resizeObserver) return;
+
+    this._resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0];
+
+      const measuredWidth = Math.round(entry?.contentRect?.width || 0);
+      const measuredHeight = Math.round(entry?.contentRect?.height || 0);
+
+      const widthChanged =
+        measuredWidth && Math.abs(measuredWidth - this._cardWidth) >= 2;
+
+      const heightChanged =
+        measuredHeight &&
+        Math.abs(measuredHeight - Number(this._cardHeight || 0)) >= 2;
+
+      if (widthChanged) {
+        this._cardWidth = measuredWidth;
+      }
+
+      if (heightChanged) {
+        this._cardHeight = measuredHeight;
+      }
+
+      if ((widthChanged || heightChanged) && this._hass) {
+        this.render();
+      }
+    });
+
+    this._resizeObserver.observe(this);
+  }
+
+  disconnectedCallback() {
+    if (this._resizeObserver) {
+      this._resizeObserver.disconnect();
+      this._resizeObserver = null;
+    }
+  }
+
   set hass(hass) {
     this._hass = hass;
 
@@ -1897,7 +1949,6 @@ class SimpleBandGraphCard extends HTMLElement {
 
     this.render();
   }
-
   /*
     ============================================================================
     HISTORY HELPERS
@@ -2081,9 +2132,62 @@ class SimpleBandGraphCard extends HTMLElement {
     const value = state ? state.state : "unknown";
     const unit = state?.attributes?.unit_of_measurement || "";
 
-    const width = 600;
-    const height = this.config.height;
+    /*
+      Use the measured card width from ResizeObserver when available.
 
+      The lower bound avoids collapsed/zero-width renders during dashboard
+      loading, while still allowing the card to adapt in narrow sections layouts.
+    */
+    const measuredWidth = Number(this._cardWidth);
+    const width = Number.isFinite(measuredWidth)
+      ? Math.max(260, Math.round(measuredWidth))
+      : 600;
+
+    /*
+      Height uses the configured height as a legacy/fallback minimum, but can
+      expand when Home Assistant gives the card more vertical space in a
+      resizable Sections layout.
+
+      The chrome estimate accounts for card padding, SVG margin, and the top and
+      bottom ribbon areas. This lets the SVG fill the remaining useful space
+      instead of leaving the graph pinned to the top of a taller card.
+    */
+    const configuredHeight = Number(this.config.height) || 180;
+    const measuredHeight = Number(this._cardHeight);
+
+    const hasTopRibbon =
+      this.config.top_left !== "none" ||
+      this.config.top_center !== "none" ||
+      this.config.top_right !== "none";
+
+    const hasBottomRibbon =
+      this.config.bottom_left !== "none" ||
+      this.config.bottom_center !== "none" ||
+      this.config.bottom_right !== "none";
+
+    const cardPaddingY = 32;
+    const svgTopMargin = hasTopRibbon ? 12 : 0;
+    const ribbonGap = hasBottomRibbon ? 12 : 0;
+
+    const estimatedTopRibbonHeight = hasTopRibbon ? 28 : 0;
+    const estimatedBottomRibbonHeight = hasBottomRibbon ? 48 : 0;
+
+    const cardChromeHeightEstimate =
+      cardPaddingY +
+      svgTopMargin +
+      ribbonGap +
+      estimatedTopRibbonHeight +
+      estimatedBottomRibbonHeight;
+
+    const availableMeasuredGraphHeight =
+      Number.isFinite(measuredHeight) && measuredHeight > 0
+        ? measuredHeight - cardChromeHeightEstimate
+        : configuredHeight;
+
+    const height = Math.max(
+      configuredHeight,
+      Math.round(availableMeasuredGraphHeight || configuredHeight)
+    );
     /*
       --------------------------------------------------------------------------
       General render helpers
@@ -3580,16 +3684,49 @@ class SimpleBandGraphCard extends HTMLElement {
       --------------------------------------------------------------------------
       Layer order inside the SVG matters: background, grid, labels/bands, axes,
       then line and markers.
+
+      The host/card/wrapper styles allow the card to participate properly in
+      Home Assistant's resizable Sections layout while preserving the configured
+      SVG graph height as a fallback for older layouts.
     */
     this.innerHTML = `
-      <ha-card style="background: ${cardBackground.colour};">
-        <div style="padding: 16px;">
+      <style>
+        :host {
+          display: block;
+          height: 100%;
+        }
+
+        ha-card {
+          height: 100%;
+          box-sizing: border-box;
+          background: ${cardBackground.colour};
+        }
+
+        .sbgc-inner {
+          height: 100%;
+          box-sizing: border-box;
+          padding: 16px;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .sbgc-svg {
+          width: 100%;
+          height: ${height}px;
+          display: block;
+          margin-top: 12px;
+          min-height: 0;
+        }
+      </style>
+
+      <ha-card>
+        <div class="sbgc-inner">
           ${topRibbonHtml}
 
           <svg
+            class="sbgc-svg"
             viewBox="0 0 ${width} ${height}"
             preserveAspectRatio="none"
-            style="width: 100%; height: ${height}px; display: block; margin-top: 12px;"
           >
             <rect
               x="${padding.left}"
@@ -3644,8 +3781,24 @@ class SimpleBandGraphCard extends HTMLElement {
     ============================================================================
     HOME ASSISTANT CARD SIZE
     ============================================================================
-    Used by masonry layouts as a rough height estimate.
+    Used by Home Assistant layouts as sizing metadata.
+
+    getGridOptions is used by the newer Sections layout so the card can be
+    resized sensibly in the dashboard grid.
+
+    getCardSize is used by older masonry layouts as a rough height estimate.
   */
+  getGridOptions() {
+    return {
+      columns: 6,
+      rows: 4,
+      min_columns: 3,
+      min_rows: 3,
+      max_columns: 12,
+      max_rows: 8,
+    };
+  }
+
   getCardSize() {
     return 4;
   }
