@@ -117,6 +117,16 @@ class SimpleBandGraphCard extends HTMLElement {
       y_axis_position: "left",
       y_axis_ticks: 2,
 
+      // X-axis line settings
+      x_axis_line_color: "var(--divider-color)",
+      x_axis_line_width: 1,
+      x_axis_line_opacity: 1,
+
+      // Y-axis line settings
+      y_axis_line_color: "var(--divider-color)",
+      y_axis_line_width: 1,
+      y_axis_line_opacity: 1,
+
       // X-axis label settings
       x_axis_label_size: 11,
       x_axis_label_weight: 400,
@@ -486,6 +496,35 @@ class SimpleBandGraphCard extends HTMLElement {
               },
             },
             {
+              name: "x_axis_line_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "x_axis_line_width",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 8,
+                  step: 0.5,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "x_axis_line_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+            
+            {
               name: "x_axis_label_size",
               selector: {
                 number: {
@@ -574,6 +613,35 @@ class SimpleBandGraphCard extends HTMLElement {
                 },
               },
             },
+            {
+              name: "y_axis_line_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "y_axis_line_width",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 8,
+                  step: 0.5,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "y_axis_line_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+            
             {
               name: "y_axis_label_size",
               selector: {
@@ -1459,7 +1527,7 @@ class SimpleBandGraphCard extends HTMLElement {
           y_max: "Y-axis maximum",
           value_decimals: "Value decimal places",
 
-          show_x_axis: "Show X-axis",
+          show_x_axis: "Show X-axis line",
           show_x_axis_labels: "Show X-axis labels",
           x_axis_position: "X-axis position",
           x_axis_label_mode: "X-axis label mode",
@@ -1470,7 +1538,11 @@ class SimpleBandGraphCard extends HTMLElement {
           x_axis_label_color_mode: "X-axis label colour mode",
           x_axis_label_opacity: "X-axis label opacity",
 
-          show_y_axis: "Show Y-axis",
+          x_axis_line_color: "X-axis line colour",
+          x_axis_line_width: "X-axis line width",
+          x_axis_line_opacity: "X-axis line opacity",
+
+          show_y_axis: "Show Y-axis line",
           show_y_axis_labels: "Show Y-axis labels",
           y_axis_position: "Y-axis position",
           y_axis_ticks: "Y-axis ticks",
@@ -1479,6 +1551,10 @@ class SimpleBandGraphCard extends HTMLElement {
           y_axis_label_color: "Y-axis label colour",
           y_axis_label_color_mode: "Y-axis label colour mode",
           y_axis_label_opacity: "Y-axis label opacity",
+
+          y_axis_line_color: "Y-axis line colour",
+          y_axis_line_width: "Y-axis line width",
+          y_axis_line_opacity: "Y-axis line opacity",
 
           show_x_grid: "Show vertical grid lines",
           show_y_grid: "Show horizontal grid lines",
@@ -1602,7 +1678,8 @@ class SimpleBandGraphCard extends HTMLElement {
           value_decimals:
             "Controls decimal places for value labels. Auto uses fewer decimals for larger numbers.",
 
-          show_x_axis: "Show or hide the horizontal time axis line.",
+          show_x_axis:
+            "Show or hide the horizontal X-axis line. This does not control X-axis labels.",
           show_x_axis_labels: "Show or hide the time labels on the X-axis.",
           x_axis_position: "Place the X-axis at the top or bottom of the graph.",
           x_axis_label_mode:
@@ -1617,7 +1694,13 @@ class SimpleBandGraphCard extends HTMLElement {
             "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the labels transparent.",
           x_axis_label_opacity: "Opacity of X-axis label text, from 0 to 1.",
 
-          show_y_axis: "Show or hide the vertical value axis line.",
+          x_axis_line_color:
+            "CSS colour for the X-axis line, such as var(--divider-color), #111111, or rgba(0,0,0,0.5).",
+          x_axis_line_width: "Thickness of the X-axis line.",
+          x_axis_line_opacity: "Opacity of the X-axis line, from 0 to 1.",
+
+          show_y_axis:
+            "Show or hide the vertical Y-axis line. This does not control Y-axis labels.",
           show_y_axis_labels: "Show or hide the value labels on the Y-axis.",
           y_axis_position: "Place the Y-axis on the left or right of the graph.",
           y_axis_ticks:
@@ -1629,6 +1712,11 @@ class SimpleBandGraphCard extends HTMLElement {
           y_axis_label_color_mode:
             "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the labels transparent.",
           y_axis_label_opacity: "Opacity of Y-axis label text, from 0 to 1.",
+
+          y_axis_line_color:
+            "CSS colour for the Y-axis line, such as var(--divider-color), #111111, or rgba(0,0,0,0.5).",
+          y_axis_line_width: "Thickness of the Y-axis line.",
+          y_axis_line_opacity: "Opacity of the Y-axis line, from 0 to 1.",
 
           show_x_grid:
             "Show vertical grid lines. The number of lines is controlled by X-axis ticks.",
@@ -2047,6 +2135,16 @@ class SimpleBandGraphCard extends HTMLElement {
       show_y_axis_labels: config.show_y_axis_labels ?? true,
       y_axis_position: config.y_axis_position ?? "left",
       y_axis_ticks: config.y_axis_ticks ?? 2,
+
+      // X-axis line settings
+      x_axis_line_color: config.x_axis_line_color ?? "var(--divider-color)",
+      x_axis_line_width: config.x_axis_line_width ?? 1,
+      x_axis_line_opacity: config.x_axis_line_opacity ?? 1,
+
+      // Y-axis line settings
+      y_axis_line_color: config.y_axis_line_color ?? "var(--divider-color)",
+      y_axis_line_width: config.y_axis_line_width ?? 1,
+      y_axis_line_opacity: config.y_axis_line_opacity ?? 1,
 
       // Shared axis label settings
       // Kept for backwards compatibility. New configs should prefer the separate
@@ -3427,8 +3525,9 @@ class SimpleBandGraphCard extends HTMLElement {
           y1="${padding.top}"
           x2="${yAxisX}"
           y2="${padding.top + plotHeight}"
-          stroke="var(--divider-color)"
-          stroke-width="1"
+          stroke="${cssValue(this.config.y_axis_line_color, "var(--divider-color)")}"
+          stroke-width="${cssValue(this.config.y_axis_line_width, 1)}"
+          opacity="${cssValue(this.config.y_axis_line_opacity, 1)}"
         ></line>
       `
       : "";
@@ -3900,11 +3999,10 @@ class SimpleBandGraphCard extends HTMLElement {
           y1="${xAxisY}"
           x2="${padding.left + plotWidth}"
           y2="${xAxisY}"
-          stroke="var(--divider-color)"
-          stroke-width="1"
+          stroke="${cssValue(this.config.x_axis_line_color, "var(--divider-color)")}"
+          stroke-width="${cssValue(this.config.x_axis_line_width, 1)}"
+          opacity="${cssValue(this.config.x_axis_line_opacity, 1)}"
         ></line>
-
-        ${xAxisLabelsHtml}
       `
       : "";
 
@@ -4425,6 +4523,7 @@ class SimpleBandGraphCard extends HTMLElement {
               ${xGridHtml}
 
               ${yAxisLabelsHtml}
+              ${xAxisLabelsHtml}
 
               <g clip-path="url(#${plotClipPathId})">
                 ${bands}
