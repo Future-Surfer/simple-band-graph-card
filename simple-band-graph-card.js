@@ -2143,8 +2143,16 @@ class SimpleBandGraphCard extends HTMLElement {
       Runtime state
       --------------------------------------------------------------------------
       These are internal values, not user-facing config. They track fetched history,
-      performance/debug information, render statistics, and measured layout size.
+      performance/debug information, render statistics, measured layout size, and
+      stable per-card IDs used by SVG definitions.
     */
+
+    // Stable per-card ID used for SVG defs such as clip paths.
+    // Keep this stable across config updates so multiple card instances do not
+    // clash with each other on the same dashboard.
+    this._instanceId =
+      this._instanceId || Math.random().toString(36).slice(2);
+
     this._history = [];
     this._rawHistoryCount = 0;
     this._plottedHistoryCount = 0;
@@ -2586,6 +2594,15 @@ class SimpleBandGraphCard extends HTMLElement {
       allocated height.
     */
     const plotWrapMinHeight = hasExplicitGridRows ? 0 : configuredHeight;
+
+    /*
+      Stable SVG clip path ID for this card instance.
+
+      Used to clip plot-area content, such as background bands, to the same
+      rounded rectangle as the plot background.
+    */
+    const plotClipPathId = `sbgc-plot-clip-${this._instanceId}`;
+
     /*
       --------------------------------------------------------------------------
       General render helpers
@@ -4100,6 +4117,9 @@ class SimpleBandGraphCard extends HTMLElement {
 
       Card background is applied inline to ha-card. This matches the older working
       behaviour and avoids the host painting outside the real card surface.
+
+      The plot clip path masks band rectangles to the same rounded shape as the
+      plot background, so plot_background_radius applies visually to bands too.
     */
     this.innerHTML = `
       <style>
@@ -4162,12 +4182,26 @@ class SimpleBandGraphCard extends HTMLElement {
               viewBox="0 0 ${width} ${height}"
               preserveAspectRatio="none"
             >
+              <defs>
+                <clipPath id="${plotClipPathId}">
+                  <rect
+                    x="${padding.left}"
+                    y="${padding.top}"
+                    width="${plotWidth}"
+                    height="${plotHeight}"
+                    rx="${Number(this.config.plot_background_radius) || 0}"
+                    ry="${Number(this.config.plot_background_radius) || 0}"
+                  ></rect>
+                </clipPath>
+              </defs>
+
               <rect
                 x="${padding.left}"
                 y="${padding.top}"
                 width="${plotWidth}"
                 height="${plotHeight}"
                 rx="${Number(this.config.plot_background_radius) || 0}"
+                ry="${Number(this.config.plot_background_radius) || 0}"
                 fill="${plotBackground.colour}"
               ></rect>
 
@@ -4176,7 +4210,9 @@ class SimpleBandGraphCard extends HTMLElement {
 
               ${yAxisLabelsHtml}
 
-              ${bands}
+              <g clip-path="url(#${plotClipPathId})">
+                ${bands}
+              </g>
 
               ${yAxisHtml}
               ${xAxisHtml}
@@ -4184,7 +4220,10 @@ class SimpleBandGraphCard extends HTMLElement {
               ${
                 points
                   ? `
-                    ${lineHtml}
+                    <g clip-path="url(#${plotClipPathId})">
+                      ${lineHtml}
+                    </g>
+
                     ${extremaMarkers}
                     ${latestMarker}
                   `
