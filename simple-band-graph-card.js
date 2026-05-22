@@ -196,9 +196,9 @@ class SimpleBandGraphCard extends HTMLElement {
       marker_label_opacity: 0.9,
 
       // Marker label background settings
-      marker_label_background_color: "transparent",
-      marker_label_background_mode: "none",
-      marker_label_background_opacity: 0,
+      marker_label_background_color: "#ffffff",
+      marker_label_background_mode: "static",
+      marker_label_background_opacity: 0.8,
 
       // Ribbon slot settings
       top_left: "name",
@@ -1677,13 +1677,13 @@ class SimpleBandGraphCard extends HTMLElement {
       marker_label_opacity: config.marker_label_opacity ?? 0.9,
 
       // Marker label background settings
-      // Default is transparent so marker labels do not create dark boxes.
+      // Default is a soft translucent white label chip for readability.
       marker_label_background_color:
-        config.marker_label_background_color ?? "transparent",
+        config.marker_label_background_color ?? "#ffffff",
       marker_label_background_opacity:
-        config.marker_label_background_opacity ?? 0,
+        config.marker_label_background_opacity ?? 0.8,
       marker_label_background_mode:
-        config.marker_label_background_mode ?? "none",
+        config.marker_label_background_mode ?? "static",
 
       // Axis settings
       show_x_axis: config.show_x_axis ?? true,
