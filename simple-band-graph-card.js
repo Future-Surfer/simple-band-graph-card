@@ -137,6 +137,7 @@ class SimpleBandGraphCard extends HTMLElement {
       grid_color: "var(--divider-color)",
       grid_width: 1,
       grid_opacity: 0.25,
+      grid_line_style: "solid",
 
       // Whole-card background settings
       background_color: "var(--card-background-color)",
@@ -629,6 +630,19 @@ class SimpleBandGraphCard extends HTMLElement {
               name: "show_y_grid",
               selector: {
                 boolean: {},
+              },
+            },
+            {
+              name: "grid_line_style",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "solid", label: "Solid" },
+                    { value: "dashed", label: "Dashed" },
+                    { value: "dotted", label: "Dotted" },
+                  ],
+                },
               },
             },
             {
@@ -1416,6 +1430,7 @@ class SimpleBandGraphCard extends HTMLElement {
           grid_color: "Grid colour",
           grid_width: "Grid line width",
           grid_opacity: "Grid opacity",
+          grid_line_style: "Grid line style",
 
           background_color: "Card background colour",
           background_color_mode: "Card background colour mode",
@@ -1562,6 +1577,8 @@ class SimpleBandGraphCard extends HTMLElement {
             "CSS colour for grid lines, such as var(--divider-color), #999999, or rgba(0,0,0,0.2).",
           grid_width: "Thickness of the grid lines.",
           grid_opacity: "Opacity of the grid lines, from 0 to 1.",
+          grid_line_style:
+            "Choose whether grid lines are solid, dashed, or dotted.",
 
           background_color:
             "CSS colour for the whole card background, such as var(--card-background-color), transparent, #222222, or rgba(0,0,0,0.2).",
@@ -1907,6 +1924,7 @@ class SimpleBandGraphCard extends HTMLElement {
       grid_color: config.grid_color ?? "var(--divider-color)",
       grid_width: config.grid_width ?? 1,
       grid_opacity: config.grid_opacity ?? 0.35,
+      grid_line_style: config.grid_line_style ?? "solid",
 
       // Band label settings
       band_label_mode: config.band_label_mode ?? "label",
@@ -3243,10 +3261,32 @@ class SimpleBandGraphCard extends HTMLElement {
       --------------------------------------------------------------------------
       Grid SVG
       --------------------------------------------------------------------------
+      Grid lines are drawn only inside the plot area.
+
+      The first and last ticks are skipped so grid lines do not sit directly on
+      the plot boundary. This keeps the plot edge clean and avoids duplicating the
+      role of axes or the plot background boundary.
+
+      grid_line_style controls the SVG dash pattern:
+      - solid: continuous line
+      - dashed: longer dash/gap pattern
+      - dotted: round dots
     */
+    const getGridDashArray = (style) => {
+      if (style === "dashed") return "6 4";
+      if (style === "dotted") return "1 4";
+      return "";
+    };
+
+    const gridDashArray = getGridDashArray(this.config.grid_line_style);
+    const gridLineCap =
+      this.config.grid_line_style === "dotted" ? "round" : "butt";
+
     const yGridHtml = this.config.show_y_grid
       ? yTickValues
-          .map((value) => {
+          .map((value, index) => ({ value, index }))
+          .filter(({ index }) => index > 0 && index < yTickValues.length - 1)
+          .map(({ value }) => {
             const y = yToSvg(value);
 
             return `
@@ -3257,6 +3297,8 @@ class SimpleBandGraphCard extends HTMLElement {
                 y2="${y}"
                 stroke="${cssValue(this.config.grid_color, "var(--divider-color)")}"
                 stroke-width="${cssValue(this.config.grid_width, 1)}"
+                stroke-dasharray="${gridDashArray}"
+                stroke-linecap="${gridLineCap}"
                 opacity="${cssValue(this.config.grid_opacity, 0.35)}"
               ></line>
             `;
@@ -3266,6 +3308,7 @@ class SimpleBandGraphCard extends HTMLElement {
 
     const xGridHtml = this.config.show_x_grid
       ? xTickValues
+          .filter((tick) => tick.index > 0 && tick.index < xTickValues.length - 1)
           .map((tick) => {
             const x = padding.left + tick.ratio * plotWidth;
 
@@ -3277,13 +3320,14 @@ class SimpleBandGraphCard extends HTMLElement {
                 y2="${padding.top + plotHeight}"
                 stroke="${cssValue(this.config.grid_color, "var(--divider-color)")}"
                 stroke-width="${cssValue(this.config.grid_width, 1)}"
+                stroke-dasharray="${gridDashArray}"
+                stroke-linecap="${gridLineCap}"
                 opacity="${cssValue(this.config.grid_opacity, 0.35)}"
               ></line>
             `;
           })
           .join("")
       : "";
-
     /*
       --------------------------------------------------------------------------
       Y-axis SVG
