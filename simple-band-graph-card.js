@@ -2535,7 +2535,6 @@ class SimpleBandGraphCard extends HTMLElement {
       }
     });
   }
-
   _observePlotArea() {
     const plotWrap = this.querySelector(".sbgc-plot-wrap");
 
@@ -2545,17 +2544,18 @@ class SimpleBandGraphCard extends HTMLElement {
       this._plotResizeObserver.disconnect();
     }
 
-    this._plotResizeObserver = new ResizeObserver((entries) => {
-      const entry = entries[0];
+    const measurePlotArea = () => {
+      const rect = plotWrap.getBoundingClientRect();
 
-      const measuredPlotWidth = Math.round(entry?.contentRect?.width || 0);
-      const measuredPlotHeight = Math.round(entry?.contentRect?.height || 0);
+      const measuredPlotWidth = Math.round(rect?.width || 0);
+      const measuredPlotHeight = Math.round(rect?.height || 0);
+
+      if (!measuredPlotWidth || !measuredPlotHeight) return;
 
       const plotWidthChanged =
-        measuredPlotWidth && Math.abs(measuredPlotWidth - this._plotWidth) >= 2;
+        Math.abs(measuredPlotWidth - this._plotWidth) >= 2;
 
       const plotHeightChanged =
-        measuredPlotHeight &&
         Math.abs(measuredPlotHeight - this._plotHeight) >= 2;
 
       if (plotWidthChanged) {
@@ -2569,9 +2569,31 @@ class SimpleBandGraphCard extends HTMLElement {
       if (plotWidthChanged || plotHeightChanged) {
         this._scheduleResponsiveRender();
       }
+    };
+
+    const scheduleMeasure = () => {
+      if (this._plotMeasureQueued) return;
+
+      this._plotMeasureQueued = true;
+
+      requestAnimationFrame(() => {
+        this._plotMeasureQueued = false;
+        measurePlotArea();
+      });
+    };
+
+    this._plotResizeObserver = new ResizeObserver(() => {
+      scheduleMeasure();
     });
 
     this._plotResizeObserver.observe(plotWrap);
+
+    // Initial and delayed measurements help nested grid/vertical-stack layouts
+    // settle before we commit to the final SVG dimensions.
+    scheduleMeasure();
+    window.setTimeout(scheduleMeasure, 50);
+    window.setTimeout(scheduleMeasure, 150);
+    window.setTimeout(scheduleMeasure, 300);
   }
 
   set hass(hass) {
@@ -3255,6 +3277,43 @@ class SimpleBandGraphCard extends HTMLElement {
     const yMin = Number(this.config.y_min);
     const yMax = Number(this.config.y_max);
 
+    const layoutDebug = {
+      measuredPlotWrapWidth: this._plotWidth,
+      measuredPlotWrapHeight: this._plotHeight,
+      svgWidth: width,
+      svgHeight: height,
+      innerPlotWidth: plotWidth,
+      innerPlotHeight: plotHeight,
+      configuredHeight: Number(this.config.height) || 0,
+      plotWrapMinHeight,
+      paddingTop: padding.top,
+      paddingRight: padding.right,
+      paddingBottom: padding.bottom,
+      paddingLeft: padding.left,
+      baseTopPadding,
+      baseRightPadding,
+      baseBottomPadding,
+      baseLeftPadding,
+      yAxisLabelPadding,
+      xAxisLabelPadding,
+      hasOutsideLeftBandLabels,
+      hasOutsideRightBandLabels,
+      bandLabelOutsideWidth,
+      calculatedOutsideWidth,
+      longestBandLabelWidth,
+      bandLabelTextCount: bandLabelTexts.filter(Boolean).length,
+      bandLabelTexts: bandLabelTexts.filter(Boolean).join(" | "),
+      bandLabelMode: this.config.band_label_mode,
+      bandLabelAlign: this.config.band_label_align,
+      bandLabelPosition: this.config.band_label_position,
+      showXAxis: this.config.show_x_axis,
+      showXAxisLabels: this.config.show_x_axis_labels,
+      xAxisPosition,
+      showYAxis: this.config.show_y_axis,
+      showYAxisLabels: this.config.show_y_axis_labels,
+      yAxisPosition,
+    };
+
     /*
       --------------------------------------------------------------------------
       SVG coordinate mapping
@@ -3275,7 +3334,6 @@ class SimpleBandGraphCard extends HTMLElement {
       const ratio = (timestamp - startTime) / (now - startTime);
       return padding.left + clamp(ratio, 0, 1) * plotWidth;
     };
-
     /*
       --------------------------------------------------------------------------
       Plot data preparation
@@ -4318,6 +4376,81 @@ class SimpleBandGraphCard extends HTMLElement {
 
     const debugLevel = this.config.debug_level || "basic";
 
+    const formatDebugValue = (value, fallback = "n/a") =>
+      value === null || value === undefined || value === ""
+        ? fallback
+        : String(value);
+
+    const formatDebugNumber = (value, fallback = "n/a") =>
+      Number.isFinite(Number(value)) ? String(Math.round(Number(value))) : fallback;
+
+    const formatDebugFloat = (value, digits = 2, fallback = "n/a") =>
+      Number.isFinite(Number(value))
+        ? Number(value).toFixed(digits)
+        : fallback;
+
+    const formatDebugSize = (debugWidth, debugHeight) =>
+      `${formatDebugNumber(debugWidth)}×${formatDebugNumber(debugHeight)}`;
+
+    const measuredHeightRatio =
+      layoutDebug.configuredHeight && layoutDebug.measuredPlotWrapHeight
+        ? layoutDebug.measuredPlotWrapHeight / layoutDebug.configuredHeight
+        : null;
+
+    const innerPlotHeightRatio =
+      layoutDebug.configuredHeight && layoutDebug.innerPlotHeight
+        ? layoutDebug.innerPlotHeight / layoutDebug.configuredHeight
+        : null;
+
+    const debugPaddingText = [
+      `t${formatDebugNumber(layoutDebug.paddingTop)}`,
+      `r${formatDebugNumber(layoutDebug.paddingRight)}`,
+      `b${formatDebugNumber(layoutDebug.paddingBottom)}`,
+      `l${formatDebugNumber(layoutDebug.paddingLeft)}`,
+    ].join("/");
+
+    const debugBasePaddingText = [
+      `t${formatDebugNumber(layoutDebug.baseTopPadding)}`,
+      `r${formatDebugNumber(layoutDebug.baseRightPadding)}`,
+      `b${formatDebugNumber(layoutDebug.baseBottomPadding)}`,
+      `l${formatDebugNumber(layoutDebug.baseLeftPadding)}`,
+    ].join("/");
+
+    const layoutFlags = [
+      layoutDebug.measuredPlotWrapWidth && layoutDebug.measuredPlotWrapHeight
+        ? "measured"
+        : "fallback",
+      this.config.show_header ? "header" : "no-header",
+      this.config.show_footer ? "footer" : "no-footer",
+      this.config.show_x_axis ? "x-axis" : "no-x-axis",
+      this.config.show_x_axis_labels ? "x-labels" : "no-x-labels",
+      this.config.show_y_axis ? "y-axis" : "no-y-axis",
+      this.config.show_y_axis_labels ? "y-labels" : "no-y-labels",
+      this.config.show_bands ? "bands" : "no-bands",
+      this.config.show_line ? "line" : "no-line",
+    ].join(" · ");
+
+    const bandLabelDebugText = [
+      `mode ${layoutDebug.bandLabelMode}`,
+      `align ${layoutDebug.bandLabelAlign}`,
+      `pos ${layoutDebug.bandLabelPosition}`,
+      `outside L${layoutDebug.hasOutsideLeftBandLabels ? "yes" : "no"}`,
+      `R${layoutDebug.hasOutsideRightBandLabels ? "yes" : "no"}`,
+      `outside width ${formatDebugNumber(layoutDebug.bandLabelOutsideWidth)}`,
+      `calc ${formatDebugNumber(layoutDebug.calculatedOutsideWidth)}`,
+      `longest ${formatDebugNumber(layoutDebug.longestBandLabelWidth)}`,
+      `labels ${formatDebugNumber(layoutDebug.bandLabelTextCount)}`,
+    ].join(" · ");
+
+    const axisDebugText = [
+      `x ${layoutDebug.xAxisPosition}`,
+      layoutDebug.showXAxis ? "x-line on" : "x-line off",
+      layoutDebug.showXAxisLabels ? "x-labels on" : "x-labels off",
+      `y ${layoutDebug.yAxisPosition}`,
+      layoutDebug.showYAxis ? "y-line on" : "y-line off",
+      layoutDebug.showYAxisLabels ? "y-labels on" : "y-labels off",
+    ].join(" · ");
+
     let debugLines = [];
 
     if (debugLevel === "off") {
@@ -4332,6 +4465,19 @@ class SimpleBandGraphCard extends HTMLElement {
         `y ${yMin}-${yMax} · x ${this.config.x_axis_label_mode} · line ${this.config.line_color_mode}`,
       ];
 
+      const layoutDebugLines = [
+        `layout ${layoutFlags}`,
+        `plotWrap ${formatDebugSize(layoutDebug.measuredPlotWrapWidth, layoutDebug.measuredPlotWrapHeight)} · svg ${formatDebugSize(layoutDebug.svgWidth, layoutDebug.svgHeight)} · inner plot ${formatDebugSize(layoutDebug.innerPlotWidth, layoutDebug.innerPlotHeight)}`,
+        `padding ${debugPaddingText} · base ${debugBasePaddingText}`,
+        `height config ${formatDebugNumber(layoutDebug.configuredHeight)} · min plotWrap ${formatDebugNumber(layoutDebug.plotWrapMinHeight)} · measured/config ${formatDebugFloat(measuredHeightRatio)} · plot/config ${formatDebugFloat(innerPlotHeightRatio)}`,
+      ];
+
+      const configDebugLines = [
+        `band labels · ${bandLabelDebugText}`,
+        `axis · ${axisDebugText}`,
+        `band label texts · ${layoutDebug.bandLabelTexts || "none"}`,
+      ];
+
       const performanceDebugLines = [
         `fetch ${formatDuration(this._lastFetchDurationMs)} · api ${formatDuration(this._lastHistoryApiDurationMs)} · downsample ${formatDuration(this._lastDownsampleDurationMs)}`,
         `render ${formatDuration(this._lastRenderDurationMs)} · renders ${this._renderCount}`,
@@ -4339,27 +4485,38 @@ class SimpleBandGraphCard extends HTMLElement {
       ];
 
       const verboseDebugLines = [
+        `entity ${this.config.entity}`,
+        `name ${this.config.name} · area ${this._areaName || "n/a"}`,
+        `value ${formatDebugValue(rawValue)} · current ${formatDebugValue(currentText)} · band ${formatDebugValue(currentBandText)}`,
         `first ${formatRelativeTimestamp(this._lastHistoryFirstPointTime)} · last ${formatRelativeTimestamp(this._lastHistoryLastPointTime)}`,
         `window ${formatRelativeTimestamp(this._lastHistoryStartTime)} → ${formatRelativeTimestamp(this._lastHistoryEndTime)}`,
       ];
 
       if (debugLevel === "performance") {
-        debugLines = [...basicDebugLines, ...performanceDebugLines];
+        debugLines = [
+          ...basicDebugLines,
+          ...layoutDebugLines,
+          ...performanceDebugLines,
+        ];
       } else if (debugLevel === "verbose") {
         debugLines = [
           ...basicDebugLines,
+          ...layoutDebugLines,
+          ...configDebugLines,
           ...performanceDebugLines,
           ...verboseDebugLines,
         ];
       } else {
-        debugLines = basicDebugLines;
+        debugLines = [
+          ...basicDebugLines,
+          ...layoutDebugLines,
+        ];
       }
     }
 
     const debugText = this.config.debug_multiline
       ? debugLines.join("\n")
       : debugLines.join(" · ");
-
     /*
       --------------------------------------------------------------------------
       Ribbon slot content
@@ -4646,14 +4803,16 @@ class SimpleBandGraphCard extends HTMLElement {
           margin-top: 12px;
           min-width: 0;
           overflow: visible;
+          position: relative;
         }
 
         .sbgc-svg {
-          width: 100%;
-          height: 100%;
           display: block;
+          width: ${width}px;
+          height: ${height}px;
           min-width: 0;
           min-height: 0;
+          overflow: visible;
         }
       </style>
 
@@ -4671,8 +4830,9 @@ class SimpleBandGraphCard extends HTMLElement {
           <div class="sbgc-plot-wrap">
             <svg
               class="sbgc-svg"
+              width="${width}"
+              height="${height}"
               viewBox="0 0 ${width} ${height}"
-              preserveAspectRatio="none"
             >
               <defs>
                 <clipPath id="${plotClipPathId}">
@@ -4696,7 +4856,6 @@ class SimpleBandGraphCard extends HTMLElement {
                 ry="${Number(this.config.plot_background_radius) || 0}"
                 fill="${plotBackground.colour}"
               ></rect>
-
               ${yGridHtml}
               ${xGridHtml}
 
