@@ -914,6 +914,8 @@ class SimpleBandGraphCard extends HTMLElement {
                     { value: "label", label: "Label" },
                     { value: "range", label: "Range" },
                     { value: "threshold", label: "Threshold" },
+                    { value: "label_range", label: "Label + range" },
+                    { value: "label_threshold", label: "Label + threshold" },
                     { value: "hide", label: "Hide labels" },
                   ],
                 },
@@ -1802,7 +1804,7 @@ class SimpleBandGraphCard extends HTMLElement {
 
           band_opacity: "Opacity for the coloured background bands, from 0 to 1.",
           band_label_mode:
-            "Choose whether band labels show the label text, numeric range, threshold, or are hidden.",
+            "Choose whether band labels show the label, range, threshold, label + range, label + threshold, or are hidden.",
           band_label_unit:
             "Add the entity unit to numeric band labels when using range or threshold mode.",
           band_label_position:
@@ -2989,30 +2991,67 @@ class SimpleBandGraphCard extends HTMLElement {
     };
 
     const formatBandValue = (number, suffix = "") => {
-      const formatted = formatValue(number);
+      const numericValue = Number(number);
+
+      if (!Number.isFinite(numericValue)) {
+        return "";
+      }
+
+      const formatted = formatValue(numericValue);
       const unitText = this.config.band_label_unit && unit ? unit : "";
+
       return `${formatted}${suffix}${unitText}`;
     };
 
     const formatBandLabel = (band) => {
-      const mode = this.config.band_label_mode;
+      if (!band) return "";
+
+      const mode = this.config.band_label_mode || "label";
       const label = band.label || "";
 
-      if (mode === "hide") return "";
-      if (mode === "label") return label;
+      if (mode === "hide" || mode === "none") {
+        return "";
+      }
 
       const from = Number(band.from);
       const to = Number(band.to);
 
-      const thresholdText = formatBandValue(from, "+");
-      const rangeText = `${formatValue(from)}–${formatBandValue(to)}`;
+      const fromText = formatBandValue(from);
+      const toText = formatBandValue(to);
 
-      if (mode === "threshold") {
-        return label ? `${label} ${thresholdText}` : thresholdText;
+      const thresholdText = Number.isFinite(from)
+        ? formatBandValue(from, "+")
+        : Number.isFinite(to)
+          ? formatBandValue(to)
+          : "";
+
+      const rangeText =
+        fromText && toText
+          ? `${fromText}–${toText}`
+          : fromText
+            ? `${fromText}+`
+            : toText
+              ? `≤${toText}`
+              : "";
+
+      if (mode === "label") {
+        return label;
       }
 
       if (mode === "range") {
-        return label ? `${label} ${rangeText}` : rangeText;
+        return rangeText;
+      }
+
+      if (mode === "threshold") {
+        return thresholdText;
+      }
+
+      if (mode === "label_range") {
+        return [label, rangeText].filter(Boolean).join(" · ");
+      }
+
+      if (mode === "label_threshold") {
+        return [label, thresholdText].filter(Boolean).join(" · ");
       }
 
       return label;
