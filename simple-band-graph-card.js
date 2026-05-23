@@ -1905,9 +1905,8 @@ class SimpleBandGraphCard extends HTMLElement {
             "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the footer background transparent.",
           footer_background_opacity:
             "Opacity of the footer background, from 0 to 1.",
-
           custom_text:
-            "Text used by any header or footer slot set to Custom text. This is shared by all custom slots.",
+            "Text used by any header or footer slot set to Custom text. Supports placeholders such as {area}, {name}, {current}, {band}, {unit}, {entity}, {min}, {max}, and {duration}.",
           duration_format:
             "Controls whether duration text is shown in short form, such as 24h, or long form, such as 24 hours.",
           ribbon_background_radius:
@@ -3807,7 +3806,9 @@ class SimpleBandGraphCard extends HTMLElement {
           .join("")
       : "";
 
-    const bands = `${bandRects}${bandSeparators}${bandLabels}`;
+    const clippedBandContent = `${bandRects}${bandSeparators}`;
+    const unclippedBandLabels = bandLabels;
+
     /*
       --------------------------------------------------------------------------
       Extrema detection
@@ -4664,8 +4665,10 @@ class SimpleBandGraphCard extends HTMLElement {
               ${xAxisLabelsHtml}
 
               <g clip-path="url(#${plotClipPathId})">
-                ${bands}
+                ${clippedBandContent}
               </g>
+
+              ${unclippedBandLabels}
 
               ${yAxisHtml}
               ${xAxisHtml}
