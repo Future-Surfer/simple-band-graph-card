@@ -2604,11 +2604,25 @@ class SimpleBandGraphCard extends HTMLElement {
       stable per-card IDs used by SVG definitions.
     */
 
-    // Stable per-card ID used for SVG defs such as clip paths.
-    // Keep this stable across config updates so multiple card instances do not
-    // clash with each other on the same dashboard.
+    /*
+      --------------------------------------------------------------------------
+      Stable card instance ID
+      --------------------------------------------------------------------------
+      Used for SVG definitions such as clip paths.
+
+      SVG IDs are document-level references, so every card instance needs a
+      genuinely unique ID. Keep this stable across config updates so re-rendering
+      the same card does not constantly change its internal SVG references.
+    */
+    if (!SimpleBandGraphCard._nextInstanceId) {
+      SimpleBandGraphCard._nextInstanceId = 1;
+    }
+
     this._instanceId =
-      this._instanceId || Math.random().toString(36).slice(2);
+      this._instanceId ||
+      `sbgc-${SimpleBandGraphCard._nextInstanceId++}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}`;
 
     this._history = [];
     this._rawHistoryCount = 0;
@@ -2981,8 +2995,8 @@ class SimpleBandGraphCard extends HTMLElement {
     const unit = state?.attributes?.unit_of_measurement || "";
 
     /*
-      Width should follow the real rendered plot wrapper so the SVG viewBox
-      matches the available card width.
+      Width should follow the rendered plot wrapper so the SVG viewBox matches
+      the available card width.
 
       Height has two modes:
 
@@ -2991,18 +3005,25 @@ class SimpleBandGraphCard extends HTMLElement {
          stable in stacks, grids, editor previews, and masonry-style layouts.
 
       2. Explicit Sections row mode
-         If the user has set grid_options.rows, Home Assistant is being asked to
-         allocate a specific dashboard height. In that case, measured plot height
-         can drive the SVG height so the graph can fill the allocated rows.
+         If the user has explicitly set grid_options.rows in YAML, Home Assistant
+         is being asked to allocate a specific dashboard height. In that case,
+         measured plot height can drive the SVG height so the graph can fill the
+         allocated rows.
 
-      Important: we only treat grid_options.rows in YAML as explicit. We do not
-      inspect parent DOM grid-row styles, because Home Assistant can add those
-      automatically and that can cause the card to re-render into a squashed size.
+      Important: row-fill mode should only activate when grid_options.rows is
+      genuinely present in the card YAML. It should not activate just because
+      Home Assistant Sections has inferred or assigned row sizing.
     */
     const configuredHeight = Number(this.config.height) || 180;
 
-    const gridRows = Number(this.config.grid_options?.rows);
-    const hasExplicitGridRows = Number.isFinite(gridRows) && gridRows > 0;
+    const hasExplicitGridRows =
+      this.config &&
+      Object.prototype.hasOwnProperty.call(this.config, "grid_options") &&
+      this.config.grid_options &&
+      typeof this.config.grid_options === "object" &&
+      Object.prototype.hasOwnProperty.call(this.config.grid_options, "rows") &&
+      Number.isFinite(Number(this.config.grid_options.rows)) &&
+      Number(this.config.grid_options.rows) > 0;
 
     const measuredPlotWidth = Number(this._plotWidth);
     const measuredPlotHeight = Number(this._plotHeight);
@@ -3045,7 +3066,7 @@ class SimpleBandGraphCard extends HTMLElement {
       Used to clip plot-area content, such as background bands, to the same
       rounded rectangle as the plot background.
     */
-    const plotClipPathId = `sbgc-plot-clip-${this._instanceId}`;
+    const plotClipPathId = `${this._instanceId}-plot-clip`;
     /*
       --------------------------------------------------------------------------
       General render helpers
@@ -4945,6 +4966,10 @@ class SimpleBandGraphCard extends HTMLElement {
       height. In explicit Sections row mode, it fills the height allocated by
       Home Assistant so taller row settings can make the graph taller.
 
+      Important: row-fill mode should only be active when grid_options.rows is
+      explicitly present in the card YAML. Otherwise, cards in the same Section
+      can affect each other's internal graph height.
+
       Card background is applied inline to ha-card. This matches the older working
       behaviour and avoids the host painting outside the real card surface.
 
@@ -4961,6 +4986,8 @@ class SimpleBandGraphCard extends HTMLElement {
     const plotWrapHeightCss = layoutControlledByRows ? "auto" : `${height}px`;
     const plotWrapMinHeightCss = layoutControlledByRows ? "0" : `${height}px`;
 
+    const cssScope = `.sbgc-root[data-sbgc-instance="${this._instanceId}"]`;
+
     this.innerHTML = `
       <style>
         :host {
@@ -4971,7 +4998,13 @@ class SimpleBandGraphCard extends HTMLElement {
           min-height: 0;
         }
 
-        ha-card {
+        ${cssScope} {
+          display: block;
+          width: 100%;
+          min-width: 0;
+        }
+
+        ${cssScope} ha-card {
           display: block;
           width: 100%;
           height: ${cardHeightCss};
@@ -4980,7 +5013,7 @@ class SimpleBandGraphCard extends HTMLElement {
           overflow: hidden;
         }
 
-        .sbgc-inner {
+        ${cssScope} .sbgc-inner {
           height: ${innerHeightCss};
           box-sizing: border-box;
           padding: 16px;
@@ -4990,7 +5023,7 @@ class SimpleBandGraphCard extends HTMLElement {
           min-height: 0;
         }
 
-        .sbgc-plot-wrap {
+        ${cssScope} .sbgc-plot-wrap {
           flex: ${plotWrapFlexCss};
           width: 100%;
           height: ${plotWrapHeightCss};
@@ -5001,7 +5034,7 @@ class SimpleBandGraphCard extends HTMLElement {
           position: relative;
         }
 
-        .sbgc-svg {
+        ${cssScope} .sbgc-svg {
           display: block;
           width: 100%;
           height: 100%;
@@ -5011,89 +5044,96 @@ class SimpleBandGraphCard extends HTMLElement {
         }
       </style>
 
-      <ha-card
-        style="
-          background: ${cardBackground.colour};
-          background-color: ${cardBackground.colour};
-          --ha-card-background: ${cardBackground.colour};
-          --card-background-color: ${cardBackground.colour};
-        "
+      <div
+        class="sbgc-root"
+        data-sbgc-instance="${this._instanceId}"
       >
-        <div class="sbgc-inner">
-          ${topRibbonHtml}
+        <ha-card
+          data-sbgc-instance="${this._instanceId}"
+          style="
+            background: ${cardBackground.colour};
+            background-color: ${cardBackground.colour};
+            --ha-card-background: ${cardBackground.colour};
+            --card-background-color: ${cardBackground.colour};
+          "
+        >
+          <div class="sbgc-inner">
+            ${topRibbonHtml}
 
-          <div class="sbgc-plot-wrap">
-            <svg
-              class="sbgc-svg"
-              width="${width}"
-              height="${height}"
-              viewBox="0 0 ${width} ${height}"
-            >
-              <defs>
-                <clipPath id="${plotClipPathId}">
-                  <rect
-                    x="${padding.left}"
-                    y="${padding.top}"
-                    width="${plotWidth}"
-                    height="${plotHeight}"
-                    rx="${Number(this.config.plot_background_radius) || 0}"
-                    ry="${Number(this.config.plot_background_radius) || 0}"
-                  ></rect>
-                </clipPath>
-              </defs>
+            <div class="sbgc-plot-wrap">
+              <svg
+                class="sbgc-svg"
+                data-sbgc-instance="${this._instanceId}"
+                width="${width}"
+                height="${height}"
+                viewBox="0 0 ${width} ${height}"
+              >
+                <defs>
+                  <clipPath id="${plotClipPathId}">
+                    <rect
+                      x="${padding.left}"
+                      y="${padding.top}"
+                      width="${plotWidth}"
+                      height="${plotHeight}"
+                      rx="${Number(this.config.plot_background_radius) || 0}"
+                      ry="${Number(this.config.plot_background_radius) || 0}"
+                    ></rect>
+                  </clipPath>
+                </defs>
 
-              <rect
-                x="${padding.left}"
-                y="${padding.top}"
-                width="${plotWidth}"
-                height="${plotHeight}"
-                rx="${Number(this.config.plot_background_radius) || 0}"
-                ry="${Number(this.config.plot_background_radius) || 0}"
-                fill="${plotBackground.colour}"
-              ></rect>
-              ${yGridHtml}
-              ${xGridHtml}
+                <rect
+                  x="${padding.left}"
+                  y="${padding.top}"
+                  width="${plotWidth}"
+                  height="${plotHeight}"
+                  rx="${Number(this.config.plot_background_radius) || 0}"
+                  ry="${Number(this.config.plot_background_radius) || 0}"
+                  fill="${plotBackground.colour}"
+                ></rect>
+                ${yGridHtml}
+                ${xGridHtml}
 
-              ${yAxisLabelsHtml}
-              ${xAxisLabelsHtml}
+                ${yAxisLabelsHtml}
+                ${xAxisLabelsHtml}
 
-              <g clip-path="url(#${plotClipPathId})">
-                ${clippedBandContent}
-              </g>
+                <g clip-path="url(#${plotClipPathId})">
+                  ${clippedBandContent}
+                </g>
 
-              ${unclippedBandLabels}
+                ${unclippedBandLabels}
 
-              ${yAxisHtml}
-              ${xAxisHtml}
+                ${yAxisHtml}
+                ${xAxisHtml}
 
-              ${
-                points
-                  ? `
-                    <g clip-path="url(#${plotClipPathId})">
-                      ${lineHtml}
-                    </g>
+                ${
+                  points
+                    ? `
+                      <g clip-path="url(#${plotClipPathId})">
+                        ${lineHtml}
+                      </g>
 
-                    ${extremaMarkers}
-                    ${latestMarker}
-                  `
-                  : `
-                    <text
-                      x="${padding.left + plotWidth / 2}"
-                      y="${padding.top + plotHeight / 2}"
-                      text-anchor="middle"
-                      font-size="13"
-                      fill="var(--secondary-text-color)"
-                    >
-                      No data
-                    </text>
-                  `
-              }
-            </svg>
+                      ${extremaMarkers}
+                      ${latestMarker}
+                    `
+                    : `
+                      <text
+                        x="${padding.left + plotWidth / 2}"
+                        y="${padding.top + plotHeight / 2}"
+                        text-anchor="middle"
+                        font-size="13"
+                        fill="var(--secondary-text-color)"
+                      >
+                        No data
+                      </text>
+                    `
+                }
+              </svg>
+            </div>
+
+            ${bottomRibbonHtml}
           </div>
-
-          ${bottomRibbonHtml}
-        </div>
-      </ha-card>
+        </ha-card>
+      </div>
     `;
 
     this._observePlotArea();
@@ -5274,34 +5314,53 @@ class SimpleBandGraphCard extends HTMLElement {
     ============================================================================
     Used by Home Assistant layouts as sizing metadata.
 
-    getGridOptions is used by the newer Sections layout so the card can be
-    resized sensibly in the dashboard grid.
+    getGridOptions is used by the newer Sections layout.
 
-    By default, this card now asks for a full-width chart-friendly footprint.
-    Users can still override this in YAML with grid_options.columns and
-    grid_options.rows.
+    Important: this card should not provide default grid sizing metadata when the
+    user has not explicitly set grid_options in YAML. In Sections, even default
+    grid metadata can affect how neighbouring cards in the same section are
+    reflowed.
+
+    Behaviour:
+
+    - no grid_options in YAML:
+      return undefined and let Home Assistant handle layout normally
+
+    - grid_options.columns and/or grid_options.rows in YAML:
+      return only those explicit values, plus safe min/max constraints
 
     getCardSize is used by older masonry layouts as a rough height estimate.
   */
   getGridOptions() {
-    const configuredColumns = this.config?.grid_options?.columns;
-    const configuredRows = Number(this.config?.grid_options?.rows);
+    const hasGridOptions =
+      this.config &&
+      Object.prototype.hasOwnProperty.call(this.config, "grid_options") &&
+      this.config.grid_options &&
+      typeof this.config.grid_options === "object";
 
-    const columns =
-      configuredColumns === "full"
+    if (!hasGridOptions) {
+      return undefined;
+    }
+
+    const rawColumns = this.config.grid_options.columns;
+    const rawRows = this.config.grid_options.rows;
+
+    const configuredColumns =
+      rawColumns === "full"
         ? 12
-        : Number.isFinite(Number(configuredColumns))
-          ? Math.min(12, Math.max(1, Number(configuredColumns)))
-          : 12;
+        : Number.isFinite(Number(rawColumns))
+          ? Math.min(12, Math.max(1, Number(rawColumns)))
+          : null;
 
-    const rows =
-      Number.isFinite(configuredRows) && configuredRows > 0
-        ? Math.min(12, Math.max(1, configuredRows))
-        : 4;
+    const configuredRows =
+      Number.isFinite(Number(rawRows)) && Number(rawRows) > 0
+        ? Math.min(12, Math.max(1, Number(rawRows)))
+        : null;
 
     return {
-      columns,
-      rows,
+      ...(configuredColumns ? { columns: configuredColumns } : {}),
+      ...(configuredRows ? { rows: configuredRows } : {}),
+
       min_columns: 3,
       min_rows: 2,
       max_columns: 12,
