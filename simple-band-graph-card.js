@@ -195,6 +195,7 @@ class SimpleBandGraphCard extends HTMLElement {
       // Area appearance settings
       show_area: false,
       area_color: "var(--primary-color)",
+      area_color_mode: "static",
       area_opacity: 0.18,
 
       // Marker settings
@@ -1171,7 +1172,7 @@ class SimpleBandGraphCard extends HTMLElement {
           ----------------------------------------------------------------------
           Area section
           ----------------------------------------------------------------------
-          Area fill visibility. Colour and opacity controls will be added later.
+          Area fill visibility, colour mode, colour, and opacity.
         */
         {
           type: "expandable",
@@ -1184,6 +1185,32 @@ class SimpleBandGraphCard extends HTMLElement {
               name: "show_area",
               selector: {
                 boolean: {},
+              },
+            },
+            {
+              name: "area_color_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: colourModeOptions,
+                },
+              },
+            },
+            {
+              name: "area_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "area_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
               },
             },
           ],
@@ -1834,6 +1861,9 @@ class SimpleBandGraphCard extends HTMLElement {
 
           // Area
           show_area: "Show area",
+          area_color_mode: "Area colour mode",
+          area_color: "Area colour",
+          area_opacity: "Area opacity",
 
           // Markers
           show_latest: "Show current marker",
@@ -2053,7 +2083,13 @@ class SimpleBandGraphCard extends HTMLElement {
 
           // Area
           show_area:
-            "Show or hide the filled area under the plotted history line. Area rendering will be drawn independently of whether the line itself is shown.",
+            "Show or hide the filled area for the plotted history data. The area can be shown even when the line itself is hidden.",
+          area_color_mode:
+            "Choose how the area fill colour is resolved. Static uses the configured area colour. Band mode will use configured band colours once banded area rendering is added.",
+          area_color:
+            "Colour used for the area fill when area colour mode is static.",
+          area_opacity:
+            "Opacity of the area fill. Lower values keep the history line, bands, grid, and axes easier to read.",
 
           // Markers
           show_latest:
@@ -2383,6 +2419,7 @@ class SimpleBandGraphCard extends HTMLElement {
       // Area appearance settings
       show_area: config.show_area ?? false,
       area_color: config.area_color ?? "var(--primary-color)",
+      area_color_mode: config.area_color_mode ?? "static",
       area_opacity: config.area_opacity ?? 0.18,
 
       // Grid-line settings
@@ -4570,12 +4607,20 @@ class SimpleBandGraphCard extends HTMLElement {
       --------------------------------------------------------------------------
       Area rendering
       --------------------------------------------------------------------------
-      Draws a filled area between the plotted history line and the zero point on
+      Draws a filled area between the plotted history data and the zero point on
       the y-axis.
 
       The zero baseline is clamped to the visible plot area, so charts whose
       range does not include zero still draw safely to the nearest edge.
+
+      Colour mode support:
+      - "none" hides the area fill.
+      - "static" uses area_color and area_opacity.
+      - "band" splits the area into vertical segments and colours each segment
+        using the band colour for that value range.
     */
+    const areaColorMode = this.config.area_color_mode || "static";
+
     const zeroY = yToSvg(0);
 
     const areaBaselineY = clamp(
@@ -4586,31 +4631,123 @@ class SimpleBandGraphCard extends HTMLElement {
 
     const areaOpacity = normaliseOpacity(this.config.area_opacity ?? 0.18);
 
-    const areaColour = applyOpacityToColour(
+    const staticAreaColour = applyOpacityToColour(
       this.config.area_color || "var(--primary-color)",
       areaOpacity
     );
 
-    const areaPoints =
-      plotData.length >= 2
-        ? [
-            `${xToSvg(plotData[0].time)},${areaBaselineY}`,
-            ...plotData.map((point) => `${xToSvg(point.time)},${yToSvg(point.state)}`),
-            `${xToSvg(plotData[plotData.length - 1].time)},${areaBaselineY}`,
-          ].join(" ")
-        : "";
+    const buildStaticAreaHtml = () => {
+      const areaPoints =
+        plotData.length >= 2
+          ? [
+              `${xToSvg(plotData[0].time)},${areaBaselineY}`,
+              ...plotData.map(
+                (point) => `${xToSvg(point.time)},${yToSvg(point.state)}`
+              ),
+              `${xToSvg(plotData[plotData.length - 1].time)},${areaBaselineY}`,
+            ].join(" ")
+          : "";
 
-    const areaHtml =
-      this.config.show_area && areaPoints && areaColour !== "transparent"
+      return areaPoints && staticAreaColour !== "transparent"
         ? `
           <polygon
             points="${areaPoints}"
-            fill="${areaColour}"
+            fill="${staticAreaColour}"
             stroke="none"
           ></polygon>
         `
         : "";
+    };
 
+    const buildBandAreaHtml = () => {
+      if (plotData.length < 2) {
+        return "";
+      }
+
+      const thresholds = getBandThresholds();
+      const polygons = [];
+
+      const getCrossingsForAreaSegment = (startPoint, endPoint) => {
+        const startValue = startPoint.state;
+        const endValue = endPoint.state;
+
+        if (startValue === endValue) return [];
+
+        const low = Math.min(startValue, endValue);
+        const high = Math.max(startValue, endValue);
+
+        return thresholds
+          .filter((threshold) => threshold > low && threshold < high)
+          .map((threshold) => {
+            const ratio = (threshold - startValue) / (endValue - startValue);
+
+            return {
+              state: threshold,
+              time: startPoint.time + ratio * (endPoint.time - startPoint.time),
+              ratio,
+            };
+          })
+          .sort((a, b) => a.ratio - b.ratio);
+      };
+
+      for (let index = 1; index < plotData.length; index += 1) {
+        const previousPoint = plotData[index - 1];
+        const point = plotData[index];
+
+        const subPoints = [
+          previousPoint,
+          ...getCrossingsForAreaSegment(previousPoint, point),
+          point,
+        ];
+
+        for (let subIndex = 1; subIndex < subPoints.length; subIndex += 1) {
+          const startPoint = subPoints[subIndex - 1];
+          const endPoint = subPoints[subIndex];
+
+          if (startPoint.time === endPoint.time && startPoint.state === endPoint.state) {
+            continue;
+          }
+
+          const segmentBand = getBandForRange(startPoint.state, endPoint.state);
+
+          const segmentColour = resolveColour(
+            this.config.area_color,
+            "band",
+            areaOpacity,
+            segmentBand
+          );
+
+          if (!segmentColour || segmentColour === "transparent") {
+            continue;
+          }
+
+          const startX = xToSvg(startPoint.time);
+          const endX = xToSvg(endPoint.time);
+          const startY = yToSvg(startPoint.state);
+          const endY = yToSvg(endPoint.state);
+
+          polygons.push(`
+            <polygon
+              points="${startX},${startY} ${endX},${endY} ${endX},${areaBaselineY} ${startX},${areaBaselineY}"
+              fill="${segmentColour}"
+              stroke="none"
+            ></polygon>
+          `);
+        }
+      }
+
+      return polygons.join("");
+    };
+
+    let areaHtml = "";
+
+    if (this.config.show_area && areaColorMode !== "none" && points) {
+      if (areaColorMode === "band") {
+        areaHtml = buildBandAreaHtml();
+      } else {
+        areaHtml = buildStaticAreaHtml();
+      }
+    }
     /*
       --------------------------------------------------------------------------
       Debug/status text
@@ -5186,8 +5323,9 @@ class SimpleBandGraphCard extends HTMLElement {
                 ${
                   points
                     ? `
+                      ${areaHtml}
+
                       <g clip-path="url(#${plotClipPathId})">
-                        ${areaHtml}
                         ${lineHtml}
                       </g>
 
