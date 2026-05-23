@@ -5316,53 +5316,48 @@ class SimpleBandGraphCard extends HTMLElement {
 
     getGridOptions is used by the newer Sections layout.
 
-    Important: this card should not provide default grid sizing metadata when the
-    user has not explicitly set grid_options in YAML. In Sections, even default
-    grid metadata can affect how neighbouring cards in the same section are
-    reflowed.
+    By default, this card lets Home Assistant auto-place and auto-size it. It only
+    returns grid sizing metadata when the user explicitly sets grid_options in
+    YAML.
 
-    Behaviour:
+    This avoids default column or row values affecting neighbouring cards in the
+    same Section.
 
-    - no grid_options in YAML:
-      return undefined and let Home Assistant handle layout normally
-
-    - grid_options.columns and/or grid_options.rows in YAML:
-      return only those explicit values, plus safe min/max constraints
+    Users can opt into explicit Sections sizing with grid_options.columns and
+    grid_options.rows.
 
     getCardSize is used by older masonry layouts as a rough height estimate.
   */
   getGridOptions() {
-    const hasGridOptions =
-      this.config &&
-      Object.prototype.hasOwnProperty.call(this.config, "grid_options") &&
-      this.config.grid_options &&
-      typeof this.config.grid_options === "object";
+    const rawColumns = this.config?.grid_options?.columns;
+    const rawRows = this.config?.grid_options?.rows;
 
-    if (!hasGridOptions) {
-      return undefined;
-    }
+    const hasExplicitColumns =
+      rawColumns === "full" || Number.isFinite(Number(rawColumns));
 
-    const rawColumns = this.config.grid_options.columns;
-    const rawRows = this.config.grid_options.rows;
+    const hasExplicitRows =
+      Number.isFinite(Number(rawRows)) && Number(rawRows) > 0;
 
-    const configuredColumns =
+    const columns =
       rawColumns === "full"
         ? 12
-        : Number.isFinite(Number(rawColumns))
+        : hasExplicitColumns
           ? Math.min(12, Math.max(1, Number(rawColumns)))
           : null;
 
-    const configuredRows =
-      Number.isFinite(Number(rawRows)) && Number(rawRows) > 0
-        ? Math.min(12, Math.max(1, Number(rawRows)))
-        : null;
+    const rows = hasExplicitRows
+      ? Math.min(12, Math.max(1, Number(rawRows)))
+      : null;
+
+    if (!columns && !rows) {
+      return undefined;
+    }
 
     return {
-      ...(configuredColumns ? { columns: configuredColumns } : {}),
-      ...(configuredRows ? { rows: configuredRows } : {}),
+      ...(columns ? { columns } : {}),
+      ...(rows ? { rows } : {}),
 
       min_columns: 3,
-      min_rows: 2,
       max_columns: 12,
       max_rows: 12,
     };
