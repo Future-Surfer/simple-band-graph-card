@@ -4616,8 +4616,8 @@ class SimpleBandGraphCard extends HTMLElement {
       Colour mode support:
       - "none" hides the area fill.
       - "static" uses area_color and area_opacity.
-      - "band" splits the area into vertical segments and colours each segment
-        using the band colour for that value range.
+      - "band" splits at band thresholds, then groups adjacent segments with the
+        same resolved band colour into larger polygons.
     */
     const areaColorMode = this.config.area_color_mode || "static";
 
@@ -4659,13 +4659,42 @@ class SimpleBandGraphCard extends HTMLElement {
         : "";
     };
 
-    const buildBandAreaHtml = () => {
+    const buildGroupedBandAreaHtml = () => {
       if (plotData.length < 2) {
         return "";
       }
 
       const thresholds = getBandThresholds();
       const polygons = [];
+
+      let currentColour = null;
+      let currentLinePoints = [];
+
+      const toSvgPoint = (point) => `${xToSvg(point.time)},${yToSvg(point.state)}`;
+
+      const flushCurrentPolygon = () => {
+        if (currentLinePoints.length < 2 || !currentColour) return;
+
+        const firstLinePoint = currentLinePoints[0];
+        const lastLinePoint = currentLinePoints[currentLinePoints.length - 1];
+
+        const firstX = firstLinePoint.split(",")[0];
+        const lastX = lastLinePoint.split(",")[0];
+
+        const polygonPoints = [
+          ...currentLinePoints,
+          `${lastX},${areaBaselineY}`,
+          `${firstX},${areaBaselineY}`,
+        ].join(" ");
+
+        polygons.push(`
+          <polygon
+            points="${polygonPoints}"
+            fill="${currentColour}"
+            stroke="none"
+          ></polygon>
+        `);
+      };
 
       const getCrossingsForAreaSegment = (startPoint, endPoint) => {
         const startValue = startPoint.state;
@@ -4718,23 +4747,33 @@ class SimpleBandGraphCard extends HTMLElement {
           );
 
           if (!segmentColour || segmentColour === "transparent") {
+            flushCurrentPolygon();
+            currentColour = null;
+            currentLinePoints = [];
             continue;
           }
 
-          const startX = xToSvg(startPoint.time);
-          const endX = xToSvg(endPoint.time);
-          const startY = yToSvg(startPoint.state);
-          const endY = yToSvg(endPoint.state);
+          const startSvgPoint = toSvgPoint(startPoint);
+          const endSvgPoint = toSvgPoint(endPoint);
 
-          polygons.push(`
-            <polygon
-              points="${startX},${startY} ${endX},${endY} ${endX},${areaBaselineY} ${startX},${areaBaselineY}"
-              fill="${segmentColour}"
-              stroke="none"
-            ></polygon>
-          `);
+          if (segmentColour !== currentColour) {
+            flushCurrentPolygon();
+
+            currentColour = segmentColour;
+            currentLinePoints = [startSvgPoint, endSvgPoint];
+          } else {
+            const lastPoint = currentLinePoints[currentLinePoints.length - 1];
+
+            if (lastPoint !== startSvgPoint) {
+              currentLinePoints.push(startSvgPoint);
+            }
+
+            currentLinePoints.push(endSvgPoint);
+          }
         }
       }
+
+      flushCurrentPolygon();
 
       return polygons.join("");
     };
@@ -4743,7 +4782,7 @@ class SimpleBandGraphCard extends HTMLElement {
 
     if (this.config.show_area && areaColorMode !== "none" && points) {
       if (areaColorMode === "band") {
-        areaHtml = buildBandAreaHtml();
+        areaHtml = buildGroupedBandAreaHtml();
       } else {
         areaHtml = buildStaticAreaHtml();
       }
