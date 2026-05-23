@@ -232,6 +232,8 @@ class SimpleBandGraphCard extends HTMLElement {
       header_font_size: 16,
       header_font_weight: 600,
       header_opacity: 1,
+      header_multiline: false,
+      header_max_lines: 2,
 
       // Footer visibility, slot, background, and text settings
       show_footer: true,
@@ -243,9 +245,11 @@ class SimpleBandGraphCard extends HTMLElement {
       footer_background_color_mode: "static",
       footer_background_opacity: 0,
 
-      footer_font_size: 12,
+      footer_font_size: 14,
       footer_font_weight: 500,
       footer_opacity: 0.8,
+      footer_multiline: false,
+      footer_max_lines: 2,
 
       // Legacy ribbon slot settings
       // Kept aligned with header/footer defaults for backwards compatibility.
@@ -1417,6 +1421,23 @@ class SimpleBandGraphCard extends HTMLElement {
               },
             },
             {
+              name: "header_multiline",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "header_max_lines",
+              selector: {
+                number: {
+                  min: 1,
+                  max: 5,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
               name: "header_background_color",
               selector: {
                 text: {},
@@ -1548,6 +1569,23 @@ class SimpleBandGraphCard extends HTMLElement {
                   min: 0,
                   max: 1,
                   step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "footer_multiline",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "footer_max_lines",
+              selector: {
+                number: {
+                  min: 1,
+                  max: 5,
+                  step: 1,
                   mode: "slider",
                 },
               },
@@ -1797,6 +1835,8 @@ class SimpleBandGraphCard extends HTMLElement {
           header_font_size: "Header text size",
           header_font_weight: "Header text weight",
           header_opacity: "Header text opacity",
+          header_multiline: "Allow multiline header text",
+          header_max_lines: "Header maximum lines",
           header_background_color: "Header background colour",
           header_background_color_mode: "Header background colour mode",
           header_background_opacity: "Header background opacity",
@@ -1809,6 +1849,8 @@ class SimpleBandGraphCard extends HTMLElement {
           footer_font_size: "Footer text size",
           footer_font_weight: "Footer text weight",
           footer_opacity: "Footer text opacity",
+          footer_multiline: "Allow multiline footer text",
+          footer_max_lines: "Footer maximum lines",
           footer_background_color: "Footer background colour",
           footer_background_color_mode: "Footer background colour mode",
           footer_background_opacity: "Footer background opacity",
@@ -2022,6 +2064,10 @@ class SimpleBandGraphCard extends HTMLElement {
           header_font_size: "Text size for all header slots.",
           header_font_weight: "Font weight for all header slots.",
           header_opacity: "Opacity of header text, from 0 to 1.",
+          header_multiline:
+            "Allow eligible long-form header content, such as custom text, messages, and debug text, to wrap onto multiple lines. Compact values such as current, min, max, duration, and unit remain single-line.",
+          header_max_lines:
+            "Maximum number of lines allowed for eligible multiline header content.",
           header_background_color:
             "CSS colour for the header background, such as transparent, var(--card-background-color), #222222, or rgba(0,0,0,0.2).",
           header_background_color_mode:
@@ -2040,6 +2086,10 @@ class SimpleBandGraphCard extends HTMLElement {
           footer_font_size: "Text size for all footer slots.",
           footer_font_weight: "Font weight for all footer slots.",
           footer_opacity: "Opacity of footer text, from 0 to 1.",
+          footer_multiline:
+            "Allow eligible long-form footer content, such as custom text, messages, and debug text, to wrap onto multiple lines. Compact values such as current, min, max, duration, and unit remain single-line.",
+          footer_max_lines:
+            "Maximum number of lines allowed for eligible multiline footer content.",
           footer_background_color:
             "CSS colour for the footer background, such as transparent, var(--card-background-color), #222222, or rgba(0,0,0,0.2).",
           footer_background_color_mode:
@@ -2678,6 +2728,7 @@ class SimpleBandGraphCard extends HTMLElement {
       }
     });
   }
+
   _observePlotArea() {
     const plotWrap = this.querySelector(".sbgc-plot-wrap");
 
@@ -2687,18 +2738,17 @@ class SimpleBandGraphCard extends HTMLElement {
       this._plotResizeObserver.disconnect();
     }
 
-    const measurePlotArea = () => {
-      const rect = plotWrap.getBoundingClientRect();
+    this._plotResizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0];
 
-      const measuredPlotWidth = Math.round(rect?.width || 0);
-      const measuredPlotHeight = Math.round(rect?.height || 0);
-
-      if (!measuredPlotWidth || !measuredPlotHeight) return;
+      const measuredPlotWidth = Math.round(entry?.contentRect?.width || 0);
+      const measuredPlotHeight = Math.round(entry?.contentRect?.height || 0);
 
       const plotWidthChanged =
-        Math.abs(measuredPlotWidth - this._plotWidth) >= 2;
+        measuredPlotWidth && Math.abs(measuredPlotWidth - this._plotWidth) >= 2;
 
       const plotHeightChanged =
+        measuredPlotHeight &&
         Math.abs(measuredPlotHeight - this._plotHeight) >= 2;
 
       if (plotWidthChanged) {
@@ -2712,36 +2762,13 @@ class SimpleBandGraphCard extends HTMLElement {
       if (plotWidthChanged || plotHeightChanged) {
         this._scheduleResponsiveRender();
       }
-    };
-
-    const scheduleMeasure = () => {
-      if (this._plotMeasureQueued) return;
-
-      this._plotMeasureQueued = true;
-
-      requestAnimationFrame(() => {
-        this._plotMeasureQueued = false;
-        measurePlotArea();
-      });
-    };
-
-    this._plotResizeObserver = new ResizeObserver(() => {
-      scheduleMeasure();
     });
 
     this._plotResizeObserver.observe(plotWrap);
-
-    // Initial and delayed measurements help nested grid/vertical-stack layouts
-    // settle before we commit to the final SVG dimensions.
-    scheduleMeasure();
-    window.setTimeout(scheduleMeasure, 50);
-    window.setTimeout(scheduleMeasure, 150);
-    window.setTimeout(scheduleMeasure, 300);
   }
 
   set hass(hass) {
     this._hass = hass;
-
     /*
       Resolve the Home Assistant area for the configured entity.
 
@@ -2954,57 +2981,28 @@ class SimpleBandGraphCard extends HTMLElement {
     const unit = state?.attributes?.unit_of_measurement || "";
 
     /*
-      Use measured plot dimensions when Home Assistant has provided an explicit
-      grid height via grid_options.
+      Width should follow the real rendered plot wrapper so the SVG viewBox
+      matches the available card width.
 
-      In vertical stacks and older/masonry-style layouts, there may be no useful
-      allocated row height. In those cases, the plot wrapper can measure as tiny
-      or zero. We therefore fall back to the configured graph height so stacked
-      cards keep a healthy default size.
+      Height has two modes:
 
-      In Sections layouts with grid_options.rows, measured plot height is allowed
-      to drive the SVG height, including compact 1-row status-tile layouts.
+      1. Normal mode
+         The configured height is used as the graph height. This keeps cards
+         stable in stacks, grids, editor previews, and masonry-style layouts.
+
+      2. Explicit Sections row mode
+         If the user has set grid_options.rows, Home Assistant is being asked to
+         allocate a specific dashboard height. In that case, measured plot height
+         can drive the SVG height so the graph can fill the allocated rows.
+
+      Important: we only treat grid_options.rows in YAML as explicit. We do not
+      inspect parent DOM grid-row styles, because Home Assistant can add those
+      automatically and that can cause the card to re-render into a squashed size.
     */
     const configuredHeight = Number(this.config.height) || 180;
 
     const gridRows = Number(this.config.grid_options?.rows);
-
-    const hasGridRowStyle = (() => {
-      let element = this;
-
-      for (let depth = 0; depth < 5 && element; depth += 1) {
-        const inlineGridRow =
-          element.style?.gridRow ||
-          element.style?.gridRowEnd ||
-          element.style?.getPropertyValue?.("grid-row") ||
-          element.style?.getPropertyValue?.("grid-row-end") ||
-          "";
-
-        const computedStyle =
-          typeof getComputedStyle === "function"
-            ? getComputedStyle(element)
-            : null;
-
-        const computedGridRow =
-          computedStyle?.gridRow ||
-          computedStyle?.gridRowEnd ||
-          "";
-
-        if (
-          String(inlineGridRow).includes("span") ||
-          String(computedGridRow).includes("span")
-        ) {
-          return true;
-        }
-
-        element = element.parentElement;
-      }
-
-      return false;
-    })();
-
-    const hasExplicitGridRows =
-      (Number.isFinite(gridRows) && gridRows > 0) || hasGridRowStyle;
+    const hasExplicitGridRows = Number.isFinite(gridRows) && gridRows > 0;
 
     const measuredPlotWidth = Number(this._plotWidth);
     const measuredPlotHeight = Number(this._plotHeight);
@@ -3015,7 +3013,7 @@ class SimpleBandGraphCard extends HTMLElement {
 
       Avoid a large minimum width here. If the viewBox is wider than the actual
       rendered card, SVG text gets horizontally compressed, which makes axis,
-      marker and band labels look squashed in narrow cards.
+      marker, and band labels look squashed in narrow cards.
     */
     const width =
       Number.isFinite(measuredPlotWidth) && measuredPlotWidth > 0
@@ -3024,6 +3022,10 @@ class SimpleBandGraphCard extends HTMLElement {
           ? Math.max(80, Math.round(measuredCardWidth))
           : 600;
 
+    /*
+      In explicit grid row mode, use the measured plot height once available.
+      Otherwise, use the configured fallback graph height.
+    */
     const height =
       hasExplicitGridRows &&
       Number.isFinite(measuredPlotHeight) &&
@@ -3032,9 +3034,8 @@ class SimpleBandGraphCard extends HTMLElement {
         : configuredHeight;
 
     /*
-      The plot wrapper needs a real minimum height in stacks/older layouts, but
-      must be allowed to shrink in Sections layouts where grid rows control the
-      allocated height.
+      In normal mode, the plot wrapper keeps a real minimum height. In explicit
+      grid row mode, the parent grid is allowed to control the vertical space.
     */
     const plotWrapMinHeight = hasExplicitGridRows ? 0 : configuredHeight;
 
@@ -3045,7 +3046,6 @@ class SimpleBandGraphCard extends HTMLElement {
       rounded rectangle as the plot background.
     */
     const plotClipPathId = `sbgc-plot-clip-${this._instanceId}`;
-
     /*
       --------------------------------------------------------------------------
       General render helpers
@@ -4701,6 +4701,18 @@ class SimpleBandGraphCard extends HTMLElement {
     const formattedBandMessage = formatTemplateText(currentBandMessage);
     const formattedCustomText = formatTemplateText(this.config.custom_text);
 
+    const multilineSlotNames = new Set([
+      "name",
+      "message",
+      "band_message",
+      "instruction",
+      "instructions",
+      "custom",
+      "text",
+      "debug",
+      "status",
+    ]);
+
     const slotContent = {
       none: "",
       name,
@@ -4736,6 +4748,29 @@ class SimpleBandGraphCard extends HTMLElement {
       }
 
       const isDebug = slotName === "debug" || slotName === "status";
+      const isHeaderSlot = positionKey.startsWith("top_");
+      const isFooterSlot = positionKey.startsWith("bottom_");
+      const isMultilineEligible = multilineSlotNames.has(slotName);
+
+      const headerMultilineEnabled = Boolean(this.config.header_multiline);
+      const footerMultilineEnabled = Boolean(this.config.footer_multiline);
+
+      const multilineEnabled =
+        isMultilineEligible &&
+        (
+          (isHeaderSlot && headerMultilineEnabled) ||
+          (isFooterSlot && footerMultilineEnabled) ||
+          (isDebug && this.config.debug_multiline)
+        );
+
+      const maxLines = Math.max(
+        1,
+        Number(
+          isHeaderSlot
+            ? this.config.header_max_lines
+            : this.config.footer_max_lines
+        ) || 2
+      );
 
       const defaultFontSize = this.config[`${positionKey}_font_size`] ?? 16;
       const defaultFontWeight = this.config[`${positionKey}_font_weight`] ?? 600;
@@ -4769,9 +4804,12 @@ class SimpleBandGraphCard extends HTMLElement {
             letter-spacing: ${letterSpacing};
             min-width: 0;
             overflow: hidden;
-            text-overflow: ${this.config.debug_multiline && isDebug ? "clip" : "ellipsis"};
-            white-space: ${this.config.debug_multiline && isDebug ? "pre-line" : "nowrap"};
-            line-height: ${this.config.debug_multiline && isDebug ? "1.35" : "normal"};
+            text-overflow: ${multilineEnabled ? "clip" : "ellipsis"};
+            white-space: ${isDebug && multilineEnabled ? "pre-line" : multilineEnabled ? "normal" : "nowrap"};
+            line-height: ${multilineEnabled ? "1.25" : "normal"};
+            display: ${multilineEnabled ? "-webkit-box" : "block"};
+            -webkit-line-clamp: ${multilineEnabled ? maxLines : "unset"};
+            -webkit-box-orient: vertical;
           "
         >
           ${content}
@@ -4809,20 +4847,20 @@ class SimpleBandGraphCard extends HTMLElement {
       let rightColumn = "1";
 
       if (hasLeft && hasCenter && hasRight) {
-        gridTemplateColumns = "1fr auto 1fr";
+        gridTemplateColumns = "minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr)";
         leftColumn = "1";
         centerColumn = "2";
         rightColumn = "3";
       } else if (hasLeft && hasCenter && !hasRight) {
-        gridTemplateColumns = "1fr auto";
+        gridTemplateColumns = "minmax(0, 1fr) minmax(0, 2fr)";
         leftColumn = "1";
         centerColumn = "2";
       } else if (hasLeft && !hasCenter && hasRight) {
-        gridTemplateColumns = "1fr 1fr";
+        gridTemplateColumns = "minmax(0, 1fr) minmax(0, 1fr)";
         leftColumn = "1";
         rightColumn = "2";
       } else if (!hasLeft && hasCenter && hasRight) {
-        gridTemplateColumns = "auto 1fr";
+        gridTemplateColumns = "minmax(0, 2fr) minmax(0, 1fr)";
         centerColumn = "1";
         rightColumn = "2";
       }
@@ -4903,9 +4941,9 @@ class SimpleBandGraphCard extends HTMLElement {
       The host/card/wrapper styles allow the card to participate properly in
       Home Assistant's resizable Sections layout.
 
-      The plot wrapper is the important responsive layer: it fills the remaining
-      space between the top and bottom ribbons, then ResizeObserver measures it
-      so the SVG viewBox can be recalculated using the real plot area size.
+      In normal layouts, the plot wrapper uses the configured fallback graph
+      height. In explicit Sections row mode, it fills the height allocated by
+      Home Assistant so taller row settings can make the graph taller.
 
       Card background is applied inline to ha-card. This matches the older working
       behaviour and avoids the host painting outside the real card surface.
@@ -4913,36 +4951,50 @@ class SimpleBandGraphCard extends HTMLElement {
       The plot clip path masks band rectangles to the same rounded shape as the
       plot background, so plot_background_radius applies visually to bands too.
     */
+    const layoutControlledByRows = hasExplicitGridRows;
+
+    const hostHeightCss = layoutControlledByRows ? "100%" : "auto";
+    const cardHeightCss = layoutControlledByRows ? "100%" : "auto";
+    const innerHeightCss = layoutControlledByRows ? "100%" : "auto";
+
+    const plotWrapFlexCss = layoutControlledByRows ? "1 1 auto" : "0 0 auto";
+    const plotWrapHeightCss = layoutControlledByRows ? "auto" : `${height}px`;
+    const plotWrapMinHeightCss = layoutControlledByRows ? "0" : `${height}px`;
+
     this.innerHTML = `
       <style>
         :host {
           display: block;
           width: 100%;
-          height: 100%;
+          height: ${hostHeightCss};
+          min-width: 0;
           min-height: 0;
         }
 
         ha-card {
           display: block;
           width: 100%;
-          height: 100%;
+          height: ${cardHeightCss};
           box-sizing: border-box;
           border-radius: var(--ha-card-border-radius, 12px);
           overflow: hidden;
         }
 
         .sbgc-inner {
-          height: 100%;
+          height: ${innerHeightCss};
           box-sizing: border-box;
           padding: 16px;
           display: flex;
           flex-direction: column;
+          min-width: 0;
           min-height: 0;
         }
 
         .sbgc-plot-wrap {
-          flex: 1 1 0;
-          min-height: ${plotWrapMinHeight}px;
+          flex: ${plotWrapFlexCss};
+          width: 100%;
+          height: ${plotWrapHeightCss};
+          min-height: ${plotWrapMinHeightCss};
           margin-top: 12px;
           min-width: 0;
           overflow: visible;
@@ -4951,8 +5003,8 @@ class SimpleBandGraphCard extends HTMLElement {
 
         .sbgc-svg {
           display: block;
-          width: ${width}px;
-          height: ${height}px;
+          width: 100%;
+          height: 100%;
           min-width: 0;
           min-height: 0;
           overflow: visible;
@@ -5225,24 +5277,50 @@ class SimpleBandGraphCard extends HTMLElement {
     getGridOptions is used by the newer Sections layout so the card can be
     resized sensibly in the dashboard grid.
 
+    By default, this card now asks for a full-width chart-friendly footprint.
+    Users can still override this in YAML with grid_options.columns and
+    grid_options.rows.
+
     getCardSize is used by older masonry layouts as a rough height estimate.
   */
   getGridOptions() {
+    const configuredColumns = this.config?.grid_options?.columns;
+    const configuredRows = Number(this.config?.grid_options?.rows);
+
+    const columns =
+      configuredColumns === "full"
+        ? 12
+        : Number.isFinite(Number(configuredColumns))
+          ? Math.min(12, Math.max(1, Number(configuredColumns)))
+          : 12;
+
+    const rows =
+      Number.isFinite(configuredRows) && configuredRows > 0
+        ? Math.min(12, Math.max(1, configuredRows))
+        : 4;
+
     return {
-      columns: 6,
-      rows: 4,
-      min_columns: 1,
-      min_rows: 1,
+      columns,
+      rows,
+      min_columns: 3,
+      min_rows: 2,
       max_columns: 12,
       max_rows: 12,
     };
   }
 
   getCardSize() {
-    return 4;
+    const configuredHeight = Number(this.config?.height) || 180;
+    const hasHeader = this.config?.show_header !== false;
+    const hasFooter = this.config?.show_footer !== false;
+
+    const estimatedHeaderRows = hasHeader ? 1 : 0;
+    const estimatedFooterRows = hasFooter ? 1 : 0;
+    const estimatedGraphRows = Math.max(2, Math.ceil(configuredHeight / 50));
+
+    return estimatedHeaderRows + estimatedGraphRows + estimatedFooterRows;
   }
 }
-
 /*
   ============================================================================
   CUSTOM ELEMENT REGISTRATION
