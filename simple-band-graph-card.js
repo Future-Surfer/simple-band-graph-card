@@ -328,6 +328,15 @@ class SimpleBandGraphCard extends HTMLElement {
     of the card YAML, preserving the existing configuration format.
   */
   static getConfigForm() {
+
+
+
+    /*
+      --------------------------------------------------------------------------
+      Editor option lists
+      --------------------------------------------------------------------------
+      Shared dropdown options used by multiple editor sections.
+    */
     const ribbonSlotOptions = [
       { value: "none", label: "None" },
       { value: "area", label: "Area" },
@@ -358,8 +367,22 @@ class SimpleBandGraphCard extends HTMLElement {
       { value: 700, label: "Bold" },
     ];
 
+
+    /*
+      --------------------------------------------------------------------------
+      Editor schema
+      --------------------------------------------------------------------------
+      Defines the expandable sections shown in the Home Assistant visual editor.
+    */
     return {
       schema: [
+
+        /*
+          ----------------------------------------------------------------------
+          Content section
+          ----------------------------------------------------------------------
+          Entity, name, history window, and fallback graph height.
+        */
         {
           type: "expandable",
           name: "basic",
@@ -408,6 +431,12 @@ class SimpleBandGraphCard extends HTMLElement {
             },
           ],
         },
+        /*
+          ----------------------------------------------------------------------
+          Range section
+          ----------------------------------------------------------------------
+          Y-axis min/max and displayed value precision.
+        */
         {
           type: "expandable",
           name: "scale",
@@ -450,6 +479,12 @@ class SimpleBandGraphCard extends HTMLElement {
             },
           ],
         },
+        /*
+          ----------------------------------------------------------------------
+          X-axis section
+          ----------------------------------------------------------------------
+          X-axis line, labels, tick count, and label styling.
+        */
         {
           type: "expandable",
           name: "x_axis",
@@ -581,6 +616,12 @@ class SimpleBandGraphCard extends HTMLElement {
             },
           ],
         },
+        /*
+          ----------------------------------------------------------------------
+          Y-axis section
+          ----------------------------------------------------------------------
+          Y-axis line, labels, tick count, and label styling.
+        */
         {
           type: "expandable",
           name: "y_axis",
@@ -700,6 +741,12 @@ class SimpleBandGraphCard extends HTMLElement {
             },
           ],
         },
+        /*
+          ----------------------------------------------------------------------
+          Grid section
+          ----------------------------------------------------------------------
+          Vertical and horizontal grid line visibility and styling.
+        */
         {
           type: "expandable",
           name: "grid",
@@ -762,6 +809,12 @@ class SimpleBandGraphCard extends HTMLElement {
             },
           ],
         },
+        /*
+          ----------------------------------------------------------------------
+          Appearance section
+          ----------------------------------------------------------------------
+          Card and plot background colours, opacity, and plot corner radius.
+        */
         {
           type: "expandable",
           name: "backgrounds",
@@ -834,6 +887,12 @@ class SimpleBandGraphCard extends HTMLElement {
             },
           ],
         },
+        /*
+          ----------------------------------------------------------------------
+          Bands section
+          ----------------------------------------------------------------------
+          Band display, separator styling, and band label styling.
+        */
         {
           type: "expandable",
           name: "bands",
@@ -1020,6 +1079,12 @@ class SimpleBandGraphCard extends HTMLElement {
             },
           ],
         },
+        /*
+          ----------------------------------------------------------------------
+          Band definitions section
+          ----------------------------------------------------------------------
+          Raw band array editor. This is the likely home for band templates.
+        */
         {
           type: "expandable",
           name: "band_definitions",
@@ -1035,6 +1100,12 @@ class SimpleBandGraphCard extends HTMLElement {
             },
           ],
         },
+        /*
+          ----------------------------------------------------------------------
+          Line section
+          ----------------------------------------------------------------------
+          History line visibility, colour mode, colour, width, and opacity.
+        */
         {
           type: "expandable",
           name: "line",
@@ -1087,6 +1158,12 @@ class SimpleBandGraphCard extends HTMLElement {
             },
           ],
         },
+        /*
+          ----------------------------------------------------------------------
+          Markers section
+          ----------------------------------------------------------------------
+          Current, minimum, and maximum markers and marker label styling.
+        */
         {
           type: "expandable",
           name: "markers",
@@ -1262,6 +1339,12 @@ class SimpleBandGraphCard extends HTMLElement {
             },
           ],
         },
+        /*
+          ----------------------------------------------------------------------
+          Header section
+          ----------------------------------------------------------------------
+          Header visibility, slot content, text styling, and background styling.
+        */
         {
           type: "expandable",
           name: "header",
@@ -1392,6 +1475,12 @@ class SimpleBandGraphCard extends HTMLElement {
             },
           ],
         },
+        /*
+          ----------------------------------------------------------------------
+          Footer section
+          ----------------------------------------------------------------------
+          Footer visibility, slot content, text styling, and background styling.
+        */
         {
           type: "expandable",
           name: "footer",
@@ -1491,6 +1580,12 @@ class SimpleBandGraphCard extends HTMLElement {
             },
           ],
         },
+        /*
+          ----------------------------------------------------------------------
+          Interactions section
+          ----------------------------------------------------------------------
+          Tap, hold, and double-tap actions.
+        */
         {
           type: "expandable",
           name: "interactions",
@@ -1524,6 +1619,12 @@ class SimpleBandGraphCard extends HTMLElement {
             },
           ],
         },
+        /*
+          ----------------------------------------------------------------------
+          Advanced section
+          ----------------------------------------------------------------------
+          History refresh, point limiting, and debug/status output.
+        */
         {
           type: "expandable",
           name: "advanced",
@@ -1571,16 +1672,27 @@ class SimpleBandGraphCard extends HTMLElement {
           ],
         },
       ],
+      /*
+        ------------------------------------------------------------------------
+        Editor field labels
+        ------------------------------------------------------------------------
+        Maps raw YAML property names to friendly labels in the visual editor.
+      */
       computeLabel: (schema) => {
         const labels = {
+
+          // Content
           entity: "Entity",
           name: "Name",
           hours_to_show: "Hours to show",
           height: "Fallback graph height",
+
+          // Range
           y_min: "Y-axis minimum",
           y_max: "Y-axis maximum",
           value_decimals: "Value decimal places",
 
+          // X-axis
           show_x_axis: "Show X-axis line",
           show_x_axis_labels: "Show X-axis labels",
           x_axis_position: "X-axis position",
@@ -1591,11 +1703,11 @@ class SimpleBandGraphCard extends HTMLElement {
           x_axis_label_color: "X-axis label colour",
           x_axis_label_color_mode: "X-axis label colour mode",
           x_axis_label_opacity: "X-axis label opacity",
-
           x_axis_line_color: "X-axis line colour",
           x_axis_line_width: "X-axis line width",
           x_axis_line_opacity: "X-axis line opacity",
 
+          // X-axis
           show_y_axis: "Show Y-axis line",
           show_y_axis_labels: "Show Y-axis labels",
           y_axis_position: "Y-axis position",
@@ -1605,11 +1717,11 @@ class SimpleBandGraphCard extends HTMLElement {
           y_axis_label_color: "Y-axis label colour",
           y_axis_label_color_mode: "Y-axis label colour mode",
           y_axis_label_opacity: "Y-axis label opacity",
-
           y_axis_line_color: "Y-axis line colour",
           y_axis_line_width: "Y-axis line width",
           y_axis_line_opacity: "Y-axis line opacity",
 
+          // Grid
           show_x_grid: "Show vertical grid lines",
           show_y_grid: "Show horizontal grid lines",
           grid_color: "Grid colour",
@@ -1617,6 +1729,7 @@ class SimpleBandGraphCard extends HTMLElement {
           grid_opacity: "Grid opacity",
           grid_line_style: "Grid line style",
 
+          // Appearance
           background_color: "Card background colour",
           background_color_mode: "Card background colour mode",
           background_opacity: "Card background opacity",
@@ -1625,6 +1738,7 @@ class SimpleBandGraphCard extends HTMLElement {
           plot_background_opacity: "Plot background opacity",
           plot_background_radius: "Plot background corner radius",
 
+          // Bands
           show_bands: "Show bands",
           band_opacity: "Band opacity",
           band_label_mode: "Band label mode",
@@ -1640,18 +1754,21 @@ class SimpleBandGraphCard extends HTMLElement {
           band_label_opacity: "Band label opacity",
           bands: "Band definitions",
 
+          // Band separators
           show_band_separators: "Show band separators",
           band_separator_style: "Band separator style",
           band_separator_color: "Band separator colour",
           band_separator_width: "Band separator width",
           band_separator_opacity: "Band separator opacity",
 
+          // Line
           show_line: "Show line",
           line_color_mode: "Line colour mode",
           line_color: "Line colour",
           line_width: "Line width",
           line_opacity: "Line opacity",
 
+          // Markers
           show_latest: "Show current marker",
           show_latest_label: "Show current label",
           latest_marker_size: "Current marker size",
@@ -1672,6 +1789,7 @@ class SimpleBandGraphCard extends HTMLElement {
           marker_label_background_mode: "Marker label background mode",
           marker_label_background_opacity: "Marker label background opacity",
 
+          // Header
           show_header: "Show header",
           header_left: "Header left",
           header_center: "Header centre",
@@ -1683,6 +1801,7 @@ class SimpleBandGraphCard extends HTMLElement {
           header_background_color_mode: "Header background colour mode",
           header_background_opacity: "Header background opacity",
 
+          // Footer
           show_footer: "Show footer",
           footer_left: "Footer left",
           footer_center: "Footer centre",
@@ -1694,10 +1813,12 @@ class SimpleBandGraphCard extends HTMLElement {
           footer_background_color_mode: "Footer background colour mode",
           footer_background_opacity: "Footer background opacity",
 
+          // Shared header/footer fields
           custom_text: "Custom text",
           duration_format: "Duration format",
           ribbon_background_radius: "Header/footer background corner radius",
 
+          // Interactions
           tap_action: "Tap behaviour",
           hold_action: "Hold behaviour",
           double_tap_action: "Double tap behaviour",
@@ -1716,6 +1837,7 @@ class SimpleBandGraphCard extends HTMLElement {
           bottom_ribbon_background_color_mode: "Footer background colour mode",
           bottom_ribbon_background_opacity: "Footer background opacity",
 
+          // Advanced
           history_refresh_interval: "History refresh interval",
           max_history_points: "Max history points",
           debug_level: "Debug level",
@@ -1725,17 +1847,27 @@ class SimpleBandGraphCard extends HTMLElement {
         return labels[schema.name];
       },
 
+      /*
+        ------------------------------------------------------------------------
+        Editor helper text
+        ------------------------------------------------------------------------
+        Maps raw YAML property names to explanatory helper text.
+      */
       computeHelper: (schema) => {
         const helpers = {
+          // Content
           entity: "The numeric entity to plot.",
           hours_to_show: "How many hours of history to show.",
           height:
             "Fallback graph height in pixels. In resizable Sections layouts, grid rows can control the actual card height.",
+
+          // Range
           y_min: "The lowest value shown on the y-axis.",
           y_max: "The highest value shown on the y-axis.",
           value_decimals:
             "Controls decimal places for value labels. Auto uses fewer decimals for larger numbers.",
 
+          // X-axis
           show_x_axis:
             "Show or hide the horizontal X-axis line. This does not control X-axis labels.",
           show_x_axis_labels: "Show or hide the time labels on the X-axis.",
@@ -1751,12 +1883,12 @@ class SimpleBandGraphCard extends HTMLElement {
           x_axis_label_color_mode:
             "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the labels transparent.",
           x_axis_label_opacity: "Opacity of X-axis label text, from 0 to 1.",
-
           x_axis_line_color:
             "CSS colour for the X-axis line, such as var(--divider-color), #111111, or rgba(0,0,0,0.5).",
           x_axis_line_width: "Thickness of the X-axis line.",
           x_axis_line_opacity: "Opacity of the X-axis line, from 0 to 1.",
 
+          // Y-axis
           show_y_axis:
             "Show or hide the vertical Y-axis line. This does not control Y-axis labels.",
           show_y_axis_labels: "Show or hide the value labels on the Y-axis.",
@@ -1770,12 +1902,12 @@ class SimpleBandGraphCard extends HTMLElement {
           y_axis_label_color_mode:
             "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the labels transparent.",
           y_axis_label_opacity: "Opacity of Y-axis label text, from 0 to 1.",
-
           y_axis_line_color:
             "CSS colour for the Y-axis line, such as var(--divider-color), #111111, or rgba(0,0,0,0.5).",
           y_axis_line_width: "Thickness of the Y-axis line.",
           y_axis_line_opacity: "Opacity of the Y-axis line, from 0 to 1.",
 
+          // Grid
           show_x_grid:
             "Show vertical grid lines. The number of lines is controlled by X-axis ticks.",
           show_y_grid:
@@ -1787,6 +1919,7 @@ class SimpleBandGraphCard extends HTMLElement {
           grid_line_style:
             "Choose whether grid lines are solid, dashed, or dotted.",
 
+          // Appearance
           background_color:
             "CSS colour for the whole card background, such as var(--card-background-color), transparent, #222222, or rgba(0,0,0,0.2).",
           background_color_mode:
@@ -1802,6 +1935,7 @@ class SimpleBandGraphCard extends HTMLElement {
           plot_background_radius:
             "Corner radius for the plot background area.",
 
+          // Bands
           band_opacity: "Opacity for the coloured background bands, from 0 to 1.",
           band_label_mode:
             "Choose whether band labels show the label, range, threshold, label + range, label + threshold, or are hidden.",
@@ -1825,6 +1959,7 @@ class SimpleBandGraphCard extends HTMLElement {
           bands:
             "Edit the raw band definitions. Each band can include from, to, color, label, and message.",
 
+          // Band Separators
           show_band_separators:
             "Draw separator lines at internal band thresholds.",
           band_separator_style:
@@ -1836,6 +1971,7 @@ class SimpleBandGraphCard extends HTMLElement {
           band_separator_opacity:
             "Opacity of the band separator lines, from 0 to 1.",
 
+          // Line
           show_line: "Show or hide the plotted history line.",
           line_color_mode:
             "Static uses the chosen line colour. Use band colour follows the band matching the current value. No colour makes the line transparent.",
@@ -1844,6 +1980,7 @@ class SimpleBandGraphCard extends HTMLElement {
           line_width: "Thickness of the plotted line.",
           line_opacity: "Opacity of the plotted line, from 0 to 1.",
 
+          // Markers
           show_latest:
             "Show a marker at the current/latest plotted value. This uses the existing show_latest YAML option.",
           show_latest_label: "Show or hide the label beside the current marker.",
@@ -1874,6 +2011,7 @@ class SimpleBandGraphCard extends HTMLElement {
           marker_label_background_opacity:
             "Opacity of the marker label background, from 0 to 1.",
 
+          // Header
           show_header:
             "Show or hide the header without clearing the configured header slots.",
           header_left: "Choose what appears in the left position of the header.",
@@ -1891,6 +2029,7 @@ class SimpleBandGraphCard extends HTMLElement {
           header_background_opacity:
             "Opacity of the header background, from 0 to 1.",
 
+          // Footer
           show_footer:
             "Show or hide the footer without clearing the configured footer slots.",
           footer_left: "Choose what appears in the left position of the footer.",
@@ -1907,6 +2046,8 @@ class SimpleBandGraphCard extends HTMLElement {
             "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the footer background transparent.",
           footer_background_opacity:
             "Opacity of the footer background, from 0 to 1.",
+
+          // Shared header/footer fields
           custom_text:
             "Text used by any header or footer slot set to Custom text. Supports placeholders such as {area}, {name}, {current}, {band}, {unit}, {entity}, {min}, {max}, and {duration}.",
           duration_format:
@@ -1914,6 +2055,7 @@ class SimpleBandGraphCard extends HTMLElement {
           ribbon_background_radius:
             "Corner radius for header and footer background areas.",
 
+          // Interactions
           tap_action:
             "Action to run when the card is tapped.",
           hold_action:
@@ -1945,6 +2087,7 @@ class SimpleBandGraphCard extends HTMLElement {
           bottom_ribbon_background_opacity:
             "Opacity of the footer background, from 0 to 1.",
 
+          // Advanced
           history_refresh_interval: "How often the card refreshes history data.",
           max_history_points: "Use auto, or enter a number to limit plotted history points.",
           debug_level:
