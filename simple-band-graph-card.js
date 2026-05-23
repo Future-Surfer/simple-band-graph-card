@@ -192,6 +192,11 @@ class SimpleBandGraphCard extends HTMLElement {
       line_width: 2.5,
       line_opacity: 0.9,
 
+      // Area appearance settings
+      show_area: false,
+      area_color: "var(--primary-color)",
+      area_opacity: 0.18,
+
       // Marker settings
       show_latest: false,
       show_latest_label: true,
@@ -1164,6 +1169,27 @@ class SimpleBandGraphCard extends HTMLElement {
         },
         /*
           ----------------------------------------------------------------------
+          Area section
+          ----------------------------------------------------------------------
+          Area fill visibility. Colour and opacity controls will be added later.
+        */
+        {
+          type: "expandable",
+          name: "area",
+          title: "Area",
+          icon: "mdi:chart-areaspline",
+          flatten: true,
+          schema: [
+            {
+              name: "show_area",
+              selector: {
+                boolean: {},
+              },
+            },
+          ],
+        },
+        /*
+          ----------------------------------------------------------------------
           Markers section
           ----------------------------------------------------------------------
           Current, minimum, and maximum markers and marker label styling.
@@ -1806,6 +1832,9 @@ class SimpleBandGraphCard extends HTMLElement {
           line_width: "Line width",
           line_opacity: "Line opacity",
 
+          // Area
+          show_area: "Show area",
+
           // Markers
           show_latest: "Show current marker",
           show_latest_label: "Show current label",
@@ -2021,6 +2050,10 @@ class SimpleBandGraphCard extends HTMLElement {
             "CSS colour for the line, such as var(--primary-color), #03a9f4, or rgb(3, 169, 244).",
           line_width: "Thickness of the plotted line.",
           line_opacity: "Opacity of the plotted line, from 0 to 1.",
+
+          // Area
+          show_area:
+            "Show or hide the filled area under the plotted history line. Area rendering will be drawn independently of whether the line itself is shown.",
 
           // Markers
           show_latest:
@@ -2346,6 +2379,11 @@ class SimpleBandGraphCard extends HTMLElement {
       line_color_mode: config.line_color_mode ?? "static",
       line_width: config.line_width ?? 3,
       line_opacity: config.line_opacity ?? 1,
+
+      // Area appearance settings
+      show_area: config.show_area ?? false,
+      area_color: config.area_color ?? "var(--primary-color)",
+      area_opacity: config.area_opacity ?? 0.18,
 
       // Grid-line settings
       show_x_grid: config.show_x_grid ?? false,
@@ -4530,6 +4568,51 @@ class SimpleBandGraphCard extends HTMLElement {
 
     /*
       --------------------------------------------------------------------------
+      Area rendering
+      --------------------------------------------------------------------------
+      Draws a filled area between the plotted history line and the zero point on
+      the y-axis.
+
+      The zero baseline is clamped to the visible plot area, so charts whose
+      range does not include zero still draw safely to the nearest edge.
+    */
+    const zeroY = yToSvg(0);
+
+    const areaBaselineY = clamp(
+      zeroY,
+      padding.top,
+      padding.top + plotHeight
+    );
+
+    const areaOpacity = normaliseOpacity(this.config.area_opacity ?? 0.18);
+
+    const areaColour = applyOpacityToColour(
+      this.config.area_color || "var(--primary-color)",
+      areaOpacity
+    );
+
+    const areaPoints =
+      plotData.length >= 2
+        ? [
+            `${xToSvg(plotData[0].time)},${areaBaselineY}`,
+            ...plotData.map((point) => `${xToSvg(point.time)},${yToSvg(point.state)}`),
+            `${xToSvg(plotData[plotData.length - 1].time)},${areaBaselineY}`,
+          ].join(" ")
+        : "";
+
+    const areaHtml =
+      this.config.show_area && areaPoints && areaColour !== "transparent"
+        ? `
+          <polygon
+            points="${areaPoints}"
+            fill="${areaColour}"
+            stroke="none"
+          ></polygon>
+        `
+        : "";
+
+    /*
+      --------------------------------------------------------------------------
       Debug/status text
       --------------------------------------------------------------------------
     */
@@ -5090,11 +5173,9 @@ class SimpleBandGraphCard extends HTMLElement {
                   ry="${Number(this.config.plot_background_radius) || 0}"
                   fill="${plotBackground.colour}"
                 ></rect>
+
                 ${yGridHtml}
                 ${xGridHtml}
-
-                ${yAxisLabelsHtml}
-                ${xAxisLabelsHtml}
 
                 <g clip-path="url(#${plotClipPathId})">
                   ${clippedBandContent}
@@ -5102,13 +5183,11 @@ class SimpleBandGraphCard extends HTMLElement {
 
                 ${unclippedBandLabels}
 
-                ${yAxisHtml}
-                ${xAxisHtml}
-
                 ${
                   points
                     ? `
                       <g clip-path="url(#${plotClipPathId})">
+                        ${areaHtml}
                         ${lineHtml}
                       </g>
 
@@ -5127,6 +5206,12 @@ class SimpleBandGraphCard extends HTMLElement {
                       </text>
                     `
                 }
+
+                ${yAxisHtml}
+                ${xAxisHtml}
+
+                ${yAxisLabelsHtml}
+                ${xAxisLabelsHtml}
               </svg>
             </div>
 
