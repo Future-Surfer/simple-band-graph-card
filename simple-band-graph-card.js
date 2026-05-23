@@ -179,6 +179,7 @@ class SimpleBandGraphCard extends HTMLElement {
       min_band_label_height: 18,
 
       // Band label settings
+      band_label_layer: "below",
       band_label_size: 11,
       band_label_weight: 400,
       band_label_color: "var(--secondary-text-color)",
@@ -1025,6 +1026,18 @@ class SimpleBandGraphCard extends HTMLElement {
               },
             },
             {
+              name: "band_label_layer",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "below", label: "Below line/area" },
+                    { value: "above", label: "Above line/area" },
+                  ],
+                },
+              },
+            },
+            {
               name: "hide_small_band_labels",
               selector: {
                 boolean: {},
@@ -1836,6 +1849,7 @@ class SimpleBandGraphCard extends HTMLElement {
           band_label_unit: "Show units in band labels",
           band_label_position: "Band label position",
           band_label_align: "Band label alignment",
+          band_label_layer: "Band label layer",
           hide_small_band_labels: "Hide labels in small bands",
           min_band_label_height: "Minimum band label height",
           band_label_size: "Band label size",
@@ -2046,6 +2060,8 @@ class SimpleBandGraphCard extends HTMLElement {
             "Place band labels near the top, middle, or bottom of each band.",
           band_label_align:
             "Align band labels inside the plot, or place them just outside the plot area.",
+          band_label_layer:
+            "Choose whether band labels are drawn below or above the line and area fill.",
           hide_small_band_labels:
             "Hide labels where the band is too narrow to display text cleanly.",
           min_band_label_height:
@@ -2435,6 +2451,7 @@ class SimpleBandGraphCard extends HTMLElement {
       band_label_unit: config.band_label_unit ?? false,
       band_label_position: config.band_label_position ?? "top",
       band_label_align: config.band_label_align ?? "left",
+      band_label_layer: config.band_label_layer ?? "below",
       band_label_outside_width: config.band_label_outside_width ?? "auto",
       band_label_outside_gap: config.band_label_outside_gap ?? 6,
       band_label_size: config.band_label_size ?? 11,
@@ -5247,6 +5264,12 @@ class SimpleBandGraphCard extends HTMLElement {
 
     const cssScope = `.sbgc-root[data-sbgc-instance="${this._instanceId}"]`;
 
+    const bandLabelsBelowData =
+      this.config.band_label_layer === "above" ? "" : unclippedBandLabels;
+
+    const bandLabelsAboveData =
+      this.config.band_label_layer === "above" ? unclippedBandLabels : "";
+
     this.innerHTML = `
       <style>
         :host {
@@ -5357,7 +5380,11 @@ class SimpleBandGraphCard extends HTMLElement {
                   ${clippedBandContent}
                 </g>
 
-                ${unclippedBandLabels}
+                <g clip-path="url(#${plotClipPathId})">
+                  ${clippedBandContent}
+                </g>
+
+                ${bandLabelsBelowData}
 
                 ${
                   points
@@ -5367,6 +5394,8 @@ class SimpleBandGraphCard extends HTMLElement {
                       <g clip-path="url(#${plotClipPathId})">
                         ${lineHtml}
                       </g>
+
+                      ${bandLabelsAboveData}
 
                       ${extremaMarkers}
                       ${latestMarker}
