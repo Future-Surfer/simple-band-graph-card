@@ -105,6 +105,12 @@ class SimpleBandGraphCard extends HTMLElement {
       y_max: 100,
       value_decimals: "auto",
 
+      // History settings:
+      history_mode: "auto",
+      statistics_type: "mean",
+      statistics_period: "hour",
+      hybrid_raw_hours: 240,
+
       // Axis settings
       show_x_axis: false,
       show_x_axis_labels: true,
@@ -288,12 +294,13 @@ class SimpleBandGraphCard extends HTMLElement {
 
       ribbon_background_radius: 8,
 
-      // History and debug settings
+      // Debug settings
       history_refresh_interval: 60,
       max_history_points: "auto",
       debug_level: "basic",
       debug_multiline: false,
 
+      // Bands
       bands: [
         {
           from: 0,
@@ -390,15 +397,16 @@ class SimpleBandGraphCard extends HTMLElement {
 
         /*
           ----------------------------------------------------------------------
-          Content section
+          Data & range section
           ----------------------------------------------------------------------
-          Entity, name, history window, and fallback graph height.
+          Entity, name, history source, history window, graph height, y-axis
+          range, and displayed value precision.
         */
         {
           type: "expandable",
-          name: "basic",
-          title: "Content",
-          icon: "mdi:card-text-outline",
+          name: "data_range",
+          title: "Data & range",
+          icon: "mdi:chart-line",
           flatten: true,
           schema: [
             {
@@ -431,6 +439,60 @@ class SimpleBandGraphCard extends HTMLElement {
               },
             },
             {
+              name: "history_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "auto", label: "Auto" },
+                    { value: "raw", label: "Raw history" },
+                    { value: "statistics", label: "Statistics" },
+                    { value: "hybrid", label: "Hybrid" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "statistics_type",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "mean", label: "Mean" },
+                    { value: "min", label: "Minimum" },
+                    { value: "max", label: "Maximum" },
+                    { value: "last", label: "Last" },
+                    { value: "state", label: "State" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "statistics_period",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "5minute", label: "5 minutes" },
+                    { value: "hour", label: "Hour" },
+                    { value: "day", label: "Day" },
+                    { value: "week", label: "Week" },
+                    { value: "month", label: "Month" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "hybrid_raw_hours",
+              selector: {
+                number: {
+                  min: 1,
+                  step: 1,
+                  mode: "box",
+                },
+              },
+            },
+            {
               name: "height",
               selector: {
                 number: {
@@ -440,21 +502,6 @@ class SimpleBandGraphCard extends HTMLElement {
                 },
               },
             },
-          ],
-        },
-        /*
-          ----------------------------------------------------------------------
-          Range section
-          ----------------------------------------------------------------------
-          Y-axis min/max and displayed value precision.
-        */
-        {
-          type: "expandable",
-          name: "scale",
-          title: "Range",
-          icon: "mdi:arrow-expand-vertical",
-          flatten: true,
-          schema: [
             {
               name: "y_min",
               selector: {
@@ -1796,6 +1843,12 @@ class SimpleBandGraphCard extends HTMLElement {
           y_max: "Y-axis maximum",
           value_decimals: "Value decimal places",
 
+          // History
+          history_mode: "History mode",
+          statistics_type: "Statistics type",
+          statistics_period: "Statistics period",
+          hybrid_raw_hours: "Hybrid raw hours",
+
           // X-axis
           show_x_axis: "Show X-axis line",
           show_x_axis_labels: "Show X-axis labels",
@@ -1981,6 +2034,16 @@ class SimpleBandGraphCard extends HTMLElement {
           y_max: "The highest value shown on the y-axis.",
           value_decimals:
             "Controls decimal places for value labels. Auto uses fewer decimals for larger numbers.",
+
+          // History:
+          history_mode:
+            "Choose the history source. Auto uses raw history for shorter windows and hybrid history for longer windows.",
+          statistics_type:
+            "Statistic value to use when reading Home Assistant long-term statistics.",
+          statistics_period:
+            "Time bucket used for long-term statistics. Hour is usually the best balance for longer charts.",
+          hybrid_raw_hours:
+            "Number of recent hours fetched as raw high-resolution history when using hybrid or auto mode.",
 
           // X-axis
           show_x_axis:
@@ -2417,7 +2480,7 @@ class SimpleBandGraphCard extends HTMLElement {
       // History fetching and downsampling settings
       max_history_points: config.max_history_points ?? "auto",
       history_refresh_interval: config.history_refresh_interval ?? 60,
-      history_mode: config.history_mode ?? "raw",
+      history_mode: config.history_mode ?? "auto",
       statistics_type: config.statistics_type ?? "mean",
       statistics_period: config.statistics_period ?? "hour",
       hybrid_raw_hours: config.hybrid_raw_hours ?? 240,
@@ -2992,6 +3055,8 @@ class SimpleBandGraphCard extends HTMLElement {
     - statistics: long-term recorder statistics via websocket.
     - hybrid: long-term statistics for older data, raw recorder history for the
       recent period.
+    - auto: raw when the requested window is within hybrid_raw_hours, otherwise
+      hybrid.
 
     Long-term statistics are lower resolution, usually hourly, and only work for
     entities that Home Assistant records as statistics.
@@ -3012,14 +3077,34 @@ class SimpleBandGraphCard extends HTMLElement {
     try {
       const maxHistoryPoints = this.getMaxHistoryPoints();
 
-      const historyMode = this.config.history_mode || "raw";
+      this._lastStatisticsHistoryCount = 0;
+      this._lastRawHistoryCount = 0;
+      this._lastMergedHistoryCount = 0;
+
+      this._lastStatisticsFirstPointTime = null;
+      this._lastStatisticsLastPointTime = null;
+      this._lastRawFirstPointTime = null;
+      this._lastRawLastPointTime = null;
+
+      const configuredHistoryMode = this.config.history_mode || "auto";
+      const hybridRawHours = Number(this.config.hybrid_raw_hours) || 240;
+
+      const resolvedHistoryMode =
+        configuredHistoryMode === "auto"
+          ? hoursToShow > hybridRawHours
+            ? "hybrid"
+            : "raw"
+          : configuredHistoryMode;
+
+      this._lastConfiguredHistoryMode = configuredHistoryMode;
+      this._lastResolvedHistoryMode = resolvedHistoryMode;
 
       let rawHistory = [];
 
-      if (historyMode === "statistics") {
+      if (resolvedHistoryMode === "statistics") {
         this._lastRequestMode = "statistics history request";
         rawHistory = await this._fetchStatisticsHistory(start, end);
-      } else if (historyMode === "hybrid") {
+      } else if (resolvedHistoryMode === "hybrid") {
         this._lastRequestMode = "hybrid history request";
         rawHistory = await this._fetchHybridHistory(start, end);
       } else {
@@ -3057,8 +3142,18 @@ class SimpleBandGraphCard extends HTMLElement {
       this._lastHistoryApiDurationMs = null;
       this._lastDownsampleDurationMs = null;
       this._lastWasDownsampled = false;
+
       this._lastHistoryFirstPointTime = null;
       this._lastHistoryLastPointTime = null;
+
+      this._lastStatisticsHistoryCount = 0;
+      this._lastRawHistoryCount = 0;
+      this._lastMergedHistoryCount = 0;
+
+      this._lastStatisticsFirstPointTime = null;
+      this._lastStatisticsLastPointTime = null;
+      this._lastRawFirstPointTime = null;
+      this._lastRawLastPointTime = null;
     }
 
     this._isFetchingHistory = false;
@@ -3084,13 +3179,20 @@ class SimpleBandGraphCard extends HTMLElement {
     const entityHistory =
       Array.isArray(history) && Array.isArray(history[0]) ? history[0] : [];
 
-    return entityHistory
+    const rawHistory = entityHistory
       .map((item) => ({
         state: Number(item.state),
         time: new Date(item.last_changed).getTime(),
       }))
       .filter((item) => Number.isFinite(item.state) && Number.isFinite(item.time))
       .sort((a, b) => a.time - b.time);
+
+    this._lastRawHistoryCount = rawHistory.length;
+    this._lastRawFirstPointTime = rawHistory[0]?.time || null;
+    this._lastRawLastPointTime =
+      rawHistory[rawHistory.length - 1]?.time || null;
+
+    return rawHistory;
   }
 
   async _fetchStatisticsHistory(start, end) {
@@ -3119,7 +3221,7 @@ class SimpleBandGraphCard extends HTMLElement {
         ? statistics[entityId]
         : [];
 
-    return rows
+    const statisticsHistory = rows
       .map((item) => {
         const value =
           item[statisticsType] ??
@@ -3139,6 +3241,13 @@ class SimpleBandGraphCard extends HTMLElement {
       })
       .filter((item) => Number.isFinite(item.state) && Number.isFinite(item.time))
       .sort((a, b) => a.time - b.time);
+
+    this._lastStatisticsHistoryCount = statisticsHistory.length;
+    this._lastStatisticsFirstPointTime = statisticsHistory[0]?.time || null;
+    this._lastStatisticsLastPointTime =
+      statisticsHistory[statisticsHistory.length - 1]?.time || null;
+
+    return statisticsHistory;
   }
 
   async _fetchHybridHistory(start, end) {
@@ -3179,6 +3288,8 @@ class SimpleBandGraphCard extends HTMLElement {
     const mergedHistory = [...trimmedStatistics, ...rawHistory]
       .filter((item) => Number.isFinite(item.state) && Number.isFinite(item.time))
       .sort((a, b) => a.time - b.time);
+
+    this._lastMergedHistoryCount = mergedHistory.length;
 
     return mergedHistory;
   }
@@ -3851,31 +3962,31 @@ class SimpleBandGraphCard extends HTMLElement {
 
     const formatDurationLabel = () => {
       const hours = Number(this.config.hours_to_show);
-    
+
       if (!Number.isFinite(hours) || hours <= 0) return "";
-    
+
       if (this.config.duration_format === "long") {
         if (hours < 1) {
           const minutes = Math.round(hours * 60);
           return `${minutes} minute${minutes === 1 ? "" : "s"}`;
         }
-    
+
         if (hours % 24 === 0 && hours >= 24) {
           const days = hours / 24;
           return `${days} day${days === 1 ? "" : "s"}`;
         }
-    
+
         return `${hours} hour${hours === 1 ? "" : "s"}`;
       }
-    
+
       if (hours < 1) {
         return `${Math.round(hours * 60)}m`;
       }
-    
+
       if (hours % 24 === 0 && hours >= 24) {
         return `${hours / 24}d`;
       }
-    
+
       return Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(1)}h`;
     };
 
@@ -3918,6 +4029,45 @@ class SimpleBandGraphCard extends HTMLElement {
 
       const ageDays = Math.round(ageHours / 24);
       return `${ageDays}d ago`;
+    };
+
+    const formatHistoryMode = () => {
+      const configuredMode =
+        this._lastConfiguredHistoryMode || this.config.history_mode || "auto";
+
+      const resolvedMode =
+        this._lastResolvedHistoryMode || configuredMode;
+
+      if (configuredMode === resolvedMode) {
+        return resolvedMode;
+      }
+
+      return `${configuredMode}→${resolvedMode}`;
+    };
+
+    const formatHistorySourceCounts = () => {
+      const statsCount = Number(this._lastStatisticsHistoryCount) || 0;
+      const rawCount = Number(this._lastRawHistoryCount) || 0;
+      const mergedCount = Number(this._lastMergedHistoryCount) || 0;
+
+      if (statsCount || rawCount || mergedCount) {
+        return `stats ${statsCount} · raw ${rawCount} · merged ${mergedCount || this._rawHistoryCount || 0}`;
+      }
+
+      return "–";
+    };
+
+    const formatHistorySourceRanges = () => {
+      const statsFirst = formatRelativeTimestamp(
+        this._lastStatisticsFirstPointTime
+      );
+      const rawFirst = formatRelativeTimestamp(this._lastRawFirstPointTime);
+
+      if (statsFirst === "–" && rawFirst === "–") {
+        return "–";
+      }
+
+      return `stats from ${statsFirst} · raw from ${rawFirst}`;
     };
 
     const formatDensity = () => {
@@ -4989,12 +5139,14 @@ class SimpleBandGraphCard extends HTMLElement {
       this.config.show_y_axis_labels ? "y-labels" : "no-y-labels",
       this.config.show_bands ? "bands" : "no-bands",
       this.config.show_line ? "line" : "no-line",
+      this.config.show_area ? "area" : "no-area",
     ].join(" · ");
 
     const bandLabelDebugText = [
       `mode ${layoutDebug.bandLabelMode}`,
       `align ${layoutDebug.bandLabelAlign}`,
       `pos ${layoutDebug.bandLabelPosition}`,
+      `layer ${this.config.band_label_layer || "below"}`,
       `outside L${layoutDebug.hasOutsideLeftBandLabels ? "yes" : "no"}`,
       `R${layoutDebug.hasOutsideRightBandLabels ? "yes" : "no"}`,
       `outside width ${formatDebugNumber(layoutDebug.bandLabelOutsideWidth)}`,
@@ -5012,6 +5164,13 @@ class SimpleBandGraphCard extends HTMLElement {
       layoutDebug.showYAxisLabels ? "y-labels on" : "y-labels off",
     ].join(" · ");
 
+    const historyModeDebugText = [
+      `history ${formatHistoryMode()}`,
+      `stats type ${this.config.statistics_type || "mean"}`,
+      `period ${this.config.statistics_period || "hour"}`,
+      `raw window ${this.config.hybrid_raw_hours || 240}h`,
+    ].join(" · ");
+
     let debugLines = [];
 
     if (debugLevel === "off") {
@@ -5022,8 +5181,10 @@ class SimpleBandGraphCard extends HTMLElement {
       const basicDebugLines = [
         `debug · ${this.config.hours_to_show}h · fetched ${formatRelativeFetchTime()}`,
         `raw ${this._rawHistoryCount} · plotted ${this._plottedHistoryCount} · path ${this._lastPlotDataCount} · segments ${this._lastLineSegmentCount}/${this._lastLineSplitSegmentCount} · grouped paths ${this._lastLinePathCount} · max ${maxHistoryPointsText}`,
+        `${historyModeDebugText}`,
+        `${formatHistorySourceCounts()}`,
         `refresh ${this.config.history_refresh_interval}s · ${this._lastRequestMode}`,
-        `y ${yMin}-${yMax} · x ${this.config.x_axis_label_mode} · line ${this.config.line_color_mode}`,
+        `y ${yMin}-${yMax} · x ${this.config.x_axis_label_mode} · line ${this.config.line_color_mode} · area ${this.config.area_color_mode}`,
       ];
 
       const layoutDebugLines = [
@@ -5051,6 +5212,7 @@ class SimpleBandGraphCard extends HTMLElement {
         `value ${formatDebugValue(rawValue)} · current ${formatDebugValue(currentText)} · band ${formatDebugValue(currentBandText)}`,
         `first ${formatRelativeTimestamp(this._lastHistoryFirstPointTime)} · last ${formatRelativeTimestamp(this._lastHistoryLastPointTime)}`,
         `window ${formatRelativeTimestamp(this._lastHistoryStartTime)} → ${formatRelativeTimestamp(this._lastHistoryEndTime)}`,
+        `${formatHistorySourceRanges()}`,
       ];
 
       if (debugLevel === "performance") {
