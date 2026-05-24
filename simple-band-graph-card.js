@@ -115,6 +115,7 @@ class SimpleBandGraphCard extends HTMLElement {
       show_x_axis: false,
       show_x_axis_labels: true,
       x_axis_position: "bottom",
+      x_axis_label_position: "bottom",
       x_axis_label_mode: "relative",
       x_axis_ticks: 3,
 
@@ -541,7 +542,11 @@ class SimpleBandGraphCard extends HTMLElement {
           ----------------------------------------------------------------------
           X-axis section
           ----------------------------------------------------------------------
-          X-axis line, labels, tick count, and label styling.
+          X-axis line position, label position, tick count, and label styling.
+
+          The axis line position and label position are deliberately separate so
+          the x-axis line can be placed at zero while labels remain at the top,
+          middle, or bottom of the plot.
         */
         {
           type: "expandable",
@@ -569,6 +574,20 @@ class SimpleBandGraphCard extends HTMLElement {
                   mode: "dropdown",
                   options: [
                     { value: "bottom", label: "Bottom" },
+                    { value: "top", label: "Top" },
+                    { value: "zero", label: "Zero line" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "x_axis_label_position",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "bottom", label: "Bottom" },
+                    { value: "middle", label: "Middle" },
                     { value: "top", label: "Top" },
                   ],
                 },
@@ -625,7 +644,6 @@ class SimpleBandGraphCard extends HTMLElement {
                 },
               },
             },
-            
             {
               name: "x_axis_label_size",
               selector: {
@@ -1852,7 +1870,8 @@ class SimpleBandGraphCard extends HTMLElement {
           // X-axis
           show_x_axis: "Show X-axis line",
           show_x_axis_labels: "Show X-axis labels",
-          x_axis_position: "X-axis position",
+          x_axis_position: "X-axis line position",
+          x_axis_label_position: "X-axis label position",
           x_axis_label_mode: "X-axis label mode",
           x_axis_ticks: "X-axis ticks",
           x_axis_label_size: "X-axis label size",
@@ -2049,7 +2068,10 @@ class SimpleBandGraphCard extends HTMLElement {
           show_x_axis:
             "Show or hide the horizontal X-axis line. This does not control X-axis labels.",
           show_x_axis_labels: "Show or hide the time labels on the X-axis.",
-          x_axis_position: "Place the X-axis at the top or bottom of the graph.",
+          x_axis_position:
+            "Place the X-axis line at the bottom, top, or zero point of the graph.",
+          x_axis_label_position:
+            "Place the X-axis labels at the bottom, middle, or top of the graph independently of the X-axis line.",
           x_axis_label_mode:
             "Relative shows labels such as 24h ago. Clock time shows labels such as 14:30.",
           x_axis_ticks:
@@ -2549,6 +2571,8 @@ class SimpleBandGraphCard extends HTMLElement {
       show_x_axis: config.show_x_axis ?? true,
       show_x_axis_labels: config.show_x_axis_labels ?? true,
       x_axis_position: config.x_axis_position ?? "bottom",
+      x_axis_label_position:
+        config.x_axis_label_position ?? config.x_axis_position ?? "bottom",
       x_axis_label_mode: config.x_axis_label_mode ?? "relative",
       x_axis_ticks: config.x_axis_ticks ?? 3,
 
@@ -2577,6 +2601,9 @@ class SimpleBandGraphCard extends HTMLElement {
       axis_label_opacity: config.axis_label_opacity ?? 0.8,
 
       // X-axis label settings
+      // x_axis_label_position is deliberately separate from x_axis_position so
+      // the axis line can sit at zero while labels remain at the top, middle, or
+      // bottom of the plot.
       x_axis_label_size:
         config.x_axis_label_size ?? config.axis_label_size ?? 11,
       x_axis_label_weight:
@@ -3680,24 +3707,43 @@ class SimpleBandGraphCard extends HTMLElement {
       return position;
     };
 
-    const normaliseAxisPosition = (position, fallback) => {
+    const normaliseYAxisPosition = (position, fallback = "left") => {
       if (position === "right") return "right";
-      if (position === "top") return "top";
-      if (position === "bottom") return "bottom";
       if (position === "left") return "left";
       return fallback;
     };
 
-    const bandLabelAlign = normaliseBandLabelAlign(this.config.band_label_align);
-    const yAxisPosition = normaliseAxisPosition(this.config.y_axis_position, "left");
-    const xAxisPosition = normaliseAxisPosition(this.config.x_axis_position, "bottom");
+    const normaliseXAxisPosition = (position, fallback = "bottom") => {
+      if (position === "top") return "top";
+      if (position === "zero") return "zero";
+      if (position === "bottom") return "bottom";
+      return fallback;
+    };
 
+    const normaliseXAxisLabelPosition = (position, fallback = "bottom") => {
+      if (position === "top") return "top";
+      if (position === "middle") return "middle";
+      if (position === "bottom") return "bottom";
+      return fallback;
+    };
+
+    const bandLabelAlign = normaliseBandLabelAlign(this.config.band_label_align);
+    const yAxisPosition = normaliseYAxisPosition(this.config.y_axis_position, "left");
+    const xAxisPosition = normaliseXAxisPosition(this.config.x_axis_position, "bottom");
+    const xAxisLabelPosition = normaliseXAxisLabelPosition(
+      this.config.x_axis_label_position,
+      "bottom"
+    );
     /*
       --------------------------------------------------------------------------
       Layout measurements and padding
       --------------------------------------------------------------------------
       Calculates how much room is needed around the plot for axes and outside band
       labels before deriving the final plot rectangle.
+
+      X-axis line position and X-axis label position are deliberately separate.
+      Padding follows the label position, not the line position, so the X-axis
+      line can sit at zero without forcing labels into the middle of the plot.
     */
     const hasOutsideLeftBandLabels = bandLabelAlign === "outside_left";
     const hasOutsideRightBandLabels = bandLabelAlign === "outside_right";
@@ -3743,12 +3789,12 @@ class SimpleBandGraphCard extends HTMLElement {
     const xAxisLabelPadding = 34;
 
     const baseTopPadding =
-      this.config.show_x_axis_labels && xAxisPosition === "top"
+      this.config.show_x_axis_labels && xAxisLabelPosition === "top"
         ? xAxisLabelPadding
         : 14;
 
     const baseBottomPadding =
-      this.config.show_x_axis_labels && xAxisPosition === "bottom"
+      this.config.show_x_axis_labels && xAxisLabelPosition === "bottom"
         ? xAxisLabelPadding
         : 24;
 
@@ -3797,6 +3843,7 @@ class SimpleBandGraphCard extends HTMLElement {
       showXAxis: this.config.show_x_axis,
       showXAxisLabels: this.config.show_x_axis_labels,
       xAxisPosition,
+      xAxisLabelPosition,
       showYAxis: this.config.show_y_axis,
       showYAxisLabels: this.config.show_y_axis_labels,
       yAxisPosition,
@@ -4678,6 +4725,10 @@ class SimpleBandGraphCard extends HTMLElement {
       --------------------------------------------------------------------------
       Renders the horizontal time axis line and its time labels.
 
+      The X-axis line position and X-axis label position are deliberately
+      separate. This allows the axis line to sit at the zero point while labels
+      remain at the top, middle, or bottom of the plot.
+
       X-axis labels use the dedicated x_axis_label_* settings rather than the
       older shared axis_label_* settings.
 
@@ -4685,9 +4736,18 @@ class SimpleBandGraphCard extends HTMLElement {
       plot corner so thicker lines form a clean joined edge.
     */
     const xAxisY =
-      xAxisPosition === "top" ? padding.top : padding.top + plotHeight;
+      xAxisPosition === "top"
+        ? padding.top
+        : xAxisPosition === "zero"
+          ? clamp(yToSvg(0), padding.top, padding.top + plotHeight)
+          : padding.top + plotHeight;
 
-    const xAxisLabelY = xAxisPosition === "top" ? xAxisY - 14 : xAxisY + 18;
+    const xAxisLabelY =
+      xAxisLabelPosition === "top"
+        ? padding.top - 14
+        : xAxisLabelPosition === "middle"
+          ? padding.top + plotHeight / 2
+          : padding.top + plotHeight + 18;
 
     const yAxisLineWidth = Number(this.config.y_axis_line_width) || 1;
     const xAxisCornerOverlap = this.config.show_y_axis ? yAxisLineWidth / 2 : 0;
@@ -5156,8 +5216,9 @@ class SimpleBandGraphCard extends HTMLElement {
     ].join(" · ");
 
     const axisDebugText = [
-      `x ${layoutDebug.xAxisPosition}`,
+      `x-line ${layoutDebug.xAxisPosition}`,
       layoutDebug.showXAxis ? "x-line on" : "x-line off",
+      `x-labels ${layoutDebug.xAxisLabelPosition || "bottom"}`,
       layoutDebug.showXAxisLabels ? "x-labels on" : "x-labels off",
       `y ${layoutDebug.yAxisPosition}`,
       layoutDebug.showYAxis ? "y-line on" : "y-line off",
