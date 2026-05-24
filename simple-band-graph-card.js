@@ -400,8 +400,8 @@ class SimpleBandGraphCard extends HTMLElement {
           ----------------------------------------------------------------------
           Data & range section
           ----------------------------------------------------------------------
-          Entity, name, history source, history window, graph height, y-axis
-          range, and displayed value precision.
+          Core data source, history source, graph height, y-axis range, and
+          displayed value precision.
         */
         {
           type: "expandable",
@@ -410,6 +410,9 @@ class SimpleBandGraphCard extends HTMLElement {
           icon: "mdi:chart-line",
           flatten: true,
           schema: [
+            /*
+              Source
+            */
             {
               name: "entity",
               required: true,
@@ -429,6 +432,10 @@ class SimpleBandGraphCard extends HTMLElement {
                 text: {},
               },
             },
+
+            /*
+              History
+            */
             {
               name: "hours_to_show",
               selector: {
@@ -493,6 +500,10 @@ class SimpleBandGraphCard extends HTMLElement {
                 },
               },
             },
+
+            /*
+              Display range
+            */
             {
               name: "height",
               selector: {
@@ -542,11 +553,8 @@ class SimpleBandGraphCard extends HTMLElement {
           ----------------------------------------------------------------------
           X-axis section
           ----------------------------------------------------------------------
-          X-axis line position, label position, tick count, and label styling.
-
-          The axis line position and label position are deliberately separate so
-          the x-axis line can be placed at zero while labels remain at the top,
-          middle, or bottom of the plot.
+          X-axis visibility, line position, label position, tick count, and
+          styling.
         */
         {
           type: "expandable",
@@ -555,6 +563,9 @@ class SimpleBandGraphCard extends HTMLElement {
           icon: "mdi:axis-arrow",
           flatten: true,
           schema: [
+            /*
+              Visibility
+            */
             {
               name: "show_x_axis",
               selector: {
@@ -567,6 +578,10 @@ class SimpleBandGraphCard extends HTMLElement {
                 boolean: {},
               },
             },
+
+            /*
+              Position and ticks
+            */
             {
               name: "x_axis_position",
               selector: {
@@ -616,6 +631,10 @@ class SimpleBandGraphCard extends HTMLElement {
                 },
               },
             },
+
+            /*
+              Line style
+            */
             {
               name: "x_axis_line_color",
               selector: {
@@ -644,6 +663,10 @@ class SimpleBandGraphCard extends HTMLElement {
                 },
               },
             },
+
+            /*
+              Label style
+            */
             {
               name: "x_axis_label_size",
               selector: {
@@ -696,7 +719,7 @@ class SimpleBandGraphCard extends HTMLElement {
           ----------------------------------------------------------------------
           Y-axis section
           ----------------------------------------------------------------------
-          Y-axis line, labels, tick count, and label styling.
+          Y-axis visibility, position, tick count, and styling.
         */
         {
           type: "expandable",
@@ -705,6 +728,9 @@ class SimpleBandGraphCard extends HTMLElement {
           icon: "mdi:axis-arrow",
           flatten: true,
           schema: [
+            /*
+              Visibility
+            */
             {
               name: "show_y_axis",
               selector: {
@@ -717,6 +743,10 @@ class SimpleBandGraphCard extends HTMLElement {
                 boolean: {},
               },
             },
+
+            /*
+              Position and ticks
+            */
             {
               name: "y_axis_position",
               selector: {
@@ -740,6 +770,10 @@ class SimpleBandGraphCard extends HTMLElement {
                 },
               },
             },
+
+            /*
+              Line style
+            */
             {
               name: "y_axis_line_color",
               selector: {
@@ -768,7 +802,10 @@ class SimpleBandGraphCard extends HTMLElement {
                 },
               },
             },
-            
+
+            /*
+              Label style
+            */
             {
               name: "y_axis_label_size",
               selector: {
@@ -2042,27 +2079,33 @@ class SimpleBandGraphCard extends HTMLElement {
       */
       computeHelper: (schema) => {
         const helpers = {
-          // Content
-          entity: "The numeric entity to plot.",
-          hours_to_show: "How many hours of history to show.",
-          height:
-            "Fallback graph height in pixels. In resizable Sections layouts, grid rows can control the actual card height.",
+          // Data & range: source
+          entity:
+            "Sensor, number, or input number to plot. The entity should have numeric states.",
+          name:
+            "Optional display name. If left blank, the entity ID is used.",
 
-          // Range
-          y_min: "The lowest value shown on the y-axis.",
-          y_max: "The highest value shown on the y-axis.",
-          value_decimals:
-            "Controls decimal places for value labels. Auto uses fewer decimals for larger numbers.",
-
-          // History:
+          // Data & range: history
+          hours_to_show:
+            "How much history to display. Longer windows can use statistics or hybrid history.",
           history_mode:
-            "Choose the history source. Auto uses raw history for shorter windows and hybrid history for longer windows.",
+            "Choose the history source. Auto uses raw history for shorter windows and hybrid history for longer windows. Raw is detailed but usually limited by recorder retention. Statistics uses long-term statistics only. Hybrid combines older statistics with recent raw history.",
           statistics_type:
-            "Statistic value to use when reading Home Assistant long-term statistics.",
+            "Statistic value to use for long-term statistics. Mean is usually best for environmental sensors.",
           statistics_period:
             "Time bucket used for long-term statistics. Hour is usually the best balance for longer charts.",
           hybrid_raw_hours:
-            "Number of recent hours fetched as raw high-resolution history when using hybrid or auto mode.",
+            "Recent period fetched as raw high-resolution history when using hybrid or auto mode.",
+
+          // Data & range: display
+          height:
+            "Fallback graph height in pixels. In resizable Sections layouts, grid rows can control the actual card height.",
+          y_min:
+            "Minimum value shown on the Y-axis.",
+          y_max:
+            "Maximum value shown on the Y-axis.",
+          value_decimals:
+            "Number of decimal places used for displayed values and labels. Auto uses fewer decimals for larger numbers.",
 
           // X-axis
           show_x_axis:
