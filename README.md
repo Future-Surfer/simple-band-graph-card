@@ -2,34 +2,40 @@
 
 <img width="699" height="400" alt="image" src="https://github.com/user-attachments/assets/5e072bc8-392e-4a6c-92f5-d10527977368" />
 
+A Home Assistant custom card for simple line and area graphs with configurable coloured threshold bands.
 
-
-A Home Assistant custom card for simple line graphs with configurable coloured threshold bands.
-
-It is designed for sensors where coloured context bands make the graph easier to read, such as CO₂, air quality, temperature, humidity, battery level, energy use, solar generation, or anything else with meaningful thresholds.
+It is designed for sensors where coloured context bands make the graph easier to read, such as CO₂, air quality, temperature, humidity, battery level, energy use, solar generation, temperature difference, or anything else with meaningful thresholds.
 
 [![Open your Home Assistant instance and add this repository to HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Future-Surfer&repository=simple-band-graph-card&category=plugin)
 
 ## Features
 
-- Display recent Home Assistant entity history as a clean, responsive line graph
+- Display recent Home Assistant entity history as a clean, responsive graph
 - Define custom coloured threshold bands with configurable labels and messages
 - Set graph duration and Y-axis range with `hours_to_show`, `y_min` and `y_max`
+- Use raw history, long-term statistics, or hybrid history for longer time windows
 - Resize cleanly in Home Assistant Sections layouts, including compact one-row status cards
 - Configure header and footer content slots, including name, current value, band, min/max, debug text, custom text, graph duration and band-specific messages
 - Show or hide the header and footer independently
+- Use a position-aware ribbon layout so left, centre and right slots share space sensibly
 - Style header/footer text, backgrounds and band-driven colours
 - Configure separate backgrounds for the card and plot area
 - Optionally drive card, plot, header or footer background colours from the current band
 - Clip bands and line content to the rounded plot area
 - Show, hide and position band labels inside or outside the graph area
+- Draw band labels above or below the line/area graphing layer
 - Add optional band separator lines with configurable colour, width, opacity and line style
 - Show optional latest, minimum and maximum value markers with configurable labels
 - Configure X/Y axis lines and labels independently
+- Place the X-axis line at the top, bottom, or zero value
+- Place X-axis labels independently at the top, middle, or bottom
 - Configure axis line colour, width and opacity separately for X and Y axes
 - Add optional grid lines with solid, dashed or dotted styles
 - Customise graph line colour, width and opacity
 - Use `line_color_mode: band` to colour the graph line by threshold band
+- Add an optional area fill between the graph line and the zero point
+- Use `area_color_mode: band` to colour area segments by threshold band
+- Show the area fill even when the line itself is hidden
 - Add standard Home Assistant card interactions with `tap_action`, `hold_action` and `double_tap_action`
 - Automatically downsample large history responses for better performance
 - Show optional debug and performance diagnostics
@@ -88,16 +94,20 @@ Simple Band Graph Card includes a Home Assistant visual editor for the most comm
 
 The visual editor can configure:
 
-- Entity, name, history window, fallback graph height and value decimal places
+- Entity, name, history source, history window, fallback graph height and value decimal places
+- Raw, statistics and hybrid history options
 - Y-axis range
 - X/Y axis lines, tick labels, positions and label styling
+- X-axis zero-line positioning and independent X-axis label positioning
 - Separate X/Y axis line colour, width and opacity
 - Grid visibility, colour, width, opacity and line style
 - Card and plot backgrounds
 - Band visibility, band labels and band label styling
+- Band label layer, allowing labels to appear above or below the line/area graph
 - Band separator visibility, colour, width, opacity and style
 - Raw band definitions
 - Line colour, width, opacity and band-driven line colouring
+- Area visibility, colour, opacity and band-driven area colouring
 - Current/latest, minimum and maximum markers
 - Marker label text and background styling
 - Header and footer visibility, slot content, text styling and backgrounds
@@ -110,6 +120,7 @@ Some advanced YAML options, especially detailed per-slot header/footer text over
 
 <details open>
 <summary>Minimal example</summary>
+
 <img width="718" height="411" alt="image" src="https://github.com/user-attachments/assets/7b392cd7-310e-47ee-8c85-eebd75916142" />
 
 The smallest useful card: one entity, one graph, and a few coloured bands.
@@ -149,7 +160,6 @@ bands:
 <summary>Compact status graph example</summary>
 
 <img width="328" height="282" alt="image" src="https://github.com/user-attachments/assets/9667e07c-c4b1-47c2-829a-7dd83b4f9a82" />
-
 
 A compact layout that behaves more like a status tile, with a band-coloured value ribbon and a small contextual graph underneath.
 
@@ -194,10 +204,13 @@ bands:
   - from: 1500
     to: 2000
     color: "#e74c3c"
+```
+
 </details>
 
 <details>
 <summary>Ribbon message example</summary>
+
 <img width="721" height="507" alt="image" src="https://github.com/user-attachments/assets/c8beef94-b952-4374-95f5-5673f7fd0e10" />
 
 Shows a band-specific message in the bottom ribbon.
@@ -257,6 +270,7 @@ bands:
 
 <details>
 <summary>Band-coloured line example</summary>
+
 <img width="730" height="433" alt="image" src="https://github.com/user-attachments/assets/3d434498-f8f8-4862-b816-b32883007bfc" />
 
 Uses translucent bands with a stronger band-coloured line on top.
@@ -301,7 +315,126 @@ bands:
 </details>
 
 <details>
+<summary>Band-coloured area example</summary>
+
+Shows an area fill under the graph. The area is drawn between the history value and the zero point on the Y-axis. It can be used with or without the line.
+
+```yaml
+type: custom:simple-band-graph-card
+entity: sensor.example_temperature_delta
+name: Temperature Difference
+hours_to_show: 24
+height: 220
+
+y_min: -10
+y_max: 10
+value_decimals: 1
+
+show_bands: true
+band_opacity: 0.22
+
+show_line: true
+line_color_mode: static
+line_color: "#333333"
+line_width: 3
+line_opacity: 0.75
+
+show_area: true
+area_color_mode: band
+area_opacity: 0.25
+
+show_x_axis: true
+show_x_axis_labels: true
+x_axis_position: zero
+x_axis_label_position: bottom
+x_axis_label_mode: relative
+x_axis_ticks: 3
+x_axis_line_color: "#111111"
+x_axis_line_width: 4
+x_axis_line_opacity: 1
+
+show_y_axis: true
+show_y_axis_labels: true
+y_axis_position: left
+y_axis_ticks: 3
+
+bands:
+  - from: -10
+    to: -5
+    color: "#3b82f6"
+    label: Much cooler
+    message: Inside is much cooler than outside
+  - from: -5
+    to: -2
+    color: "#60a5fa"
+    label: Cooler
+    message: Inside is cooler than outside
+  - from: -2
+    to: 2
+    color: "#22c55e"
+    label: Balanced
+    message: Inside and outside temperatures are similar
+  - from: 2
+    to: 5
+    color: "#eab308"
+    label: Warmer
+    message: Inside is warmer than outside
+  - from: 5
+    to: 10
+    color: "#ef4444"
+    label: Much warmer
+    message: Inside is much warmer than outside
+```
+
+</details>
+
+<details>
+<summary>Area-only example</summary>
+
+Hides the line and uses the area fill as the main visual element.
+
+```yaml
+type: custom:simple-band-graph-card
+entity: sensor.example_battery_power
+name: Battery Flow
+hours_to_show: 12
+height: 180
+
+y_min: -5000
+y_max: 5000
+
+show_line: false
+
+show_area: true
+area_color_mode: band
+area_opacity: 0.35
+
+show_x_axis: true
+show_x_axis_labels: true
+x_axis_position: zero
+x_axis_label_position: bottom
+x_axis_line_width: 3
+
+bands:
+  - from: -5000
+    to: -1000
+    color: "#3b82f6"
+    label: Exporting
+  - from: -1000
+    to: 1000
+    color: "#22c55e"
+    label: Balanced
+  - from: 1000
+    to: 5000
+    color: "#ef4444"
+    label: Importing
+```
+
+</details>
+
+<details>
 <summary>Band-driven background example</summary>
+
 <img width="721" height="452" alt="image" src="https://github.com/user-attachments/assets/78cf9770-c893-4344-83d5-a66930b0948d" />
 
 Hides the visible band stripes and uses the current band to colour the plot and ribbon backgrounds.
@@ -350,6 +483,7 @@ bands:
 
 <details>
 <summary>Outside band labels example</summary>
+
 <img width="719" height="423" alt="image" src="https://github.com/user-attachments/assets/b3f69fec-0fd4-4270-bde2-57df90f6ea89" />
 
 Places band labels outside the graph area. This is useful when bands are narrow or when you want a cleaner plot.
@@ -396,7 +530,58 @@ bands:
 </details>
 
 <details>
+<summary>Band labels above data example</summary>
+
+Draws band labels above the line and area layers. This can be useful when labels are acting as active annotations rather than subtle background labels.
+
+```yaml
+type: custom:simple-band-graph-card
+entity: sensor.example_co2
+name: CO₂ Band Labels Above
+hours_to_show: 24
+y_min: 400
+y_max: 2000
+
+band_opacity: 0.16
+band_label_mode: label
+band_label_position: middle
+band_label_align: center
+band_label_layer: above
+band_label_size: 18
+band_label_weight: 600
+
+show_area: true
+area_color_mode: band
+area_opacity: 0.2
+
+line_color_mode: static
+line_color: "#111111"
+line_width: 2
+
+bands:
+  - from: 400
+    to: 800
+    color: "#2ecc71"
+    label: Good
+  - from: 800
+    to: 1100
+    color: "#f1c40f"
+    label: OK
+  - from: 1100
+    to: 1500
+    color: "#e67e22"
+    label: Stale
+  - from: 1500
+    to: 2000
+    color: "#e74c3c"
+    label: Poor
+```
+
+</details>
+
+<details>
 <summary>Markers example</summary>
+
 <img width="732" height="427" alt="image" src="https://github.com/user-attachments/assets/508b2104-dd46-46e4-ae81-5af7530e832a" />
 
 Shows the latest value and maximum value directly on the graph.
@@ -453,6 +638,7 @@ bands:
 
 <details>
 <summary>Axes and grid example</summary>
+
 <img width="715" height="429" alt="image" src="https://github.com/user-attachments/assets/ecb380e5-0733-4add-829e-7bc930420524" />
 
 Shows configurable axes, tick labels and grid lines.
@@ -473,6 +659,8 @@ top_right: current
 
 show_x_axis: true
 show_x_axis_labels: true
+x_axis_position: bottom
+x_axis_label_position: bottom
 x_axis_ticks: 5
 
 show_y_axis: true
@@ -502,10 +690,113 @@ bands:
 </details>
 
 <details>
+<summary>Zero-line X-axis example</summary>
+
+Places the X-axis line at the zero value while leaving the X-axis labels at the bottom.
+
+```yaml
+type: custom:simple-band-graph-card
+entity: sensor.example_temperature_delta
+name: Temperature Delta
+hours_to_show: 24
+height: 220
+
+y_min: -10
+y_max: 10
+
+show_x_axis: true
+show_x_axis_labels: true
+x_axis_position: zero
+x_axis_label_position: bottom
+x_axis_line_color: "#111111"
+x_axis_line_width: 4
+x_axis_line_opacity: 1
+
+show_y_axis: true
+show_y_axis_labels: true
+y_axis_position: left
+
+line_color: "#333333"
+line_width: 3
+
+bands:
+  - from: -10
+    to: -2
+    color: "#60a5fa"
+    label: Cooler
+  - from: -2
+    to: 2
+    color: "#22c55e"
+    label: Balanced
+  - from: 2
+    to: 10
+    color: "#ef4444"
+    label: Warmer
+```
+
+</details>
+
+<details>
+<summary>Long-term hybrid history example</summary>
+
+Uses hybrid history for longer time ranges: older long-term statistics plus recent raw history.
+
+```yaml
+type: custom:simple-band-graph-card
+entity: sensor.example_co2
+name: CO₂ Long History
+hours_to_show: 480
+height: 220
+
+history_mode: hybrid
+statistics_type: mean
+statistics_period: hour
+hybrid_raw_hours: 240
+
+max_history_points: auto
+
+y_min: 400
+y_max: 2000
+
+show_line: true
+line_color_mode: static
+line_color: "#111111"
+line_width: 3
+
+show_area: true
+area_color_mode: band
+area_opacity: 0.18
+
+debug_level: basic
+debug_multiline: true
+
+bands:
+  - from: 400
+    to: 800
+    color: "#2ecc71"
+    label: Good
+  - from: 800
+    to: 1100
+    color: "#f1c40f"
+    label: OK
+  - from: 1100
+    to: 1500
+    color: "#e67e22"
+    label: Stale
+  - from: 1500
+    to: 2000
+    color: "#e74c3c"
+    label: Poor
+```
+
+</details>
+
+<details>
 <summary>Advanced customisation example</summary>
+
 <img width="691" height="533" alt="image" src="https://github.com/user-attachments/assets/ba14e359-ef39-4501-9fdb-8fa4bb9ccd35" />
 
-A fuller example showing custom ribbons, band messages, backgrounds, labels, axes, markers and band-coloured lines.
+A fuller example showing custom ribbons, band messages, backgrounds, labels, axes, markers, area fill and band-coloured lines.
 
 ```yaml
 type: custom:simple-band-graph-card
@@ -515,6 +806,11 @@ height: 190
 hours_to_show: 12
 y_min: 400
 y_max: 2000
+
+history_mode: auto
+statistics_type: mean
+statistics_period: hour
+hybrid_raw_hours: 240
 
 max_history_points: auto
 history_refresh_interval: 60
@@ -566,21 +862,28 @@ line_color_mode: band
 line_width: 3
 line_opacity: 1
 
+show_area: true
+area_color_mode: band
+area_opacity: 0.18
+
 band_label_mode: label
 band_label_position: middle
 band_label_align: left
+band_label_layer: below
 band_label_size: 13
 band_label_weight: 500
 band_label_opacity: 0.85
 
 show_x_axis: true
 show_x_axis_labels: true
+x_axis_position: bottom
+x_axis_label_position: bottom
 x_axis_ticks: 3
 x_axis_label_size: 13
-y_axis_label_size: 13
 
 show_y_axis: false
 show_y_axis_labels: false
+y_axis_label_size: 13
 
 show_x_grid: false
 show_y_grid: false
@@ -629,6 +932,7 @@ bands:
 
 <details>
 <summary>Basic debug example</summary>
+
 <img width="734" height="611" alt="image" src="https://github.com/user-attachments/assets/68c486ce-e417-4327-bad7-1d04ba614119" />
 
 Shows basic debug output in the bottom ribbon.
@@ -678,20 +982,27 @@ bands:
 ```
 
 </details>
+
 <details>
 <summary>Complex debug and performance example</summary>
+
 <img width="720" height="793" alt="image" src="https://github.com/user-attachments/assets/a363b212-0363-4f1f-aa7c-bf2ef49880d8" />
 
-Shows detailed debug and performance output, including fetch timings, downsampling, render counts and line path information. Useful when testing long history windows or band-coloured lines.
+Shows detailed debug and performance output, including fetch timings, downsampling, render counts, history source information and line path information. Useful when testing long history windows or band-coloured lines.
 
 ```yaml
 type: custom:simple-band-graph-card
 entity: sensor.example_co2
 name: CO₂ Performance Debug
 height: 230
-hours_to_show: 100
+hours_to_show: 480
 y_min: 400
 y_max: 2000
+
+history_mode: auto
+statistics_type: mean
+statistics_period: hour
+hybrid_raw_hours: 240
 
 max_history_points: auto
 history_refresh_interval: 60
@@ -719,6 +1030,10 @@ show_line: true
 line_color_mode: band
 line_width: 4
 line_opacity: 1
+
+show_area: true
+area_color_mode: band
+area_opacity: 0.16
 
 show_x_axis: true
 show_x_axis_labels: true
@@ -775,8 +1090,6 @@ bands:
 
 </details>
 
-
-
 ## Configuration
 
 ### Core options
@@ -799,13 +1112,28 @@ bands:
 
 | Option | Default | Description |
 |---|---:|---|
+| `history_mode` | `auto` | History source mode. Options: `auto`, `raw`, `statistics`, `hybrid`. |
+| `statistics_type` | `mean` | Long-term statistics value to use. Common options: `mean`, `min`, `max`, `last`, `state`. |
+| `statistics_period` | `hour` | Long-term statistics period. Options include `5minute`, `hour`, `day`, `week`, `month`. |
+| `hybrid_raw_hours` | `240` | Number of recent hours fetched as raw high-resolution history when using `hybrid` or `auto` mode. |
 | `max_history_points` | `auto` | Maximum number of history points to plot after fetching. `auto` currently targets about `500` plotted points. Use a number to override. |
 | `history_refresh_interval` | `60` | Minimum time, in seconds, between full history API refreshes. The card can still update the current value between history refreshes. |
 | `debug_level` | `basic` | Debug detail level. Options: `off`, `basic`, `performance`, `verbose`. |
 | `debug_multiline` | `false` | Shows debug output over multiple lines. Useful with `debug_level: performance` or `debug_level: verbose`. |
 | `debug_performance` | `false` | Backwards-compatible shortcut. If set to `true`, defaults `debug_level` to `performance`. |
 
-The card requests detailed Home Assistant history and then downsamples locally if needed. This keeps the visible graph responsive while preserving useful spikes and high/low points.
+History modes:
+
+| Mode | Behaviour |
+|---|---|
+| `raw` | Uses Home Assistant’s detailed recorder history. This is high-resolution, but limited by recorder retention. |
+| `statistics` | Uses Home Assistant long-term statistics only. This is lower-resolution, but can cover longer periods when the entity supports long-term statistics. |
+| `hybrid` | Uses long-term statistics for the older part of the window and raw recorder history for the recent part. |
+| `auto` | Uses `raw` when `hours_to_show` is within `hybrid_raw_hours`, otherwise uses `hybrid`. |
+
+The card requests Home Assistant history and then downsamples locally if needed. This keeps the visible graph responsive while preserving useful spikes and high/low points.
+
+Long-term statistics only work for entities that Home Assistant records as statistics. Most numeric sensors with appropriate state class support this, but not every entity will have long-term statistics available.
 
 ### Bands
 
@@ -826,7 +1154,7 @@ Several options support a matching `*_color_mode`.
 | Mode | Behaviour |
 |---|---|
 | `static` | Use the configured colour. |
-| `band` | Use a band colour. For card/plot/ribbon backgrounds and ribbon text this uses the current value’s band. For marker labels this uses the marker value’s own band. For line colour it uses the band the line section passes through. |
+| `band` | Use a band colour. For card/plot/ribbon backgrounds and ribbon text this uses the current value’s band. For marker labels this uses the marker value’s own band. For line colour it uses the band the line section passes through. For area colour it uses the band the area section passes through. |
 | `none` | Use transparent/no colour. |
 
 Examples:
@@ -836,6 +1164,7 @@ plot_background_color_mode: band
 ribbon_color_mode: band
 marker_label_color_mode: band
 line_color_mode: band
+area_color_mode: band
 ```
 
 If a marker value is outside all configured bands, `marker_label_color_mode: band` falls back to `marker_label_color`.
@@ -865,10 +1194,11 @@ Legacy `top_ribbon_background_*` and `bottom_ribbon_background_*` options are st
 
 | Option | Default | Description |
 |---|---:|---|
-| `band_label_mode` | `label` | Controls what is shown in each band label. Options: `hide`, `label`, `threshold`, `range`. |
+| `band_label_mode` | `label` | Controls what is shown in each band label. Options: `hide`, `label`, `threshold`, `range`, `label_range`, `label_threshold`. |
 | `band_label_unit` | `false` | Adds the entity unit to threshold/range labels. |
 | `band_label_position` | `top` | Vertical position. Options: `top`, `middle`, `bottom`. Older aliases `high`, `mid`, `low` also work. |
 | `band_label_align` | `left` | Horizontal position. Options: `left`, `center`, `right`, `outside_left`, `outside_right`. |
+| `band_label_layer` | `below` | Draw band labels below or above the line/area data layer. Options: `below`, `above`. |
 | `band_label_outside_width` | `auto` | Reserved width for outside band labels. Use `auto` or a number. |
 | `band_label_outside_gap` | `6` | Gap between outside band labels and the graph area. |
 | `band_label_size` | `11` | Band label font size. |
@@ -885,8 +1215,10 @@ Band label modes:
 |---|---|
 | `hide` | No label |
 | `label` | `Good` |
-| `threshold` | `Good 400+` |
-| `range` | `Good 400–800` |
+| `threshold` | `400+` |
+| `range` | `400–800` |
+| `label_threshold` | `Good · 400+` |
+| `label_range` | `Good · 400–800` |
 
 ### Band separator options
 
@@ -930,15 +1262,46 @@ line_width: 4
 line_opacity: 1
 ```
 
+### Area options
+
+| Option | Default | Description |
+|---|---:|---|
+| `show_area` | `false` | Show or hide the filled area. |
+| `area_color` | `var(--primary-color)` | Area fill colour. Used when `area_color_mode: static`, and as a fallback. |
+| `area_color_mode` | `static` | Area colour mode. Options: `static`, `band`, `none`. |
+| `area_opacity` | `0.18` | Area fill opacity. |
+
+The area is drawn between the plotted history value and the zero point on the Y-axis. This means it works naturally for graphs with positive and negative values, such as temperature difference, battery charge/discharge, import/export, or balance-style sensors.
+
+If zero is outside the visible Y-axis range, the baseline is clamped to the nearest edge of the plot.
+
+The area can be shown independently of the line:
+
+```yaml
+show_line: false
+show_area: true
+```
+
+When `area_color_mode: band` is used, the area is split at band thresholds and coloured according to the configured bands. Adjacent same-colour area sections are grouped to reduce SVG noise.
+
+Example:
+
+```yaml
+show_area: true
+area_color_mode: band
+area_opacity: 0.25
+```
+
 ### Axis options
 
-X-axis and Y-axis lines are controlled separately from their labels. For example, you can hide the axis line while keeping the labels visible.
+X-axis and Y-axis lines are controlled separately from their labels. For example, you can hide the axis line while keeping the labels visible, or place the X-axis line at zero while leaving X-axis labels at the bottom.
 
 | Option | Default | Description |
 |---|---:|---|
 | `show_x_axis` | `true` | Show or hide the X-axis line. |
 | `show_x_axis_labels` | `true` | Show or hide X-axis labels. |
-| `x_axis_position` | `bottom` | X-axis position. Options: `bottom`, `top`. |
+| `x_axis_position` | `bottom` | X-axis line position. Options: `bottom`, `top`, `zero`. |
+| `x_axis_label_position` | `bottom` | X-axis label position. Options: `bottom`, `middle`, `top`. |
 | `x_axis_label_mode` | `relative` | X-axis label mode. Options: `relative`, `time`. |
 | `x_axis_ticks` | `3` | Number of X-axis tick labels. |
 | `x_axis_line_color` | `var(--divider-color)` | X-axis line colour. |
@@ -961,6 +1324,8 @@ X-axis and Y-axis lines are controlled separately from their labels. For example
 | `y_axis_label_color` | `var(--secondary-text-color)` | Y-axis label colour. |
 | `y_axis_label_color_mode` | `static` | Options: `static`, `band`, `none`. |
 | `y_axis_label_opacity` | `0.8` | Y-axis label opacity. |
+
+When `x_axis_position: zero` is used, the X-axis line is drawn at the Y-axis value of `0`. If zero is outside the current visible Y-axis range, the line is clamped to the nearest plot edge.
 
 When both axis lines are visible, the card slightly overlaps the line ends so thicker X/Y axes form a clean joined corner.
 
@@ -1019,6 +1384,13 @@ footer_right: none
 | `ribbon_styles` | `{}` | Advanced per-slot style overrides. |
 
 Legacy `top_left`, `top_center`, `top_right`, `bottom_left`, `bottom_center` and `bottom_right` options are still supported, but the `header_*` and `footer_*` names are preferred for new YAML.
+
+Ribbon slots use a position-aware layout:
+
+- If only one slot is occupied, it can use the full ribbon width.
+- If left and right are occupied, they split the ribbon between them.
+- If centre is occupied alongside left or right, the centre remains visually centred in the middle column, with a balancing blank column on the opposite side.
+- If all three slots are occupied, each slot uses its own left, centre or right column.
 
 Supported slot values:
 
@@ -1212,20 +1584,22 @@ Debug levels:
 | Level | Description |
 |---|---|
 | `off` | No debug output. |
-| `basic` | Shows history window, fetch age, raw/plotted/path point counts, refresh interval and axis range. |
-| `performance` | Adds fetch/API/downsample/render timings, render count, downsampling ratio and point density. |
-| `verbose` | Adds first/last history point age and requested history window details. |
+| `basic` | Shows history window, fetch age, raw/plotted/path point counts, history mode, source counts, refresh interval and axis range. |
+| `performance` | Adds layout details, fetch/API/downsample/render timings, render count, downsampling ratio and point density. |
+| `verbose` | Adds configuration details, entity details, first/last history point age and requested history window details. |
 
 Example performance output:
 
 ```text
-debug · 100h · fetched 12s ago
-raw 1315 · plotted 500 · path 501 · segments 500/543 · grouped paths 45 · max auto/500
-refresh 60s · full history request
-y 400-2000 · x relative · line band
-fetch 418ms · api 417ms · downsample 0ms
-render 1ms · renders 79
-downsample yes · ratio 38% · density 13/h
+debug · 480h · fetched 12s ago
+raw 740 · plotted 500 · path 501 · segments 500/543 · grouped paths 45 · max auto/500
+history auto→hybrid · stats type mean · period hour · raw window 240h
+stats 240 · raw 500 · merged 740
+refresh 60s · hybrid history request
+y 400-2000 · x relative · line band · area band
+fetch 418ms · api 220ms · downsample 1ms
+render 3ms · renders 79
+downsample yes · ratio 68% · density 1.5/h
 ```
 
 In the line debug:
@@ -1234,6 +1608,15 @@ In the line debug:
 |---|---|
 | `segments 500/543` | Original line segments / threshold-split line segments. |
 | `grouped paths 45` | Number of actual SVG line paths rendered after grouping same-colour sections. |
+
+In the history debug:
+
+| Value | Meaning |
+|---|---|
+| `history auto→hybrid` | Configured mode was `auto`, resolved mode was `hybrid`. |
+| `stats 240` | Number of long-term statistics points fetched. |
+| `raw 500` | Number of raw history points fetched. |
+| `merged 740` | Final combined point count before downsampling. |
 
 ## Notes
 
@@ -1251,9 +1634,9 @@ New YAML should prefer `header_*` and `footer_*` options, but older `top_*`, `bo
 
 ## Status
 
-Work in progress, but functional. The card can load Home Assistant history and render a configurable threshold-banded line graph with optional markers, axes, grid lines, header/footer content, band-driven colours, interactions and debug diagnostics.
+Work in progress, but functional. The card can load Home Assistant history, optionally combine long-term statistics with recent raw history, and render a configurable threshold-banded graph with optional line, area fill, markers, axes, grid lines, header/footer content, band-driven colours, interactions and debug diagnostics.
 
-A Home Assistant visual editor is included for common configuration options, including content, range, axes, grid, appearance, bands, line, markers, header, footer, interactions and advanced/debug settings. Detailed per-slot overrides and complex band editing may still require YAML.
+A Home Assistant visual editor is included for common configuration options, including data and range, history mode, axes, grid, appearance, bands, line, area, markers, header, footer, interactions and advanced/debug settings. Detailed per-slot overrides and complex band editing may still require YAML.
 
 ## Roadmap
 
@@ -1261,12 +1644,11 @@ Planned or possible future features:
 
 - Better UI controls for editing individual bands
 - More marker dot styling options
-- Optional area graph / line graph toggle
-- Area fill colour modes, including band-driven area fill
 - Optional hover / tooltip features
 - More compact presets
 - Optional dynamic defaults based on entity device class
 - Optional band templates for common sensors such as CO₂, humidity, battery and temperature
+- Ribbon background value-fill mode, where header/footer backgrounds fill left-to-right based on the current value within the configured band range
 - More debug information for responsive layout, SVG path generation and rendered dimensions
 - More examples and screenshots
 - Better handling for marker values outside configured bands
