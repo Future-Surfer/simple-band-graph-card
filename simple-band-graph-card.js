@@ -2417,6 +2417,10 @@ class SimpleBandGraphCard extends HTMLElement {
       // History fetching and downsampling settings
       max_history_points: config.max_history_points ?? "auto",
       history_refresh_interval: config.history_refresh_interval ?? 60,
+      history_mode: config.history_mode ?? "raw",
+      statistics_type: config.statistics_type ?? "mean",
+      statistics_period: config.statistics_period ?? "hour",
+      hybrid_raw_hours: config.hybrid_raw_hours ?? 240,
 
       // Debug/status settings
       debug_multiline: config.debug_multiline ?? false,
@@ -2980,15 +2984,23 @@ class SimpleBandGraphCard extends HTMLElement {
     ============================================================================
     HISTORY FETCHING
     ============================================================================
-    Pulls historical state from the Home Assistant history API, parses numeric
-    values, downsamples where required, and stores debug/performance metadata.
+    Pulls historical state from Home Assistant, parses numeric values,
+    downsamples where required, and stores debug/performance metadata.
+
+    Supported modes:
+    - raw: current high-resolution recorder history via REST.
+    - statistics: long-term recorder statistics via websocket.
+    - hybrid: long-term statistics for older data, raw recorder history for the
+      recent period.
+
+    Long-term statistics are lower resolution, usually hourly, and only work for
+    entities that Home Assistant records as statistics.
   */
   async fetchHistory() {
     this._isFetchingHistory = true;
 
     const fetchStarted = performance.now();
 
-    const entityId = this.config.entity;
     const hoursToShow = Number(this.config.hours_to_show);
 
     const end = new Date();
@@ -2996,38 +3008,30 @@ class SimpleBandGraphCard extends HTMLElement {
 
     this._lastHistoryStartTime = start.getTime();
     this._lastHistoryEndTime = end.getTime();
-    this._lastRequestMode = "full history request";
 
     try {
-      const apiStarted = performance.now();
+      const maxHistoryPoints = this.getMaxHistoryPoints();
 
-      const history = await this._hass.callApi(
-        "GET",
-        `history/period/${start.toISOString()}?filter_entity_id=${encodeURIComponent(
-          entityId
-        )}&end_time=${encodeURIComponent(
-          end.toISOString()
-        )}&minimal_response=false&significant_changes_only=false&no_attributes=false`
-      );
+      const historyMode = this.config.history_mode || "raw";
 
-      this._lastHistoryApiDurationMs = Math.round(performance.now() - apiStarted);
+      let rawHistory = [];
 
-      const entityHistory =
-        Array.isArray(history) && Array.isArray(history[0]) ? history[0] : [];
-
-      const rawHistory = entityHistory
-        .map((item) => ({
-          state: Number(item.state),
-          time: new Date(item.last_changed).getTime(),
-        }))
-        .filter((item) => Number.isFinite(item.state) && Number.isFinite(item.time));
+      if (historyMode === "statistics") {
+        this._lastRequestMode = "statistics history request";
+        rawHistory = await this._fetchStatisticsHistory(start, end);
+      } else if (historyMode === "hybrid") {
+        this._lastRequestMode = "hybrid history request";
+        rawHistory = await this._fetchHybridHistory(start, end);
+      } else {
+        this._lastRequestMode = "full history request";
+        rawHistory = await this._fetchRawHistory(start, end);
+      }
 
       this._rawHistoryCount = rawHistory.length;
 
       this._lastHistoryFirstPointTime = rawHistory[0]?.time || null;
-      this._lastHistoryLastPointTime = rawHistory[rawHistory.length - 1]?.time || null;
-
-      const maxHistoryPoints = this.getMaxHistoryPoints();
+      this._lastHistoryLastPointTime =
+        rawHistory[rawHistory.length - 1]?.time || null;
 
       const downsampleStarted = performance.now();
 
@@ -3061,6 +3065,123 @@ class SimpleBandGraphCard extends HTMLElement {
     this.render();
   }
 
+  async _fetchRawHistory(start, end) {
+    const entityId = this.config.entity;
+
+    const apiStarted = performance.now();
+
+    const history = await this._hass.callApi(
+      "GET",
+      `history/period/${start.toISOString()}?filter_entity_id=${encodeURIComponent(
+        entityId
+      )}&end_time=${encodeURIComponent(
+        end.toISOString()
+      )}&minimal_response=false&significant_changes_only=false&no_attributes=false`
+    );
+
+    this._lastHistoryApiDurationMs = Math.round(performance.now() - apiStarted);
+
+    const entityHistory =
+      Array.isArray(history) && Array.isArray(history[0]) ? history[0] : [];
+
+    return entityHistory
+      .map((item) => ({
+        state: Number(item.state),
+        time: new Date(item.last_changed).getTime(),
+      }))
+      .filter((item) => Number.isFinite(item.state) && Number.isFinite(item.time))
+      .sort((a, b) => a.time - b.time);
+  }
+
+  async _fetchStatisticsHistory(start, end) {
+    const entityId = this.config.entity;
+    const statisticsType = this.config.statistics_type || "mean";
+    const statisticsPeriod = this.config.statistics_period || "hour";
+
+    const apiStarted = performance.now();
+
+    if (!this._hass?.callWS) {
+      throw new Error("Home Assistant websocket callWS is not available.");
+    }
+
+    const statistics = await this._hass.callWS({
+      type: "recorder/statistics_during_period",
+      start_time: start?.toISOString(),
+      end_time: end?.toISOString(),
+      statistic_ids: [entityId],
+      period: statisticsPeriod,
+    });
+
+    this._lastHistoryApiDurationMs = Math.round(performance.now() - apiStarted);
+
+    const rows =
+      statistics && Array.isArray(statistics[entityId])
+        ? statistics[entityId]
+        : [];
+
+    return rows
+      .map((item) => {
+        const value =
+          item[statisticsType] ??
+          item.mean ??
+          item.state ??
+          item.last ??
+          item.max ??
+          item.min;
+
+        const timestamp =
+          item.start || item.start_time || item.end || item.end_time;
+
+        return {
+          state: Number(value),
+          time: new Date(timestamp).getTime(),
+        };
+      })
+      .filter((item) => Number.isFinite(item.state) && Number.isFinite(item.time))
+      .sort((a, b) => a.time - b.time);
+  }
+
+  async _fetchHybridHistory(start, end) {
+    const requestedStartTime = start.getTime();
+    const endTime = end.getTime();
+
+    const rawHours = Number(this.config.hybrid_raw_hours) || 240;
+    const rawStart = new Date(endTime - rawHours * 60 * 60 * 1000);
+
+    const safeRawStart =
+      rawStart.getTime() > requestedStartTime ? rawStart : start;
+
+    const statisticsEnd = new Date(safeRawStart.getTime());
+
+    let statisticsHistory = [];
+    let rawHistory = [];
+
+    if (statisticsEnd.getTime() > requestedStartTime) {
+      try {
+        statisticsHistory = await this._fetchStatisticsHistory(start, statisticsEnd);
+      } catch (error) {
+        console.warn(
+          "Simple Band Graph Card: statistics history unavailable, falling back to raw history only",
+          error
+        );
+        statisticsHistory = [];
+      }
+    }
+
+    rawHistory = await this._fetchRawHistory(safeRawStart, end);
+
+    const rawFirstTime = rawHistory[0]?.time || safeRawStart.getTime();
+
+    const trimmedStatistics = statisticsHistory.filter(
+      (item) => item.time < rawFirstTime
+    );
+
+    const mergedHistory = [...trimmedStatistics, ...rawHistory]
+      .filter((item) => Number.isFinite(item.state) && Number.isFinite(item.time))
+      .sort((a, b) => a.time - b.time);
+
+    return mergedHistory;
+  }
   /*
     ============================================================================
     RENDERING
