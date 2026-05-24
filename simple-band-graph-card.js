@@ -5505,8 +5505,18 @@ class SimpleBandGraphCard extends HTMLElement {
       --------------------------------------------------------------------------
       Ribbon layout
       --------------------------------------------------------------------------
-      Renders header/footer ribbons using only the occupied slots, adjusting the
-      grid template so left/centre/right combinations stay balanced.
+      Renders header/footer ribbons using a position-aware fair-share layout.
+
+      Rules:
+      - Left only: left aligned, full width.
+      - Centre only: centre aligned, full width.
+      - Right only: right aligned, full width.
+      - Left + right: two equal columns, left and right get 50% each.
+      - Left + centre: three equal columns, left in column 1, centre in column 2,
+        blank column 3.
+      - Centre + right: three equal columns, blank column 1, centre in column 2,
+        right in column 3.
+      - Left + centre + right: three equal columns.
 
       show_header and show_footer skip rendering without clearing the configured
       slot values, so users can hide a header/footer and later restore it without
@@ -5525,27 +5535,30 @@ class SimpleBandGraphCard extends HTMLElement {
       const ribbonPadding = backgroundInfo.hasBackground ? "8px 10px" : "0";
       const ribbonRadius = Number(this.config.ribbon_background_radius) || 0;
 
-      let gridTemplateColumns = "1fr";
+      let gridTemplateColumns = "minmax(0, 1fr)";
       let leftColumn = "1";
       let centerColumn = "1";
       let rightColumn = "1";
 
       if (hasLeft && hasCenter && hasRight) {
-        gridTemplateColumns = "minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr)";
+        gridTemplateColumns =
+          "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)";
         leftColumn = "1";
         centerColumn = "2";
         rightColumn = "3";
       } else if (hasLeft && hasCenter && !hasRight) {
-        gridTemplateColumns = "minmax(0, 1fr) minmax(0, 2fr)";
+        gridTemplateColumns =
+          "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)";
         leftColumn = "1";
         centerColumn = "2";
+      } else if (!hasLeft && hasCenter && hasRight) {
+        gridTemplateColumns =
+          "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)";
+        centerColumn = "2";
+        rightColumn = "3";
       } else if (hasLeft && !hasCenter && hasRight) {
         gridTemplateColumns = "minmax(0, 1fr) minmax(0, 1fr)";
         leftColumn = "1";
-        rightColumn = "2";
-      } else if (!hasLeft && hasCenter && hasRight) {
-        gridTemplateColumns = "minmax(0, 2fr) minmax(0, 1fr)";
-        centerColumn = "1";
         rightColumn = "2";
       }
 
@@ -5555,6 +5568,8 @@ class SimpleBandGraphCard extends HTMLElement {
             display: grid;
             grid-template-columns: ${gridTemplateColumns};
             align-items: baseline;
+            width: 100%;
+            box-sizing: border-box;
             gap: 12px;
             margin-top: ${marginTop}px;
             padding: ${ribbonPadding};
@@ -5564,31 +5579,58 @@ class SimpleBandGraphCard extends HTMLElement {
         >
           ${
             hasLeft
-              ? `<div style="grid-column: ${leftColumn}; min-width: 0;">${renderSlot(
-                  left,
-                  "left",
-                  `${prefix}_left`
-                )}</div>`
+              ? `<div
+                  style="
+                    grid-column: ${leftColumn};
+                    min-width: 0;
+                    width: 100%;
+                    overflow: hidden;
+                  "
+                >
+                  ${renderSlot(
+                    left,
+                    "left",
+                    `${prefix}_left`
+                  )}
+                </div>`
               : ""
           }
 
           ${
             hasCenter
-              ? `<div style="grid-column: ${centerColumn}; min-width: 0;">${renderSlot(
-                  center,
-                  "center",
-                  `${prefix}_center`
-                )}</div>`
+              ? `<div
+                  style="
+                    grid-column: ${centerColumn};
+                    min-width: 0;
+                    width: 100%;
+                    overflow: hidden;
+                  "
+                >
+                  ${renderSlot(
+                    center,
+                    "center",
+                    `${prefix}_center`
+                  )}
+                </div>`
               : ""
           }
 
           ${
             hasRight
-              ? `<div style="grid-column: ${rightColumn}; min-width: 0;">${renderSlot(
-                  right,
-                  "right",
-                  `${prefix}_right`
-                )}</div>`
+              ? `<div
+                  style="
+                    grid-column: ${rightColumn};
+                    min-width: 0;
+                    width: 100%;
+                    overflow: hidden;
+                  "
+                >
+                  ${renderSlot(
+                    right,
+                    "right",
+                    `${prefix}_right`
+                  )}
+                </div>`
               : ""
           }
         </div>
