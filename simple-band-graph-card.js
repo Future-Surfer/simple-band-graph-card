@@ -169,6 +169,7 @@ class SimpleBandGraphCard extends HTMLElement {
 
       // Band display settings
       show_bands: true,
+      band_fill_mode: "stepped",
       band_opacity: 0.14,
 
       // Band separator settings
@@ -376,6 +377,11 @@ class SimpleBandGraphCard extends HTMLElement {
       { value: "static", label: "Static colour" },
       { value: "band", label: "Use band colour" },
       { value: "none", label: "No colour / transparent" },
+    ];
+
+    const bandFillModeOptions = [
+      { value: "stepped", label: "Stepped bands" },
+      { value: "gradient", label: "Smooth gradient" },
     ];
 
     const fontWeightOptions = [
@@ -1027,6 +1033,15 @@ class SimpleBandGraphCard extends HTMLElement {
                   max: 1,
                   step: 0.05,
                   mode: "slider",
+                },
+              },
+            },
+            {
+              name: "band_fill_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: bandFillModeOptions,
                 },
               },
             },
@@ -1954,6 +1969,7 @@ class SimpleBandGraphCard extends HTMLElement {
           // Bands
           show_bands: "Show bands",
           band_opacity: "Band opacity",
+          band_fill_mode: "Band fill mode",
           band_label_mode: "Band label mode",
           band_label_unit: "Show units in band labels",
           band_label_position: "Band label position",
@@ -2180,6 +2196,8 @@ class SimpleBandGraphCard extends HTMLElement {
 
           // Bands
           band_opacity: "Opacity for the coloured background bands, from 0 to 1.",
+          band_fill_mode:
+            "Choose whether band backgrounds are drawn as stepped threshold blocks or as a smooth vertical gradient between band colours.",
           band_label_mode:
             "Choose whether band labels show the label, range, threshold, label + range, label + threshold, or are hidden.",
           band_label_unit:
@@ -2406,6 +2424,7 @@ class SimpleBandGraphCard extends HTMLElement {
       // Band display settings
       show_bands: config.show_bands ?? true,
       band_opacity: config.band_opacity ?? 0.2,
+      band_fill_mode: config.band_fill_mode ?? "stepped",
 
       // Band separator settings
       show_band_separators: config.show_band_separators ?? false,
@@ -4375,7 +4394,9 @@ class SimpleBandGraphCard extends HTMLElement {
       Band background rectangles, separators, and band labels
       --------------------------------------------------------------------------
       Bands are built in three layers:
-      1. band rectangles
+      1. band fill
+         - stepped: individual band rectangles
+         - gradient: one smooth vertical gradient based on band colours
       2. optional band separator lines at internal thresholds
       3. band labels
 
@@ -4434,28 +4455,113 @@ class SimpleBandGraphCard extends HTMLElement {
       .filter(Boolean)
       .sort((a, b) => a.from - b.from);
 
-    const bandRects = this.config.show_bands
-      ? validBands
-          .map(
-            ({
-              band,
-              y1,
-              bandHeight,
-            }) => `
-              <rect
-                x="${padding.left}"
-                y="${y1}"
-                width="${plotWidth}"
-                height="${bandHeight}"
-                fill="${applyOpacityToColour(
-                  band.color || "rgba(128,128,128,0.15)",
-                  this.config.band_opacity
-                )}"
-              ></rect>
-            `
-          )
-          .join("")
-      : "";
+    const bandGradientId = `${this._instanceId}-band-gradient`;
+
+    const valueToBandGradientOffset = (value) => {
+      const min = Number(this.config.y_min);
+      const max = Number(this.config.y_max);
+      const range = max - min;
+
+      if (!Number.isFinite(value) || !Number.isFinite(range) || range <= 0) {
+        return 0;
+      }
+
+      return clamp(((value - min) / range) * 100, 0, 100);
+    };
+
+    const bandGradientStops =
+      validBands.length > 0
+        ? (() => {
+            const stops = [];
+
+            validBands.forEach((bandInfo, index) => {
+              const colour = applyOpacityToColour(
+                bandInfo.band.color || "rgba(128,128,128,0.15)",
+                this.config.band_opacity
+              );
+
+              if (index === 0) {
+                stops.push({
+                  offset: valueToBandGradientOffset(bandInfo.from),
+                  colour,
+                });
+              }
+
+              stops.push({
+                offset: valueToBandGradientOffset(
+                  bandInfo.from + (bandInfo.to - bandInfo.from) / 2
+                ),
+                colour,
+              });
+
+              if (index === validBands.length - 1) {
+                stops.push({
+                  offset: valueToBandGradientOffset(bandInfo.to),
+                  colour,
+                });
+              }
+            });
+
+            return stops
+              .sort((a, b) => a.offset - b.offset)
+              .map(
+                (stop) => `
+                  <stop
+                    offset="${stop.offset.toFixed(2)}%"
+                    stop-color="${stop.colour}"
+                  ></stop>
+                `
+              )
+              .join("");
+          })()
+        : "";
+
+    const bandRects =
+      this.config.show_bands && validBands.length > 0
+        ? this.config.band_fill_mode === "gradient"
+          ? `
+            <defs>
+              <linearGradient
+                id="${bandGradientId}"
+                x1="0"
+                y1="${padding.top + plotHeight}"
+                x2="0"
+                y2="${padding.top}"
+                gradientUnits="userSpaceOnUse"
+              >
+                ${bandGradientStops}
+              </linearGradient>
+            </defs>
+
+            <rect
+              x="${padding.left}"
+              y="${padding.top}"
+              width="${plotWidth}"
+              height="${plotHeight}"
+              fill="url(#${bandGradientId})"
+            ></rect>
+          `
+          : validBands
+              .map(
+                ({
+                  band,
+                  y1,
+                  bandHeight,
+                }) => `
+                  <rect
+                    x="${padding.left}"
+                    y="${y1}"
+                    width="${plotWidth}"
+                    height="${bandHeight}"
+                    fill="${applyOpacityToColour(
+                      band.color || "rgba(128,128,128,0.15)",
+                      this.config.band_opacity
+                    )}"
+                  ></rect>
+                `
+              )
+              .join("")
+        : "";
 
     const bandSeparators =
       this.config.show_bands &&
@@ -4522,7 +4628,6 @@ class SimpleBandGraphCard extends HTMLElement {
 
     const clippedBandContent = `${bandRects}${bandSeparators}`;
     const unclippedBandLabels = bandLabels;
-
     /*
       --------------------------------------------------------------------------
       Extrema detection
@@ -5505,22 +5610,18 @@ class SimpleBandGraphCard extends HTMLElement {
       --------------------------------------------------------------------------
       Ribbon layout
       --------------------------------------------------------------------------
-      Renders header/footer ribbons using a position-aware fair-share layout.
+      Renders header/footer ribbons using a dynamic, position-aware layout.
 
       Rules:
-      - Left only: left aligned, full width.
-      - Centre only: centre aligned, full width.
-      - Right only: right aligned, full width.
-      - Left + right: two equal columns, left and right get 50% each.
-      - Left + centre: three equal columns, left in column 1, centre in column 2,
-        blank column 3.
-      - Centre + right: three equal columns, blank column 1, centre in column 2,
-        right in column 3.
-      - Left + centre + right: three equal columns.
+      - One occupied slot: it gets the full ribbon width.
+      - Left + right: space is allocated by estimated content width.
+      - Centre + side content: centre remains geometrically centred by using
+        symmetrical side columns.
+      - Side columns are clamped so tiny values do not get too much space, and
+        long side values do not completely crush the centre.
 
-      show_header and show_footer skip rendering without clearing the configured
-      slot values, so users can hide a header/footer and later restore it without
-      losing their layout choices.
+      The tuning constants below are deliberately local to this section so the
+      ribbon layout can be refined without affecting the rest of the card.
     */
     const renderRibbon = (left, center, right, marginTop = 0, prefix = "top") => {
       const hasLeft = (slotContent[left] ?? "") !== "";
@@ -5535,32 +5636,130 @@ class SimpleBandGraphCard extends HTMLElement {
       const ribbonPadding = backgroundInfo.hasBackground ? "8px 10px" : "0";
       const ribbonRadius = Number(this.config.ribbon_background_radius) || 0;
 
+      /*
+        Layout tuning.
+
+        sideMinPercent:
+          Minimum space for a side column when centre is present.
+
+        sideMaxPercent:
+          Maximum space for each side column when centre is present.
+
+        sideComfortPx:
+          Small allowance so text is not squeezed exactly to estimated width.
+
+        availableRibbonWidth:
+          Approximate rendered ribbon width used to convert estimated text width
+          into percentages. This is intentionally approximate; CSS still handles
+          the real final layout.
+      */
+      const sideMinPercent = 8;
+      const sideMaxPercent = 36;
+      const sideComfortPx = 12;
+      const availableRibbonWidth = Math.max(160, width - 32);
+
+      const stripHtml = (value) =>
+        String(value ?? "")
+          .replace(/<[^>]*>/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
+
+      const estimateRibbonWidth = (contentKey, styleKey) => {
+        const text = stripHtml(slotContent[contentKey]);
+        const fontSize = Number(this.config[`${styleKey}_font_size`]) || 13;
+
+        return Math.max(8, text.length * fontSize * 0.56 + sideComfortPx);
+      };
+
+      const widthToPercent = (estimatedWidth) =>
+        (estimatedWidth / availableRibbonWidth) * 100;
+
+      const clampPercent = (value, min, max) =>
+        Math.min(max, Math.max(min, value));
+
+      const leftWidth = hasLeft
+        ? estimateRibbonWidth(left, `${prefix}_left`)
+        : 0;
+
+      const centerWidth = hasCenter
+        ? estimateRibbonWidth(center, `${prefix}_center`)
+        : 0;
+
+      const rightWidth = hasRight
+        ? estimateRibbonWidth(right, `${prefix}_right`)
+        : 0;
+
       let gridTemplateColumns = "minmax(0, 1fr)";
       let leftColumn = "1";
       let centerColumn = "1";
       let rightColumn = "1";
 
-      if (hasLeft && hasCenter && hasRight) {
-        gridTemplateColumns =
-          "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)";
+      if (hasCenter && (hasLeft || hasRight)) {
+        /*
+          Centre must stay visually centred.
+
+          Use symmetrical side columns based on the larger occupied side. This
+          means left+centre and centre+right layouts still reserve an empty
+          balancing column on the opposite side, but tiny values only reserve a
+          small percentage.
+        */
+        const requiredSidePercent = widthToPercent(
+          Math.max(leftWidth, rightWidth)
+        );
+
+        const sidePercent = clampPercent(
+          requiredSidePercent,
+          sideMinPercent,
+          sideMaxPercent
+        );
+
+        const centerPercent = Math.max(100 - sidePercent * 2, 20);
+
+        gridTemplateColumns = [
+          `minmax(0, ${sidePercent.toFixed(2)}%)`,
+          `minmax(0, ${centerPercent.toFixed(2)}%)`,
+          `minmax(0, ${sidePercent.toFixed(2)}%)`,
+        ].join(" ");
+
         leftColumn = "1";
         centerColumn = "2";
         rightColumn = "3";
-      } else if (hasLeft && hasCenter && !hasRight) {
-        gridTemplateColumns =
-          "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)";
-        leftColumn = "1";
-        centerColumn = "2";
-      } else if (!hasLeft && hasCenter && hasRight) {
-        gridTemplateColumns =
-          "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)";
-        centerColumn = "2";
-        rightColumn = "3";
-      } else if (hasLeft && !hasCenter && hasRight) {
-        gridTemplateColumns = "minmax(0, 1fr) minmax(0, 1fr)";
+      } else if (hasLeft && hasRight) {
+        /*
+          No centre slot, so left and right can divide the whole width according
+          to their estimated content.
+        */
+        const leftPercentRaw = widthToPercent(leftWidth);
+        const rightPercentRaw = widthToPercent(rightWidth);
+        const total = Math.max(leftPercentRaw + rightPercentRaw, 1);
+
+        let leftPercent = (leftPercentRaw / total) * 100;
+        let rightPercent = (rightPercentRaw / total) * 100;
+
+        leftPercent = clampPercent(leftPercent, 18, 82);
+        rightPercent = 100 - leftPercent;
+
+        gridTemplateColumns = [
+          `minmax(0, ${leftPercent.toFixed(2)}%)`,
+          `minmax(0, ${rightPercent.toFixed(2)}%)`,
+        ].join(" ");
+
         leftColumn = "1";
         rightColumn = "2";
       }
+
+      const renderRibbonCell = (contentKey, align, styleKey, column) => `
+        <div
+          style="
+            grid-column: ${column};
+            min-width: 0;
+            width: 100%;
+            overflow: hidden;
+          "
+        >
+          ${renderSlot(contentKey, align, styleKey)}
+        </div>
+      `;
 
       return `
         <div
@@ -5579,58 +5778,19 @@ class SimpleBandGraphCard extends HTMLElement {
         >
           ${
             hasLeft
-              ? `<div
-                  style="
-                    grid-column: ${leftColumn};
-                    min-width: 0;
-                    width: 100%;
-                    overflow: hidden;
-                  "
-                >
-                  ${renderSlot(
-                    left,
-                    "left",
-                    `${prefix}_left`
-                  )}
-                </div>`
+              ? renderRibbonCell(left, "left", `${prefix}_left`, leftColumn)
               : ""
           }
 
           ${
             hasCenter
-              ? `<div
-                  style="
-                    grid-column: ${centerColumn};
-                    min-width: 0;
-                    width: 100%;
-                    overflow: hidden;
-                  "
-                >
-                  ${renderSlot(
-                    center,
-                    "center",
-                    `${prefix}_center`
-                  )}
-                </div>`
+              ? renderRibbonCell(center, "center", `${prefix}_center`, centerColumn)
               : ""
           }
 
           ${
             hasRight
-              ? `<div
-                  style="
-                    grid-column: ${rightColumn};
-                    min-width: 0;
-                    width: 100%;
-                    overflow: hidden;
-                  "
-                >
-                  ${renderSlot(
-                    right,
-                    "right",
-                    `${prefix}_right`
-                  )}
-                </div>`
+              ? renderRibbonCell(right, "right", `${prefix}_right`, rightColumn)
               : ""
           }
         </div>
