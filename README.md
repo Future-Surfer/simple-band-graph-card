@@ -1,6 +1,6 @@
 # Simple Band Graph Card
 
-<img width="699" height="400" alt="image" src="https://github.com/user-attachments/assets/5e072bc8-392e-4a6c-92f5-d10527977368" />
+<img width="699" height="400" alt="Simple Band Graph Card example" src="https://github.com/user-attachments/assets/5e072bc8-392e-4a6c-92f5-d10527977368" />
 
 A Home Assistant custom card for simple line and area graphs with configurable coloured threshold bands.
 
@@ -22,6 +22,7 @@ It is designed for sensors where coloured context bands make the graph easier to
 - Configure separate backgrounds for the card and plot area
 - Optionally drive card, plot, header or footer background colours from the current band
 - Clip bands and line content to the rounded plot area
+- Show threshold bands as stepped blocks or as a smooth vertical gradient
 - Show, hide and position band labels inside or outside the graph area
 - Draw band labels above or below the line/area graphing layer
 - Add optional band separator lines with configurable colour, width, opacity and line style
@@ -33,6 +34,7 @@ It is designed for sensors where coloured context bands make the graph easier to
 - Add optional grid lines with solid, dashed or dotted styles
 - Customise graph line colour, width and opacity
 - Use `line_color_mode: band` to colour the graph line by threshold band
+- Use `line_color_mode: gradient` to smoothly blend the graph line between band colours
 - Add an optional area fill between the graph line and the zero point
 - Use `area_color_mode: band` to colour area segments by threshold band
 - Show the area fill even when the line itself is hidden
@@ -102,11 +104,11 @@ The visual editor can configure:
 - Separate X/Y axis line colour, width and opacity
 - Grid visibility, colour, width, opacity and line style
 - Card and plot backgrounds
-- Band visibility, band labels and band label styling
+- Band visibility, stepped/gradient band fill, band labels and band label styling
 - Band label layer, allowing labels to appear above or below the line/area graph
 - Band separator visibility, colour, width, opacity and style
 - Raw band definitions
-- Line colour, width, opacity and band-driven line colouring
+- Line colour, width, opacity, band-driven line colouring and gradient line colouring
 - Area visibility, colour, opacity and band-driven area colouring
 - Current/latest, minimum and maximum markers
 - Marker label text and background styling
@@ -115,7 +117,6 @@ The visual editor can configure:
 - Basic debug and history refresh settings
 
 Some advanced YAML options, especially detailed per-slot header/footer text overrides, remain YAML-only for now.
-
 ## Examples
 
 <details open>
@@ -1104,7 +1105,6 @@ bands:
 | `y_max` | No | `100` | Maximum Y-axis value. |
 | `value_decimals` | No | `auto` | Decimal places for displayed values. Options: `auto`, `0`, `1`, `2`, `3`. |
 | `bands` | No | `[]` | List of coloured threshold bands. |
-| `show_bands` | No | `true` | Show or hide the visible coloured band areas. Bands can still be used for labels and colour logic when hidden. |
 
 `value_decimals` affects value labels such as axis values, marker labels, band ranges and current values shown in ribbon slots. `auto` uses fewer decimal places for larger numbers.
 
@@ -1147,6 +1147,21 @@ Each band supports:
 | `label` | Optional label for the band. |
 | `message` | Optional message or instruction for the band. This can be shown in a ribbon slot using `message`, `band_message`, `instruction` or `instructions`. |
 
+### Band display options
+
+| Option | Default | Description |
+|---|---:|---|
+| `show_bands` | `true` | Show or hide the visible coloured band areas. Bands can still be used for labels, messages and colour logic when hidden. |
+| `band_opacity` | `0.2` | Opacity for the coloured band backgrounds, from `0` to `1`. |
+| `band_fill_mode` | `stepped` | Band background fill mode. Options: `stepped`, `gradient`. |
+
+Band fill modes:
+
+| Mode | Behaviour |
+|---|---|
+| `stepped` | Draws each band as a separate flat-colour threshold block. |
+| `gradient` | Draws one smooth vertical gradient through the configured band colours. This is useful for continuous ranges such as temperature, humidity, battery level or air quality. |
+
 ### Colour modes
 
 Several options support a matching `*_color_mode`.
@@ -1155,6 +1170,7 @@ Several options support a matching `*_color_mode`.
 |---|---|
 | `static` | Use the configured colour. |
 | `band` | Use a band colour. For card/plot/ribbon backgrounds and ribbon text this uses the current value’s band. For marker labels this uses the marker value’s own band. For line colour it uses the band the line section passes through. For area colour it uses the band the area section passes through. |
+| `gradient` | Smoothly blend between configured band colours. Currently supported by `line_color_mode`. |
 | `none` | Use transparent/no colour. |
 
 Examples:
@@ -1164,10 +1180,16 @@ plot_background_color_mode: band
 ribbon_color_mode: band
 marker_label_color_mode: band
 line_color_mode: band
+line_color_mode: gradient
 area_color_mode: band
 ```
 
 If a marker value is outside all configured bands, `marker_label_color_mode: band` falls back to `marker_label_color`.
+
+Gradient band backgrounds are controlled separately with:
+```yaml
+band_fill_mode: gradient
+```
 
 ### Background options
 
