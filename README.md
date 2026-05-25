@@ -10,37 +10,45 @@ It is designed for sensors where coloured context bands make the graph easier to
 
 ## Features
 
+### Clear threshold-based graphing
+
 - Display recent Home Assistant entity history as a clean, responsive graph
-- Define custom coloured threshold bands with configurable labels and messages
-- Set graph duration and Y-axis range with `hours_to_show`, `y_min` and `y_max`
+- Define coloured threshold bands with optional labels and messages
+- Show bands as stepped blocks or as a smooth vertical gradient
+- Set the graph duration and Y-axis range with simple YAML options
 - Use raw history, long-term statistics, or hybrid history for longer time windows
-- Resize cleanly in Home Assistant Sections layouts, including compact one-row status cards
-- Configure header and footer content slots, including name, current value, band, min/max, debug text, custom text, graph duration and band-specific messages
+
+### Flexible line, area and marker styling
+
+- Customise the graph line colour, width and opacity
+- Colour the line by threshold band, or blend it smoothly with `line_color_mode: gradient`
+- Add an optional area fill between the graph line and the zero point
+- Colour area segments by threshold band
+- Show latest, minimum and maximum value markers with configurable labels
+
+### Headers, footers and contextual messages
+
+- Configure header and footer slots for name, current value, band, message, duration, min/max, custom text or debug output
 - Show or hide the header and footer independently
-- Use a position-aware ribbon layout so left, centre and right slots share space sensibly
-- Style header/footer text, backgrounds and band-driven colours
-- Configure separate backgrounds for the card and plot area
-- Optionally drive card, plot, header or footer background colours from the current band
-- Clip bands and line content to the rounded plot area
-- Show threshold bands as stepped blocks or as a smooth vertical gradient
-- Show, hide and position band labels inside or outside the graph area
-- Draw band labels above or below the line/area graphing layer
-- Add optional band separator lines with configurable colour, width, opacity and line style
-- Show optional latest, minimum and maximum value markers with configurable labels
+- Use band-specific messages to turn sensor values into readable status text
+- Apply band-driven colours to header, footer, card or plot backgrounds
+- Use a position-aware ribbon layout so left, centre and right slots stay balanced
+
+### Axes, labels and layout controls
+
 - Configure X/Y axis lines and labels independently
 - Place the X-axis line at the top, bottom, or zero value
 - Place X-axis labels independently at the top, middle, or bottom
-- Configure axis line colour, width and opacity separately for X and Y axes
-- Add optional grid lines with solid, dashed or dotted styles
-- Customise graph line colour, width and opacity
-- Use `line_color_mode: band` to colour the graph line by threshold band
-- Use `line_color_mode: gradient` to smoothly blend the graph line between band colours
-- Add an optional area fill between the graph line and the zero point
-- Use `area_color_mode: band` to colour area segments by threshold band
-- Show the area fill even when the line itself is hidden
-- Add standard Home Assistant card interactions with `tap_action`, `hold_action` and `double_tap_action`
-- Automatically downsample large history responses for better performance
-- Show optional debug and performance diagnostics
+- Show band labels inside or outside the graph, above or below the plotted data
+- Add optional grid lines and band separator lines
+- Resize cleanly in Home Assistant Sections layouts, including compact status-card layouts
+
+### Home Assistant integration and diagnostics
+
+- Supports standard card interactions with `tap_action`, `hold_action` and `double_tap_action`
+- Includes a visual editor for common configuration options
+- Automatically downsamples large history responses for better performance
+- Provides optional debug and performance diagnostics
 
 ## Installation
 
