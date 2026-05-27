@@ -2946,16 +2946,6 @@ class SimpleBandGraphCard extends HTMLElement {
   }
 
   /*
-    ============================================================================
-    HOME ASSISTANT STATE HANDLING
-    ============================================================================
-    HOME ASSISTANT STATE HANDLING
-    ============================================================================
-    Called whenever Home Assistant provides updated state. This decides whether
-    history needs to be refreshed and then triggers a render.
-  */
-
-  /*
     --------------------------------------------------------------------------
     Responsive layout lifecycle
     --------------------------------------------------------------------------
@@ -2974,24 +2964,30 @@ class SimpleBandGraphCard extends HTMLElement {
       const measuredWidth = Math.round(entry?.contentRect?.width || 0);
       const measuredHeight = Math.round(entry?.contentRect?.height || 0);
 
+      if (!measuredWidth || !measuredHeight) {
+        return;
+      }
+
       const widthChanged =
-        measuredWidth && Math.abs(measuredWidth - this._cardWidth) >= 2;
+        Math.abs(measuredWidth - this._cardWidth) >= 2;
 
       const heightChanged =
-        measuredHeight &&
         Math.abs(measuredHeight - Number(this._cardHeight || 0)) >= 2;
 
-      if (widthChanged) {
-        this._cardWidth = measuredWidth;
+      if (!widthChanged && !heightChanged) {
+        return;
       }
 
-      if (heightChanged) {
-        this._cardHeight = measuredHeight;
-      }
+      this._cardWidth = measuredWidth;
+      this._cardHeight = measuredHeight;
 
-      if (widthChanged || heightChanged) {
-        this._scheduleResponsiveRender();
-      }
+      /*
+        A host resize changes the available layout space even when entity state
+        and history have not changed.
+      */
+      this._lastRenderKey = null;
+
+      this._scheduleResponsiveRender();
     });
 
     this._resizeObserver.observe(this);
@@ -3011,20 +3007,6 @@ class SimpleBandGraphCard extends HTMLElement {
     this._resizeRenderQueued = false;
   }
 
-  _scheduleResponsiveRender() {
-    if (!this._hass || this._resizeRenderQueued) return;
-
-    this._resizeRenderQueued = true;
-
-    requestAnimationFrame(() => {
-      this._resizeRenderQueued = false;
-
-      if (this._hass) {
-        this.render();
-      }
-    });
-  }
-
   _observePlotArea() {
     const plotWrap = this.querySelector(".sbgc-plot-wrap");
 
@@ -3040,27 +3022,61 @@ class SimpleBandGraphCard extends HTMLElement {
       const measuredPlotWidth = Math.round(entry?.contentRect?.width || 0);
       const measuredPlotHeight = Math.round(entry?.contentRect?.height || 0);
 
+      if (!measuredPlotWidth || !measuredPlotHeight) {
+        return;
+      }
+
       const plotWidthChanged =
-        measuredPlotWidth && Math.abs(measuredPlotWidth - this._plotWidth) >= 2;
+        Math.abs(measuredPlotWidth - this._plotWidth) >= 2;
 
       const plotHeightChanged =
-        measuredPlotHeight &&
         Math.abs(measuredPlotHeight - this._plotHeight) >= 2;
 
-      if (plotWidthChanged) {
-        this._plotWidth = measuredPlotWidth;
+      if (!plotWidthChanged && !plotHeightChanged) {
+        return;
       }
 
-      if (plotHeightChanged) {
-        this._plotHeight = measuredPlotHeight;
-      }
+      this._plotWidth = measuredPlotWidth;
+      this._plotHeight = measuredPlotHeight;
 
-      if (plotWidthChanged || plotHeightChanged) {
-        this._scheduleResponsiveRender();
-      }
+      /*
+        A plot-area resize changes the SVG layout even when entity state and
+        history have not changed.
+      */
+      this._lastRenderKey = null;
+
+      this._scheduleResponsiveRender();
     });
 
     this._plotResizeObserver.observe(plotWrap);
+  }
+
+  _scheduleResponsiveRender() {
+    if (!this._hass || this._resizeRenderQueued) {
+      return;
+    }
+
+    this._resizeRenderQueued = true;
+
+    requestAnimationFrame(() => {
+      this._resizeRenderQueued = false;
+
+      /*
+        The card may have been disconnected or reconfigured between the resize
+        event and the animation frame. Bail safely if it is no longer renderable.
+      */
+      if (!this.isConnected || !this._hass || !this.config?.entity) {
+        return;
+      }
+
+      /*
+        Responsive layout changes affect the SVG even when entity state/history
+        has not changed, so make sure the guarded render flow cannot skip this.
+      */
+      this._lastRenderKey = null;
+
+      this.render();
+    });
   }
 
   set hass(hass) {
@@ -4221,6 +4237,16 @@ class SimpleBandGraphCard extends HTMLElement {
       });
     };
 
+    const formatClockTimeWithSeconds = (timestamp) => {
+      if (!timestamp) return "–";
+
+      return new Date(timestamp).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+    };
+
     const formatXAxisLabel = (timestamp, hoursAgo, isNow = false) => {
       if (isNow) return "now";
 
@@ -4261,21 +4287,16 @@ class SimpleBandGraphCard extends HTMLElement {
       return Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(1)}h`;
     };
 
+    /*
+      Kept under the old function name so existing debug lines do not need to be
+      changed. This now returns an absolute fetch time rather than a relative
+      "seconds ago" value, because guarded rendering means relative text may not
+      update every second/minute.
+    */
     const formatRelativeFetchTime = () => {
       if (!this._lastHistoryFetch) return "not fetched";
 
-      const seconds = Math.round(
-        (Date.now() - this._lastHistoryFetch.getTime()) / 1000
-      );
-
-      if (seconds < 60) return `${seconds}s ago`;
-
-      const minutes = Math.round(seconds / 60);
-
-      if (minutes < 60) return `${minutes}m ago`;
-
-      const hours = Math.round(minutes / 60);
-      return `${hours}h ago`;
+      return formatClockTimeWithSeconds(this._lastHistoryFetch.getTime());
     };
 
     const formatDuration = (durationMs) => {
@@ -4362,7 +4383,6 @@ class SimpleBandGraphCard extends HTMLElement {
       const ratio = (this._plottedHistoryCount / this._rawHistoryCount) * 100;
       return `${ratio.toFixed(0)}%`;
     };
-
     /*
       --------------------------------------------------------------------------
       Axis tick generation and shared label colours
