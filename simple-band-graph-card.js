@@ -281,6 +281,26 @@ class SimpleBandGraphCard extends HTMLElement {
       marker_dot_shadow_offset_y: 2,
       marker_dot_shadow_opacity: 0.35,
 
+      // Marker connector settings
+      marker_connector: false,
+      marker_connector_color: "var(--secondary-text-color)",
+      marker_connector_color_mode: "static",
+      marker_connector_width: 1,
+      marker_connector_opacity: 0.45,
+      marker_connector_style: "solid",
+      marker_connector_dasharray: "3 4",
+
+      // Marker label placement settings
+      marker_label_position: "smart",
+      marker_label_preferred_positions: "above, below, right, left",
+      latest_marker_label_preferred_positions: "right, above, below, left",
+      min_marker_label_preferred_positions: "below, right, left, above",
+      max_marker_label_preferred_positions: "above, right, left, below",
+      marker_label_offset: 12,
+      marker_label_avoid_edges: true,
+      marker_label_avoid_overlap: true,
+      marker_label_min_gap: 8,
+
       // Marker label settings
       marker_label_size: 11,
       marker_label_weight: 400,
@@ -2007,8 +2027,6 @@ class SimpleBandGraphCard extends HTMLElement {
           ],
         },
 
-
-
         /*
           ----------------------------------------------------------------------
           Marker labels section
@@ -2274,6 +2292,171 @@ class SimpleBandGraphCard extends HTMLElement {
             },
           ],
         },
+
+        /*
+          ----------------------------------------------------------------------
+          Marker connectors section
+          ----------------------------------------------------------------------
+          Connector lines between marker labels and their data points, plus smart
+          marker label placement controls.
+        */
+        {
+          type: "expandable",
+          name: "marker_connectors",
+          title: "Marker connectors",
+          icon: "mdi:vector-line",
+          flatten: true,
+          schema: [
+            /*
+              Marker connector line
+            */
+            {
+              name: "marker_connector",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "marker_connector_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "marker_connector_color_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "static", label: "Static colour" },
+                    { value: "band", label: "Use band colour" },
+                    { value: "muted_band", label: "Use muted band colour" },
+                    { value: "none", label: "No connector colour / transparent" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "marker_connector_width",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 6,
+                  step: 0.5,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "marker_connector_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "marker_connector_style",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "solid", label: "Solid" },
+                    { value: "dashed", label: "Dashed" },
+                    { value: "dotted", label: "Dotted" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "marker_connector_dasharray",
+              selector: {
+                text: {},
+              },
+            },
+
+            /*
+              Marker label placement
+            */
+            {
+              name: "marker_label_position",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "smart", label: "Smart" },
+                    { value: "above", label: "Above" },
+                    { value: "below", label: "Below" },
+                    { value: "left", label: "Left" },
+                    { value: "right", label: "Right" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "marker_label_preferred_positions",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "latest_marker_label_preferred_positions",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "min_marker_label_preferred_positions",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "max_marker_label_preferred_positions",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "marker_label_offset",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 48,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "marker_label_avoid_edges",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "marker_label_avoid_overlap",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "marker_label_min_gap",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 32,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+          ],
+        },
+
         /*
           ----------------------------------------------------------------------
           Header section
@@ -2867,6 +3050,26 @@ class SimpleBandGraphCard extends HTMLElement {
           marker_label_shadow_offset_y: "Marker label shadow vertical offset",
           marker_label_shadow_opacity: "Marker label shadow opacity",
 
+          // Marker connectors
+          marker_connector: "Show marker connector lines",
+          marker_connector_color: "Marker connector colour",
+          marker_connector_color_mode: "Marker connector colour mode",
+          marker_connector_width: "Marker connector width",
+          marker_connector_opacity: "Marker connector opacity",
+          marker_connector_style: "Marker connector style",
+          marker_connector_dasharray: "Marker connector dash pattern",
+
+          // Marker label placement
+          marker_label_position: "Marker label position",
+          marker_label_preferred_positions: "Default label position order",
+          latest_marker_label_preferred_positions: "Current label position order",
+          min_marker_label_preferred_positions: "Minimum label position order",
+          max_marker_label_preferred_positions: "Maximum label position order",
+          marker_label_offset: "Marker label offset",
+          marker_label_avoid_edges: "Avoid plot edges",
+          marker_label_avoid_overlap: "Avoid label overlap",
+          marker_label_min_gap: "Minimum label gap",
+
           // Header
           show_header: "Show header",
           header_left: "Header left",
@@ -3159,7 +3362,6 @@ class SimpleBandGraphCard extends HTMLElement {
           line_shadow_opacity:
             "Opacity of the line shadow, from 0 to 1.",
 
-
           // Area
           show_area:
             "Show or hide the filled area for the plotted history data. The area can be shown even when the line itself is hidden.",
@@ -3279,6 +3481,42 @@ class SimpleBandGraphCard extends HTMLElement {
             "Vertical offset of the marker label shadow.",
           marker_label_shadow_opacity:
             "Opacity of the marker label shadow, from 0 to 1.",
+
+          // Marker connectors
+          marker_connector:
+            "Draw a connector line between each marker label and its data point.",
+          marker_connector_color:
+            "CSS colour for marker connector lines, such as var(--secondary-text-color), #ffffff, or rgba(0,0,0,0.4).",
+          marker_connector_color_mode:
+            "Static uses the chosen connector colour. Use band colour follows the marker value's band. Muted band uses the band colour with softer emphasis. No colour hides the connector.",
+          marker_connector_width:
+            "Width of the marker connector line.",
+          marker_connector_opacity:
+            "Opacity of the marker connector line, from 0 to 1.",
+          marker_connector_style:
+            "Line style for marker connectors: solid, dashed, or dotted.",
+          marker_connector_dasharray:
+            "Custom SVG dash pattern for dashed connector lines, such as 3 4. Used when connector style is dashed.",
+
+          // Marker label placement
+          marker_label_position:
+            "Placement mode for marker labels. Smart tries preferred positions and avoids edges or other labels where possible.",
+          marker_label_preferred_positions:
+            "Default comma-separated priority order for smart label placement, e.g. above, below, right, left.",
+          latest_marker_label_preferred_positions:
+            "Comma-separated priority order for the current/latest marker label, e.g. right, above, below, left.",
+          min_marker_label_preferred_positions:
+            "Comma-separated priority order for the minimum marker label, e.g. below, right, left, above.",
+          max_marker_label_preferred_positions:
+            "Comma-separated priority order for the maximum marker label, e.g. above, right, left, below.",
+          marker_label_offset:
+            "Distance between the marker dot and its label chip.",
+          marker_label_avoid_edges:
+            "Keep marker labels inside the plot area where possible.",
+          marker_label_avoid_overlap:
+            "Try to avoid marker labels overlapping each other.",
+          marker_label_min_gap:
+            "Minimum gap between marker labels when overlap avoidance is enabled.",
 
           // Header
           show_header:
@@ -3740,6 +3978,45 @@ class SimpleBandGraphCard extends HTMLElement {
         config.marker_dot_shadow_offset_y ?? 2,
       marker_dot_shadow_opacity:
         config.marker_dot_shadow_opacity ?? 0.35,
+
+      // Marker connector settings
+      marker_connector:
+        config.marker_connector ?? false,
+      marker_connector_color:
+        config.marker_connector_color ?? "var(--secondary-text-color)",
+      marker_connector_color_mode:
+        config.marker_connector_color_mode ?? "static",
+      marker_connector_width:
+        config.marker_connector_width ?? 1,
+      marker_connector_opacity:
+        config.marker_connector_opacity ?? 0.45,
+      marker_connector_style:
+        config.marker_connector_style ?? "solid",
+      marker_connector_dasharray:
+        config.marker_connector_dasharray ?? "3 4",
+
+      // Marker label placement settings
+      marker_label_position:
+        config.marker_label_position ?? "smart",
+      marker_label_preferred_positions:
+        config.marker_label_preferred_positions ?? "above, below, right, left",
+      latest_marker_label_preferred_positions:
+        config.latest_marker_label_preferred_positions ??
+        "right, above, below, left",
+      min_marker_label_preferred_positions:
+        config.min_marker_label_preferred_positions ??
+        "below, right, left, above",
+      max_marker_label_preferred_positions:
+        config.max_marker_label_preferred_positions ??
+        "above, right, left, below",
+      marker_label_offset:
+        config.marker_label_offset ?? 12,
+      marker_label_avoid_edges:
+        config.marker_label_avoid_edges ?? true,
+      marker_label_avoid_overlap:
+        config.marker_label_avoid_overlap ?? true,
+      marker_label_min_gap:
+        config.marker_label_min_gap ?? 8,
 
       // Marker label settings
       marker_label_size: config.marker_label_size ?? 11,
@@ -6274,6 +6551,66 @@ class SimpleBandGraphCard extends HTMLElement {
 
       /*
         ------------------------------------------------------------------------
+        Marker connector line
+        ------------------------------------------------------------------------
+      */
+      const markerConnectorEnabled =
+        this.config.marker_connector &&
+        resolvedShowLabel &&
+        Number(this.config.marker_connector_width) > 0 &&
+        Number(this.config.marker_connector_opacity) > 0;
+
+      const markerConnectorColour =
+        this.config.marker_connector_color_mode === "muted_band"
+          ? resolveMarkerColour(
+              markerBand?.color || this.config.marker_connector_color,
+              "band",
+              Number(this.config.marker_connector_opacity) * 0.65
+            )
+          : resolveMarkerColour(
+              this.config.marker_connector_color ||
+                "var(--secondary-text-color)",
+              this.config.marker_connector_color_mode,
+              this.config.marker_connector_opacity
+            );
+
+      const markerConnectorWidth =
+        Math.max(0, Number(this.config.marker_connector_width) || 0);
+
+      const markerConnectorStyle =
+        this.config.marker_connector_style || "solid";
+
+      const markerConnectorDasharray =
+        markerConnectorStyle === "dashed"
+          ? this.config.marker_connector_dasharray || "3 4"
+          : markerConnectorStyle === "dotted"
+            ? "1 4"
+            : "none";
+
+      const connectorEndX = clamp(
+        x,
+        labelPlacement.backgroundX,
+        labelPlacement.backgroundX + markerLabelWidth
+      );
+
+      const connectorEndY = clamp(
+        y,
+        labelPlacement.backgroundY,
+        labelPlacement.backgroundY + markerLabelHeight
+      );
+
+      const connectorDistance = Math.max(
+        1,
+        Math.hypot(connectorEndX - x, connectorEndY - y)
+      );
+
+      const connectorStartX =
+        x + ((connectorEndX - x) / connectorDistance) * markerSize;
+
+      const connectorStartY =
+        y + ((connectorEndY - y) / connectorDistance) * markerSize;
+      /*
+        ------------------------------------------------------------------------
         Marker label chip shadow
         ------------------------------------------------------------------------
       */
@@ -6381,6 +6718,23 @@ class SimpleBandGraphCard extends HTMLElement {
           ${
             resolvedShowLabel
               ? `
+                ${
+                  markerConnectorEnabled
+                    ? `
+                      <line
+                        x1="${connectorStartX}"
+                        y1="${connectorStartY}"
+                        x2="${connectorEndX}"
+                        y2="${connectorEndY}"
+                        stroke="${markerConnectorColour}"
+                        stroke-width="${markerConnectorWidth}"
+                        stroke-linecap="round"
+                        stroke-dasharray="${markerConnectorDasharray}"
+                      ></line>
+                    `
+                    : ""
+                }
+
                 ${markerLabelShadowFilter}
 
                 <rect
