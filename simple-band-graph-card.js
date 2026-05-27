@@ -167,6 +167,17 @@ class SimpleBandGraphCard extends HTMLElement {
       y_axis_tick_color_mode: "axis",
       y_axis_tick_opacity: 1,
 
+      // Y-axis title settings
+      show_y_axis_title: false,
+      y_axis_title: "{unit}",
+      y_axis_title_position: "top",
+      y_axis_title_gap: 10,
+      y_axis_title_size: 13,
+      y_axis_title_weight: 500,
+      y_axis_title_color: "var(--secondary-text-color)",
+      y_axis_title_color_mode: "static",
+      y_axis_title_opacity: 0.8,
+
       // Y-axis label settings
       show_y_axis_labels: true,
       y_axis_label_size: 11,
@@ -1017,6 +1028,90 @@ class SimpleBandGraphCard extends HTMLElement {
                   min: 0,
                   max: 48,
                   step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+
+            /*
+              Title
+            */
+            {
+              name: "show_y_axis_title",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "y_axis_title",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "y_axis_title_position",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "top", label: "Top of Y-axis" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "y_axis_title_gap",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 48,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "y_axis_title_size",
+              selector: {
+                number: {
+                  min: 8,
+                  max: 28,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "y_axis_title_weight",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: fontWeightOptions,
+                },
+              },
+            },
+            {
+              name: "y_axis_title_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "y_axis_title_color_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: colourModeOptions,
+                },
+              },
+            },
+            {
+              name: "y_axis_title_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
                   mode: "slider",
                 },
               },
@@ -3331,6 +3426,17 @@ class SimpleBandGraphCard extends HTMLElement {
           y_axis_tick_color_mode: "Y-axis tick colour mode",
           y_axis_tick_opacity: "Y-axis tick opacity",
 
+          // Y-axis title
+          show_y_axis_title: "Show Y-axis title",
+          y_axis_title: "Y-axis title",
+          y_axis_title_position: "Y-axis title position",
+          y_axis_title_gap: "Y-axis title gap",
+          y_axis_title_size: "Y-axis title size",
+          y_axis_title_weight: "Y-axis title weight",
+          y_axis_title_color: "Y-axis title colour",
+          y_axis_title_color_mode: "Y-axis title colour mode",
+          y_axis_title_opacity: "Y-axis title opacity",
+
           // Y-axis labels
           show_y_axis_labels: "Show Y-axis labels",
           y_axis_label_size: "Y-axis label size",
@@ -3727,6 +3833,26 @@ class SimpleBandGraphCard extends HTMLElement {
             "Axis uses the Y-axis line colour. Static uses the chosen tick colour. No colour hides the ticks.",
           y_axis_tick_opacity:
             "Opacity of Y-axis tick marks, from 0 to 1.",
+
+          // Y-axis title
+          show_y_axis_title:
+            "Show or hide a small Y-axis title or unit label above the plot area.",
+          y_axis_title:
+            "Text shown as the Y-axis title. Use {unit} to show the entity unit of measurement.",
+          y_axis_title_position:
+            "Place the Y-axis title at the top of the axis side. Top follows the current Y-axis side.",
+          y_axis_title_gap:
+            "Distance between the Y-axis title and the top of the plot area.",
+          y_axis_title_size:
+            "Text size for the Y-axis title.",
+          y_axis_title_weight:
+            "Font weight for the Y-axis title.",
+          y_axis_title_color:
+            "CSS colour for the Y-axis title, such as var(--secondary-text-color), #666666, or rgba(0,0,0,0.6).",
+          y_axis_title_color_mode:
+            "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the title transparent.",
+          y_axis_title_opacity:
+            "Opacity of the Y-axis title text, from 0 to 1.",
 
           // Y-axis labels
           show_y_axis_labels:
@@ -4749,6 +4875,26 @@ class SimpleBandGraphCard extends HTMLElement {
         config.y_axis_tick_color_mode ?? "axis",
       y_axis_tick_opacity:
         config.y_axis_tick_opacity ?? 1,
+
+      // Y-axis title settings
+      show_y_axis_title:
+        config.show_y_axis_title ?? false,
+      y_axis_title:
+        config.y_axis_title ?? "{unit}",
+      y_axis_title_position:
+        config.y_axis_title_position ?? "top",
+      y_axis_title_gap:
+        config.y_axis_title_gap ?? 10,
+      y_axis_title_size:
+        config.y_axis_title_size ?? 13,
+      y_axis_title_weight:
+        config.y_axis_title_weight ?? 500,
+      y_axis_title_color:
+        config.y_axis_title_color ?? "var(--secondary-text-color)",
+      y_axis_title_color_mode:
+        config.y_axis_title_color_mode ?? "static",
+      y_axis_title_opacity:
+        config.y_axis_title_opacity ?? 0.8,
 
       // Y-axis label settings
       show_y_axis_labels:
@@ -6103,10 +6249,21 @@ class SimpleBandGraphCard extends HTMLElement {
 
     const xAxisLabelPadding = 34;
 
+    const yAxisTitleSize =
+      Math.max(0, Number(this.config.y_axis_title_size) || 13);
+
+    const yAxisTitleGap =
+      Math.max(0, Number(this.config.y_axis_title_gap) || 0);
+
+    const yAxisTitleReservedPadding =
+      this.config.show_y_axis_title
+        ? yAxisTitleSize + yAxisTitleGap
+        : 0;
+
     const baseTopPadding =
       this.config.show_x_axis_labels && xAxisLabelPosition === "top"
-        ? xAxisLabelPadding
-        : 14;
+        ? xAxisLabelPadding + yAxisTitleReservedPadding
+        : 14 + yAxisTitleReservedPadding;
 
     const baseBottomPadding =
       this.config.show_x_axis_labels && xAxisLabelPosition === "bottom"
@@ -6185,6 +6342,12 @@ class SimpleBandGraphCard extends HTMLElement {
 
       yAxisLabelPadding,
       xAxisLabelPadding,
+
+      yAxisLabelPadding,
+      xAxisLabelPadding,
+      yAxisTitleSize,
+      yAxisTitleGap,
+      yAxisTitleReservedPadding,
 
       xAxisGapForLayout,
       yAxisGapForLayout,
@@ -6608,6 +6771,12 @@ class SimpleBandGraphCard extends HTMLElement {
       this.config.y_axis_label_opacity
     );
 
+    const yAxisTitleColour = resolveColour(
+      this.config.y_axis_title_color,
+      this.config.y_axis_title_color_mode,
+      this.config.y_axis_title_opacity
+    );
+
     const bandLabelColour = resolveColour(
       this.config.band_label_color,
       this.config.band_label_color_mode,
@@ -6992,6 +7161,43 @@ class SimpleBandGraphCard extends HTMLElement {
         ${yAxisTicksHtml}
       `
       : "";
+
+    const formatAxisTitleText = (template) => {
+      return String(template || "")
+        .replaceAll("{unit}", unit || "")
+        .replaceAll("{name}", name || "")
+        .trim();
+    };
+
+    const yAxisTitleText = formatAxisTitleText(this.config.y_axis_title);
+
+    const yAxisTitleX =
+      yAxisPosition === "right"
+        ? yAxisX
+        : yAxisX;
+
+    const yAxisTitleAnchor =
+      yAxisPosition === "right" ? "start" : "end";
+
+    const yAxisTitleY =
+      padding.top - Math.max(0, Number(this.config.y_axis_title_gap) || 0);
+
+    const yAxisTitleHtml =
+      this.config.show_y_axis_title && yAxisTitleText
+        ? `
+          <text
+            x="${yAxisTitleX}"
+            y="${yAxisTitleY}"
+            text-anchor="${yAxisTitleAnchor}"
+            dominant-baseline="middle"
+            font-size="${cssValue(this.config.y_axis_title_size, 13, "px")}"
+            font-weight="${cssValue(this.config.y_axis_title_weight, 500)}"
+            fill="${yAxisTitleColour}"
+          >
+            ${yAxisTitleText}
+          </text>
+        `
+        : "";
 
     const yAxisLabelsHtml = effectiveShowYAxisLabels
       ? yTickValues
@@ -10089,11 +10295,13 @@ class SimpleBandGraphCard extends HTMLElement {
                     `
                 }
 
-                ${yAxisHtml}
                 ${xAxisHtml}
-
-                ${yAxisLabelsHtml}
                 ${xAxisLabelsHtml}
+
+                ${yAxisHtml}
+                ${yAxisLabelsHtml}
+                ${yAxisTitleHtml}
+
               </svg>
             </div>
 
