@@ -170,7 +170,7 @@ class SimpleBandGraphCard extends HTMLElement {
       // Band display settings
       show_bands: true,
       band_fill_mode: "stepped",
-      band_opacity: 0.14,
+      band_opacity: 0.24,
 
       // Band separator settings
       show_band_separators: false,
@@ -2430,7 +2430,7 @@ class SimpleBandGraphCard extends HTMLElement {
 
       // Band display settings
       show_bands: config.show_bands ?? true,
-      band_opacity: config.band_opacity ?? 0.2,
+      band_opacity: config.band_opacity ?? 0.28,
       band_fill_mode: config.band_fill_mode ?? "stepped",
 
       // Band separator settings
@@ -2879,6 +2879,15 @@ class SimpleBandGraphCard extends HTMLElement {
         .toString(36)
         .slice(2, 8)}`;
 
+    /*
+      --------------------------------------------------------------------------
+      Runtime state
+      --------------------------------------------------------------------------
+      Stores fetched history, render/debug counters, responsive sizing state, and
+      cached Home Assistant lookup information.
+    */
+
+    // History state
     this._history = [];
     this._rawHistoryCount = 0;
     this._plottedHistoryCount = 0;
@@ -2886,21 +2895,37 @@ class SimpleBandGraphCard extends HTMLElement {
     this._isFetchingHistory = false;
     this._lastHistoryFetch = null;
 
+    // History request/debug timing
     this._lastFetchDurationMs = null;
     this._lastHistoryApiDurationMs = null;
     this._lastDownsampleDurationMs = null;
     this._lastRenderDurationMs = null;
     this._lastWasDownsampled = false;
     this._lastRequestMode = "full history request";
+
+    // History window/debug metadata
     this._lastHistoryStartTime = null;
     this._lastHistoryEndTime = null;
     this._lastHistoryFirstPointTime = null;
     this._lastHistoryLastPointTime = null;
+
+    this._lastStatisticsHistoryCount = 0;
+    this._lastRawHistoryCount = 0;
+    this._lastMergedHistoryCount = 0;
+
+    this._lastStatisticsFirstPointTime = null;
+    this._lastStatisticsLastPointTime = null;
+    this._lastRawFirstPointTime = null;
+    this._lastRawLastPointTime = null;
+
+    // Render/debug counters
+    this._lastRawPlotDataCount = 0;
     this._lastPlotDataCount = 0;
     this._lastLineSegmentCount = 0;
     this._lastLineSplitSegmentCount = 0;
     this._lastLinePathCount = 0;
     this._renderCount = 0;
+    this._lastRenderKey = null;
 
     // Responsive layout state
     this._cardWidth = 600;
@@ -2917,10 +2942,12 @@ class SimpleBandGraphCard extends HTMLElement {
     this._areaName = "";
     this._areaLookupEntity = "";
     this._areaLookupDone = false;
-
+    this._areaResolveKey = "";
   }
 
   /*
+    ============================================================================
+    HOME ASSISTANT STATE HANDLING
     ============================================================================
     HOME ASSISTANT STATE HANDLING
     ============================================================================
@@ -3038,18 +3065,38 @@ class SimpleBandGraphCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+
+    if (!this.config?.entity) {
+      return;
+    }
+
     /*
       Resolve the Home Assistant area for the configured entity.
 
-      This is asynchronous and cached. It does not block rendering; the card will
-      render first, then re-render once the area name has been resolved.
+      This only needs to be requested when the configured entity changes. The
+      resolver itself may also cache internally, but this guard avoids repeatedly
+      starting the same async lookup on every Home Assistant state update.
     */
-    this._resolveAreaName();
+    if (this._areaResolveKey !== this.config.entity) {
+      this._areaResolveKey = this.config.entity;
+      this._resolveAreaName();
+    }
 
-    const key = [
+    const entityState = hass.states?.[this.config.entity];
+
+    /*
+      Include every option that affects the fetched history in the history key.
+      This ensures history is refetched when changing source mode, statistics
+      settings, hybrid raw window, or point limit.
+    */
+    const historyKey = [
       this.config.entity,
       this.config.hours_to_show,
       this.config.max_history_points,
+      this.config.history_mode,
+      this.config.statistics_type,
+      this.config.statistics_period,
+      this.config.hybrid_raw_hours,
     ].join("-");
 
     const refreshIntervalMs =
@@ -3059,12 +3106,35 @@ class SimpleBandGraphCard extends HTMLElement {
       !this._lastHistoryFetch ||
       Date.now() - this._lastHistoryFetch.getTime() > refreshIntervalMs;
 
-    if ((this._historyKey !== key || historyIsStale) && !this._isFetchingHistory) {
-      this._historyKey = key;
+    const shouldFetchHistory =
+      (this._historyKey !== historyKey || historyIsStale) &&
+      !this._isFetchingHistory;
+
+    if (shouldFetchHistory) {
+      this._historyKey = historyKey;
       this.fetchHistory();
     }
 
-    this.render();
+    /*
+      Home Assistant calls this setter very frequently, including for unrelated
+      entity updates. Avoid rebuilding the full card unless something relevant
+      to this card has actually changed.
+    */
+    const renderKey = [
+      historyKey,
+      entityState?.state ?? "unknown",
+      entityState?.last_changed ?? "",
+      entityState?.attributes?.unit_of_measurement ?? "",
+      entityState?.attributes?.friendly_name ?? "",
+      this._areaName || "",
+      this._lastHistoryFetch?.getTime() || 0,
+      this._isFetchingHistory ? "fetching" : "idle",
+    ].join("|");
+
+    if (renderKey !== this._lastRenderKey) {
+      this._lastRenderKey = renderKey;
+      this.render();
+    }
   }
   /*
     ============================================================================
@@ -3088,33 +3158,47 @@ class SimpleBandGraphCard extends HTMLElement {
   }
 
   downsampleHistory(points, maxPoints) {
-    if (!Array.isArray(points) || points.length <= maxPoints) {
+    if (!Array.isArray(points) || points.length === 0) {
+      return [];
+    }
+
+    if (!Number.isFinite(maxPoints) || points.length <= maxPoints) {
       return points;
     }
 
-    if (!Number.isFinite(maxPoints)) {
-      return points;
+    const targetPoints = Math.max(2, Math.floor(maxPoints));
+
+    if (targetPoints <= 2) {
+      return [points[0], points[points.length - 1]];
     }
 
     const result = [points[0]];
-    const bucketCount = Math.max(1, Math.floor((maxPoints - 2) / 2));
+    const lastIndex = points.length - 1;
+
+    /*
+      Use min/max pairs per bucket to preserve the visible shape of the chart.
+
+      This avoids creating temporary bucket arrays with slice(), which matters
+      for long histories and repeated refreshes.
+    */
+    const bucketCount = Math.max(1, Math.floor((targetPoints - 2) / 2));
     const bucketSize = (points.length - 2) / bucketCount;
 
-    for (let bucketIndex = 0; bucketIndex < bucketCount; bucketIndex++) {
-      const start = Math.floor(1 + bucketIndex * bucketSize);
-      const end = Math.min(
-        points.length - 1,
+    for (let bucketIndex = 0; bucketIndex < bucketCount; bucketIndex += 1) {
+      const startIndex = Math.floor(1 + bucketIndex * bucketSize);
+      const endIndex = Math.min(
+        lastIndex,
         Math.floor(1 + (bucketIndex + 1) * bucketSize)
       );
 
-      const bucket = points.slice(start, end);
+      if (startIndex >= endIndex) continue;
 
-      if (bucket.length === 0) continue;
+      let minPoint = points[startIndex];
+      let maxPoint = points[startIndex];
 
-      let minPoint = bucket[0];
-      let maxPoint = bucket[0];
+      for (let index = startIndex + 1; index < endIndex; index += 1) {
+        const point = points[index];
 
-      for (const point of bucket) {
         if (point.state < minPoint.state) minPoint = point;
         if (point.state > maxPoint.state) maxPoint = point;
       }
@@ -3128,15 +3212,25 @@ class SimpleBandGraphCard extends HTMLElement {
       }
     }
 
-    result.push(points[points.length - 1]);
+    result.push(points[lastIndex]);
 
-    return result
-      .filter(Boolean)
-      .sort((a, b) => a.time - b.time)
-      .filter((point, index, array) => {
-        if (index === 0) return true;
-        return point.time !== array[index - 1].time;
-      });
+    /*
+      Remove duplicate timestamps while preserving order.
+
+      The input is already sorted, and buckets are processed in time order, so we
+      do not need to sort again here. Avoiding sort() keeps this cheaper.
+    */
+    const deduped = [];
+    let lastTime = null;
+
+    for (const point of result) {
+      if (!point || point.time === lastTime) continue;
+
+      deduped.push(point);
+      lastTime = point.time;
+    }
+
+    return deduped;
   }
 
   /*
@@ -3250,6 +3344,12 @@ class SimpleBandGraphCard extends HTMLElement {
       this._lastStatisticsLastPointTime = null;
       this._lastRawFirstPointTime = null;
       this._lastRawLastPointTime = null;
+
+      this._lastRawPlotDataCount = 0;
+      this._lastPlotDataCount = 0;
+      this._lastLineSegmentCount = 0;
+      this._lastLineSplitSegmentCount = 0;
+      this._lastLinePathCount = 0;
     }
 
     this._isFetchingHistory = false;
@@ -3400,14 +3500,19 @@ class SimpleBandGraphCard extends HTMLElement {
   render() {
     const renderStarted = performance.now();
 
-    if (!this._hass) return;
+    if (!this._hass || !this.config?.entity) {
+      return;
+    }
+
+    this._renderCount = (this._renderCount || 0) + 1;
+
     /*
       --------------------------------------------------------------------------
       Entity state and basic card dimensions
       --------------------------------------------------------------------------
     */
     const entityId = this.config.entity;
-    const state = this._hass.states[entityId];
+    const state = this._hass.states?.[entityId];
 
     const name = this.config.name || entityId;
     const rawValue = state ? Number(state.state) : NaN;
@@ -3942,30 +4047,80 @@ class SimpleBandGraphCard extends HTMLElement {
       --------------------------------------------------------------------------
       Plot data preparation
       --------------------------------------------------------------------------
-      Uses fetched history, then appends the current state if the latest history
-      point is not already effectively current.
-    */
-    const plotData = [...this._history];
+      Uses fetched history, appends the current state if the latest history point
+      is not already effectively current, then reduces the plotted dataset before
+      SVG path generation, extrema detection, marker rendering, and band/area
+      splitting.
 
-    const latestHistoryPoint = plotData[plotData.length - 1];
+      This keeps long-history charts cheaper to render while preserving the first
+      and latest points.
+    */
+    const rawPlotData = [...this._history];
+
+    const latestHistoryPoint = rawPlotData[rawPlotData.length - 1];
     const latestHistoryIsCurrent =
       latestHistoryPoint && now - latestHistoryPoint.time < 5000;
 
     if (Number.isFinite(rawValue) && !latestHistoryIsCurrent) {
-      plotData.push({
+      rawPlotData.push({
         state: rawValue,
         time: now,
       });
     }
 
+    const parseMaxHistoryPoints = (value) => {
+      if (value === undefined || value === null || value === "" || value === "auto") {
+        return null;
+      }
+
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        return null;
+      }
+
+      return Math.max(2, Math.floor(parsed));
+    };
+
+    const downsamplePlotData = (data, maxPoints) => {
+      if (!maxPoints || data.length <= maxPoints) {
+        return data;
+      }
+
+      if (maxPoints <= 2) {
+        return [data[0], data[data.length - 1]];
+      }
+
+      const result = [];
+      const lastIndex = data.length - 1;
+      const step = lastIndex / (maxPoints - 1);
+
+      for (let i = 0; i < maxPoints; i += 1) {
+        const sourceIndex = Math.round(i * step);
+        const point = data[Math.min(lastIndex, sourceIndex)];
+
+        if (!result.length || result[result.length - 1] !== point) {
+          result.push(point);
+        }
+      }
+
+      if (result[result.length - 1] !== data[lastIndex]) {
+        result[result.length - 1] = data[lastIndex];
+      }
+
+      return result;
+    };
+
+    const maxPlotPoints = parseMaxHistoryPoints(this.config.max_history_points);
+    const plotData = downsamplePlotData(rawPlotData, maxPlotPoints);
+
     const points = plotData
       .map((point) => `${xToSvg(point.time)},${yToSvg(point.state)}`)
       .join(" ");
 
+    this._lastRawPlotDataCount = rawPlotData.length;
     this._lastPlotDataCount = plotData.length;
     this._lastLineSegmentCount = Math.max(0, plotData.length - 1);
     this._lastLineSplitSegmentCount = this._lastLineSegmentCount;
-
     /*
       --------------------------------------------------------------------------
       Band label positioning
@@ -5480,6 +5635,18 @@ class SimpleBandGraphCard extends HTMLElement {
       `raw window ${this.config.hybrid_raw_hours || 240}h`,
     ].join(" · ");
 
+    const rawPathCountText =
+      Number.isFinite(Number(this._lastRawPlotDataCount))
+        ? ` · path raw ${formatDebugNumber(this._lastRawPlotDataCount)}`
+        : "";
+
+    const renderLimitText =
+      Number.isFinite(Number(this._lastRawPlotDataCount)) &&
+      Number.isFinite(Number(this._lastPlotDataCount)) &&
+      Number(this._lastRawPlotDataCount) > Number(this._lastPlotDataCount)
+        ? ` · render limited ${formatDebugNumber(this._lastRawPlotDataCount)}→${formatDebugNumber(this._lastPlotDataCount)}`
+        : "";
+
     let debugLines = [];
 
     if (debugLevel === "off") {
@@ -5489,7 +5656,7 @@ class SimpleBandGraphCard extends HTMLElement {
     } else {
       const basicDebugLines = [
         `debug · ${this.config.hours_to_show}h · fetched ${formatRelativeFetchTime()}`,
-        `raw ${this._rawHistoryCount} · plotted ${this._plottedHistoryCount} · path ${this._lastPlotDataCount} · segments ${this._lastLineSegmentCount}/${this._lastLineSplitSegmentCount} · grouped paths ${this._lastLinePathCount} · max ${maxHistoryPointsText}`,
+        `raw ${this._rawHistoryCount} · plotted ${this._plottedHistoryCount}${rawPathCountText} · path ${this._lastPlotDataCount}${renderLimitText} · segments ${this._lastLineSegmentCount}/${this._lastLineSplitSegmentCount} · grouped paths ${this._lastLinePathCount} · max ${maxHistoryPointsText}`,
         `${historyModeDebugText}`,
         `${formatHistorySourceCounts()}`,
         `refresh ${this.config.history_refresh_interval}s · ${this._lastRequestMode}`,
@@ -6087,10 +6254,6 @@ class SimpleBandGraphCard extends HTMLElement {
                   ${clippedBandContent}
                 </g>
 
-                <g clip-path="url(#${plotClipPathId})">
-                  ${clippedBandContent}
-                </g>
-
                 ${bandLabelsBelowData}
 
                 ${
@@ -6139,8 +6302,8 @@ class SimpleBandGraphCard extends HTMLElement {
     this._attachActionHandlers();
 
     this._lastRenderDurationMs = Math.round(performance.now() - renderStarted);
-    this._renderCount += 1;
   }
+
   /*
     ============================================================================
     CARD INTERACTIONS
@@ -6237,7 +6400,9 @@ class SimpleBandGraphCard extends HTMLElement {
     entity -> entity registry -> device registry -> area registry.
 
     Registry lists are cached at class level so multiple card instances do not
-    repeatedly fetch the same registry data.
+    repeatedly fetch the same registry data. Lookup maps are also cached so each
+    card instance can resolve its entity without repeatedly scanning registry
+    arrays.
   */
   async _resolveAreaName() {
     try {
@@ -6259,12 +6424,13 @@ class SimpleBandGraphCard extends HTMLElement {
         this._hass
       );
 
-      const entityEntry = registries.entityRegistry.find(
-        (entry) => entry.entity_id === entityId
-      );
+      const entityEntry =
+        registries.entityById?.get(entityId) ||
+        registries.entityRegistry?.find((entry) => entry.entity_id === entityId);
 
       const deviceEntry = entityEntry?.device_id
-        ? registries.deviceRegistry.find(
+        ? registries.deviceById?.get(entityEntry.device_id) ||
+          registries.deviceRegistry?.find(
             (device) => device.id === entityEntry.device_id
           )
         : null;
@@ -6272,7 +6438,8 @@ class SimpleBandGraphCard extends HTMLElement {
       const areaId = entityEntry?.area_id || deviceEntry?.area_id || null;
 
       const areaEntry = areaId
-        ? registries.areaRegistry.find((area) => area.area_id === areaId)
+        ? registries.areaById?.get(areaId) ||
+          registries.areaRegistry?.find((area) => area.area_id === areaId)
         : null;
 
       const resolvedAreaName = areaEntry?.name || "";
@@ -6280,13 +6447,22 @@ class SimpleBandGraphCard extends HTMLElement {
       if (this._areaName !== resolvedAreaName) {
         this._areaName = resolvedAreaName;
 
-        // Re-render once the async area name is available.
+        /*
+          Re-render once the async area name is available.
+
+          Clear the render key first so the guarded hass setter/render flow does
+          not treat the previous render as current.
+        */
+        this._lastRenderKey = null;
+
         if (this._hass) {
           this.render();
         }
       }
     } catch (error) {
       console.warn("[Simple Band Graph] Area lookup failed:", error);
+
+      this._areaLookupDone = false;
       this._areaName = "";
     }
   }
@@ -6297,11 +6473,49 @@ class SimpleBandGraphCard extends HTMLElement {
         hass.callWS({ type: "config/entity_registry/list" }),
         hass.callWS({ type: "config/device_registry/list" }),
         hass.callWS({ type: "config/area_registry/list" }),
-      ]).then(([entityRegistry, deviceRegistry, areaRegistry]) => ({
-        entityRegistry,
-        deviceRegistry,
-        areaRegistry,
-      }));
+      ])
+        .then(([entityRegistry, deviceRegistry, areaRegistry]) => {
+          const safeEntityRegistry = Array.isArray(entityRegistry)
+            ? entityRegistry
+            : [];
+
+          const safeDeviceRegistry = Array.isArray(deviceRegistry)
+            ? deviceRegistry
+            : [];
+
+          const safeAreaRegistry = Array.isArray(areaRegistry)
+            ? areaRegistry
+            : [];
+
+          const entityById = new Map(
+            safeEntityRegistry.map((entry) => [entry.entity_id, entry])
+          );
+
+          const deviceById = new Map(
+            safeDeviceRegistry.map((device) => [device.id, device])
+          );
+
+          const areaById = new Map(
+            safeAreaRegistry.map((area) => [area.area_id, area])
+          );
+
+          return {
+            entityRegistry: safeEntityRegistry,
+            deviceRegistry: safeDeviceRegistry,
+            areaRegistry: safeAreaRegistry,
+            entityById,
+            deviceById,
+            areaById,
+          };
+        })
+        .catch((error) => {
+          /*
+            If the registry lookup fails once, do not permanently cache the
+            rejected promise. Allow a future render/session to try again.
+          */
+          SimpleBandGraphCard._areaLookupRegistryPromise = null;
+          throw error;
+        });
     }
 
     return SimpleBandGraphCard._areaLookupRegistryPromise;
