@@ -1300,18 +1300,21 @@ class SimpleBandGraphCard extends HTMLElement {
         },
         /*
           ----------------------------------------------------------------------
-          Appearance section
+          Card appearance section
           ----------------------------------------------------------------------
-          Card surface, background, border, shadow, padding, and plot background
-          styling.
+          Outer card surface, background, border, shadow, shine, radius, and
+          padding.
         */
         {
           type: "expandable",
-          name: "backgrounds",
-          title: "Appearance",
-          icon: "mdi:palette-outline",
+          name: "card_appearance",
+          title: "Card appearance",
+          icon: "mdi:card-outline",
           flatten: true,
           schema: [
+            /*
+              Card background
+            */
             {
               name: "background_color",
               selector: {
@@ -1340,7 +1343,7 @@ class SimpleBandGraphCard extends HTMLElement {
             },
 
             /*
-              Card surface
+              Card shape and spacing
             */
             {
               name: "card_radius",
@@ -1353,7 +1356,7 @@ class SimpleBandGraphCard extends HTMLElement {
               selector: {
                 number: {
                   min: 0,
-                  max: 40,
+                  max: 64,
                   step: 1,
                   mode: "slider",
                 },
@@ -1508,11 +1511,22 @@ class SimpleBandGraphCard extends HTMLElement {
                 },
               },
             },
+          ],
+        },
 
-
-            /*
-              Plot background
-            */
+        /*
+          ----------------------------------------------------------------------
+          Plot area appearance section
+          ----------------------------------------------------------------------
+          Inner plot background, opacity, and corner radius.
+        */
+        {
+          type: "expandable",
+          name: "plot_area_appearance",
+          title: "Plot area appearance",
+          icon: "mdi:chart-box-outline",
+          flatten: true,
+          schema: [
             {
               name: "plot_background_color",
               selector: {
@@ -5959,16 +5973,23 @@ class SimpleBandGraphCard extends HTMLElement {
       this.config.x_axis_label_position,
       "bottom"
     );
+
     /*
       --------------------------------------------------------------------------
       Layout measurements and padding
       --------------------------------------------------------------------------
-      Calculates how much room is needed around the plot for axes and outside band
-      labels before deriving the final plot rectangle.
+      Calculates how much room is needed around the plot for axes, axis gaps,
+      ticks, labels, and outside band labels before deriving the final plot
+      rectangle.
 
       X-axis line position and X-axis label position are deliberately separate.
-      Padding follows the label position, not the line position, so the X-axis
-      line can sit at zero without forcing labels into the middle of the plot.
+      Padding follows both the label position and any outside axis line gap, so
+      the X-axis line can sit at zero without forcing labels into the middle of
+      the plot, while outside axes can float away from the plot without colliding
+      with header/footer ribbons.
+
+      Axis gap reservation only applies to outside axes. Zero-positioned axes are
+      drawn inside the plot and do not reserve extra outside space.
     */
     const hasOutsideLeftBandLabels = bandLabelAlign === "outside_left";
     const hasOutsideRightBandLabels = bandLabelAlign === "outside_right";
@@ -6003,6 +6024,75 @@ class SimpleBandGraphCard extends HTMLElement {
         ? calculatedOutsideWidth
         : Number(this.config.band_label_outside_width) || calculatedOutsideWidth;
 
+    /*
+      Axis gap and tick reservation
+
+      Axis gaps are now treated as layout space rather than purely visual offsets.
+      This means an axis can float away from the plot area without being drawn
+      over labels, ribbons, or the edge of the card.
+    */
+    const xAxisGapForLayout =
+      this.config.show_x_axis && xAxisPosition !== "zero"
+        ? Math.max(0, Number(this.config.x_axis_gap) || 0)
+        : 0;
+
+    const yAxisGapForLayout =
+      this.config.show_y_axis
+        ? Math.max(0, Number(this.config.y_axis_gap) || 0)
+        : 0;
+
+    const xAxisTickLengthForLayout =
+      this.config.show_x_axis
+        ? Math.max(0, Number(this.config.x_axis_tick_length) || 0)
+        : 0;
+
+    const yAxisTickLengthForLayout =
+      this.config.show_y_axis
+        ? Math.max(0, Number(this.config.y_axis_tick_length) || 0)
+        : 0;
+
+    const xAxisTickPositionForLayout =
+      this.config.x_axis_tick_position || "crossing";
+
+    const yAxisTickPositionForLayout =
+      this.config.y_axis_tick_position || "crossing";
+
+    const getXAxisTickOutwardPadding = (side) => {
+      if (!this.config.show_x_axis) return 0;
+
+      if (xAxisTickPositionForLayout === "crossing") {
+        return xAxisTickLengthForLayout / 2;
+      }
+
+      if (side === "top" && xAxisTickPositionForLayout === "above") {
+        return xAxisTickLengthForLayout;
+      }
+
+      if (side === "bottom" && xAxisTickPositionForLayout === "below") {
+        return xAxisTickLengthForLayout;
+      }
+
+      return 0;
+    };
+
+    const getYAxisTickOutwardPadding = (side) => {
+      if (!this.config.show_y_axis) return 0;
+
+      if (yAxisTickPositionForLayout === "crossing") {
+        return yAxisTickLengthForLayout / 2;
+      }
+
+      if (side === "left" && yAxisTickPositionForLayout === "left") {
+        return yAxisTickLengthForLayout;
+      }
+
+      if (side === "right" && yAxisTickPositionForLayout === "right") {
+        return yAxisTickLengthForLayout;
+      }
+
+      return 0;
+    };
+
     const yAxisLabelPadding = 42;
 
     const baseLeftPadding =
@@ -6023,11 +6113,48 @@ class SimpleBandGraphCard extends HTMLElement {
         ? xAxisLabelPadding
         : 24;
 
+    const xAxisTopReservedPadding =
+      xAxisPosition === "top"
+        ? xAxisGapForLayout + getXAxisTickOutwardPadding("top")
+        : 0;
+
+    const xAxisBottomReservedPadding =
+      xAxisPosition === "bottom"
+        ? xAxisGapForLayout + getXAxisTickOutwardPadding("bottom")
+        : 0;
+
+    /*
+      Y-axis reservation
+
+      The visible Y-axis may only be drawn on one side, but layout reservation is
+      mirrored on both sides so the plot remains visually centred.
+
+      This allows the Y-axis to float away from the plot without making the chart
+      feel pushed sideways.
+    */
+    const yAxisMirroredReservedPadding =
+      this.config.show_y_axis
+        ? yAxisGapForLayout +
+          Math.max(
+            getYAxisTickOutwardPadding("left"),
+            getYAxisTickOutwardPadding("right")
+          )
+        : 0;
+
+    const yAxisLeftReservedPadding = yAxisMirroredReservedPadding;
+    const yAxisRightReservedPadding = yAxisMirroredReservedPadding;
+
     const padding = {
-      top: baseTopPadding,
-      right: baseRightPadding + (hasOutsideRightBandLabels ? bandLabelOutsideWidth : 0),
-      bottom: baseBottomPadding,
-      left: baseLeftPadding + (hasOutsideLeftBandLabels ? bandLabelOutsideWidth : 0),
+      top: baseTopPadding + xAxisTopReservedPadding,
+      right:
+        baseRightPadding +
+        yAxisRightReservedPadding +
+        (hasOutsideRightBandLabels ? bandLabelOutsideWidth : 0),
+      bottom: baseBottomPadding + xAxisBottomReservedPadding,
+      left:
+        baseLeftPadding +
+        yAxisLeftReservedPadding +
+        (hasOutsideLeftBandLabels ? bandLabelOutsideWidth : 0),
     };
 
     const plotWidth = width - padding.left - padding.right;
@@ -6045,16 +6172,35 @@ class SimpleBandGraphCard extends HTMLElement {
       innerPlotHeight: plotHeight,
       configuredHeight: Number(this.config.height) || 0,
       plotWrapMinHeight,
+
       paddingTop: padding.top,
       paddingRight: padding.right,
       paddingBottom: padding.bottom,
       paddingLeft: padding.left,
+
       baseTopPadding,
       baseRightPadding,
       baseBottomPadding,
       baseLeftPadding,
+
       yAxisLabelPadding,
       xAxisLabelPadding,
+
+      xAxisGapForLayout,
+      yAxisGapForLayout,
+
+      xAxisTickLengthForLayout,
+      yAxisTickLengthForLayout,
+      xAxisTickPositionForLayout,
+      yAxisTickPositionForLayout,
+
+      xAxisTopReservedPadding,
+      xAxisBottomReservedPadding,
+
+      yAxisMirroredReservedPadding,
+      yAxisLeftReservedPadding,
+      yAxisRightReservedPadding,
+
       hasOutsideLeftBandLabels,
       hasOutsideRightBandLabels,
       bandLabelOutsideWidth,
@@ -6062,13 +6208,16 @@ class SimpleBandGraphCard extends HTMLElement {
       longestBandLabelWidth,
       bandLabelTextCount: bandLabelTexts.filter(Boolean).length,
       bandLabelTexts: bandLabelTexts.filter(Boolean).join(" | "),
+
       bandLabelMode: this.config.band_label_mode,
       bandLabelAlign: this.config.band_label_align,
       bandLabelPosition: this.config.band_label_position,
+
       showXAxis: this.config.show_x_axis,
       showXAxisLabels: this.config.show_x_axis_labels,
       xAxisPosition,
       xAxisLabelPosition,
+
       showYAxis: this.config.show_y_axis,
       showYAxisLabels: this.config.show_y_axis_labels,
       yAxisPosition,
