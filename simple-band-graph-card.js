@@ -1054,7 +1054,8 @@ class SimpleBandGraphCard extends HTMLElement {
                 select: {
                   mode: "dropdown",
                   options: [
-                    { value: "top", label: "Top of Y-axis" },
+                    { value: "top", label: "Top" },
+                    { value: "middle", label: "Middle" },
                   ],
                 },
               },
@@ -6255,10 +6256,7 @@ class SimpleBandGraphCard extends HTMLElement {
     const yAxisTitleGap =
       Math.max(0, Number(this.config.y_axis_title_gap) || 0);
 
-    const yAxisTitleReservedPadding =
-      this.config.show_y_axis_title
-        ? yAxisTitleSize + yAxisTitleGap
-        : 0;
+    const yAxisTitleReservedPadding = 0;
 
     const baseTopPadding =
       this.config.show_x_axis_labels && xAxisLabelPosition === "top"
@@ -7171,16 +7169,42 @@ class SimpleBandGraphCard extends HTMLElement {
 
     const yAxisTitleText = formatAxisTitleText(this.config.y_axis_title);
 
+    const yAxisTitlePosition =
+      this.config.y_axis_title_position || "top";
+
+    const yAxisTitleRenderGap =
+      Math.max(0, Number(this.config.y_axis_title_gap) || 0);
+
     const yAxisTitleX =
       yAxisPosition === "right"
-        ? yAxisX
-        : yAxisX;
+        ? padding.left + plotWidth + yAxisTitleRenderGap
+        : padding.left - yAxisTitleRenderGap;
 
-    const yAxisTitleAnchor =
-      yAxisPosition === "right" ? "start" : "end";
+    const yAxisLabelSizeForTitle =
+      Math.max(0, Number(this.config.y_axis_label_size) || 11);
+
+    const yAxisTitleSizeForTitle =
+      Math.max(0, Number(this.config.y_axis_title_size) || 13);
+
+    const yAxisTitleTopOffset =
+      Math.max(
+        4,
+        yAxisLabelSizeForTitle * 0.55 + yAxisTitleSizeForTitle * 0.35
+      );
 
     const yAxisTitleY =
-      padding.top - Math.max(0, Number(this.config.y_axis_title_gap) || 0);
+      yAxisTitlePosition === "middle"
+        ? padding.top + plotHeight / 2
+        : padding.top - yAxisTitleTopOffset;
+
+    const yAxisTitleAnchor =
+      yAxisTitlePosition === "middle"
+        ? yAxisPosition === "right"
+          ? "start"
+          : "end"
+        : yAxisPosition === "right"
+          ? "end"
+          : "start";
 
     const yAxisTitleHtml =
       this.config.show_y_axis_title && yAxisTitleText
