@@ -175,8 +175,11 @@ class SimpleBandGraphCard extends HTMLElement {
       card_shadow_offset_x: 0,
       card_shadow_offset_y: 8,
 
-      card_inner_highlight: false,
-      card_inner_highlight_opacity: 0.08,
+      card_shine: false,
+      card_shine_opacity: 0.12,
+      card_shine_size: 55,
+      card_shine_position: 0,
+      card_shine_angle: 155,
 
       // Plot-area background settings
       plot_background_color: "transparent",
@@ -1107,16 +1110,16 @@ class SimpleBandGraphCard extends HTMLElement {
             },
 
             /*
-              Card inner highlight
+              Card shine
             */
             {
-              name: "card_inner_highlight",
+              name: "card_shine",
               selector: {
                 boolean: {},
               },
             },
             {
-              name: "card_inner_highlight_opacity",
+              name: "card_shine_opacity",
               selector: {
                 number: {
                   min: 0,
@@ -1126,6 +1129,43 @@ class SimpleBandGraphCard extends HTMLElement {
                 },
               },
             },
+            {
+              name: "card_shine_size",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 100,
+                  step: 1,
+                  mode: "slider",
+                  unit_of_measurement: "%",
+                },
+              },
+            },
+            {
+              name: "card_shine_position",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 100,
+                  step: 1,
+                  mode: "slider",
+                  unit_of_measurement: "%",
+                },
+              },
+            },
+            {
+              name: "card_shine_angle",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 360,
+                  step: 5,
+                  mode: "slider",
+                  unit_of_measurement: "°",
+                },
+              },
+            },
+
 
             /*
               Plot background
@@ -2154,8 +2194,11 @@ class SimpleBandGraphCard extends HTMLElement {
           card_shadow_offset_x: "Card shadow horizontal offset",
           card_shadow_offset_y: "Card shadow vertical offset",
 
-          card_inner_highlight: "Show inner highlight",
-          card_inner_highlight_opacity: "Inner highlight opacity",
+          card_shine: "Show card shine",
+          card_shine_opacity: "Card shine opacity",
+          card_shine_size: "Card shine size",
+          card_shine_position: "Card shine position",
+          card_shine_angle: "Card shine angle",
 
           plot_background_color: "Plot background colour",
           plot_background_color_mode: "Plot background colour mode",
@@ -2411,10 +2454,16 @@ class SimpleBandGraphCard extends HTMLElement {
           card_shadow_offset_y:
             "Vertical offset of the card shadow.",
 
-          card_inner_highlight:
-            "Show or hide a subtle inner highlight along the top edge of the card.",
-          card_inner_highlight_opacity:
-            "Opacity of the inner highlight, from 0 to 1.",
+          card_shine:
+            "Show or hide a soft glass-style reflection across the card surface.",
+          card_shine_opacity:
+            "Opacity of the shine/reflection layer, from 0 to 1.",
+          card_shine_size:
+            "Size of the shine band as a percentage of the card surface.",
+          card_shine_position:
+            "Starting position of the shine band as a percentage across the card.",
+          card_shine_angle:
+            "Angle of the shine/reflection gradient in degrees.",
 
           plot_background_color:
             "CSS colour for the graph plotting area, such as transparent, var(--card-background-color), #222222, or rgba(0,0,0,0.2).",
@@ -2691,8 +2740,11 @@ class SimpleBandGraphCard extends HTMLElement {
       card_shadow_offset_x: config.card_shadow_offset_x ?? 0,
       card_shadow_offset_y: config.card_shadow_offset_y ?? 8,
 
-      card_inner_highlight: config.card_inner_highlight ?? false,
-      card_inner_highlight_opacity: config.card_inner_highlight_opacity ?? 0.08,
+      card_shine: config.card_shine ?? false,
+      card_shine_opacity: config.card_shine_opacity ?? 0.08,
+      card_shine_size: config.card_shine_size ?? 65,
+      card_shine_position: config.card_shine_position ?? 0,
+      card_shine_angle: config.card_shine_angle ?? 155,
 
       // Plot-area background settings
       // Default is transparent so the plot area does not appear as a dark block.
@@ -6520,12 +6572,23 @@ class SimpleBandGraphCard extends HTMLElement {
           inset: 0;
           pointer-events: none;
           border-radius: inherit;
-          box-shadow: ${
-            this.config.card_inner_highlight
-              ? `inset 0 1px 0 rgba(255, 255, 255, ${Number(this.config.card_inner_highlight_opacity) || 0})`
-              : "none"
-          };
           z-index: 1;
+          opacity: ${
+            this.config.card_shine
+              ? Math.min(0.35, Math.max(0, Number(this.config.card_shine_opacity) || 0))
+              : 0
+          };
+          background: linear-gradient(
+            ${Number(this.config.card_shine_angle) || 155}deg,
+            rgba(255, 255, 255, 0) 0%,
+            rgba(255, 255, 255, 0) ${Math.max(0, Math.min(100, Number(this.config.card_shine_position) || 0))}%,
+            rgba(255, 255, 255, 0.10) ${Math.max(0, Math.min(100, Number(this.config.card_shine_position) || 0)) + Math.max(24, Number(this.config.card_shine_size) || 55) * 0.15}%,
+            rgba(255, 255, 255, 0.45) ${Math.max(0, Math.min(100, Number(this.config.card_shine_position) || 0)) + Math.max(24, Number(this.config.card_shine_size) || 55) * 0.45}%,
+            rgba(255, 255, 255, 0.16) ${Math.max(0, Math.min(100, Number(this.config.card_shine_position) || 0)) + Math.max(24, Number(this.config.card_shine_size) || 55) * 0.70}%,
+            rgba(255, 255, 255, 0) ${Math.min(100, Math.max(0, Math.min(100, Number(this.config.card_shine_position) || 0)) + Math.max(24, Number(this.config.card_shine_size) || 55))}%,
+            rgba(255, 255, 255, 0) 100%
+          );
+          mix-blend-mode: screen;
         }
 
         ${cssScope} .sbgc-inner {
