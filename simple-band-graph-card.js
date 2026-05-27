@@ -360,6 +360,8 @@ class SimpleBandGraphCard extends HTMLElement {
 
       // Marker label settings
       marker_label_size: 11,
+      marker_label_line_1_size: 11,
+      marker_label_line_2_size: 10,
       marker_label_weight: 400,
       marker_label_color: "var(--primary-text-color)",
       marker_label_color_mode: "static",
@@ -2627,7 +2629,18 @@ class SimpleBandGraphCard extends HTMLElement {
               Marker label text
             */
             {
-              name: "marker_label_size",
+              name: "marker_label_line_1_size",
+              selector: {
+                number: {
+                  min: 8,
+                  max: 24,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "marker_label_line_2_size",
               selector: {
                 number: {
                   min: 8,
@@ -4187,7 +4200,11 @@ class SimpleBandGraphCard extends HTMLElement {
 
           // Marker label text
           marker_label_size:
-            "Text size for current, min, and max marker labels.",
+            "Legacy fallback text size for marker labels.",
+          marker_label_line_1_size:
+            "Text size for the first line of marker labels.",
+          marker_label_line_2_size:
+            "Text size for the second line of marker labels.",
           marker_label_weight:
             "Font weight for marker labels.",
           marker_label_color:
@@ -4812,6 +4829,10 @@ class SimpleBandGraphCard extends HTMLElement {
       // Marker label settings
       marker_label_size:
         config.marker_label_size ?? 11,
+      marker_label_line_1_size:
+        config.marker_label_line_1_size ?? config.marker_label_size ?? 11,
+      marker_label_line_2_size:
+        config.marker_label_line_2_size ?? config.marker_label_size ?? 10,
       marker_label_weight:
         config.marker_label_weight ?? 400,
       marker_label_color:
@@ -8022,17 +8043,43 @@ class SimpleBandGraphCard extends HTMLElement {
       const markerLabelTextLineGap =
         Math.max(0, Number(this.config.marker_label_text_line_gap) || 0);
 
+      const markerLabelLine1Size =
+        Math.max(
+          0,
+          Number(this.config.marker_label_line_1_size) ||
+            Number(this.config.marker_label_size) ||
+            11
+        );
+
+      const markerLabelLine2Size =
+        Math.max(
+          0,
+          Number(this.config.marker_label_line_2_size) ||
+            Number(this.config.marker_label_size) ||
+            10
+        );
+
+      const markerLabelLineSizes =
+        labelLines.map((line, index) =>
+          index === 0 ? markerLabelLine1Size : markerLabelLine2Size
+        );
+
       const estimatedTextWidth =
         Math.max(
-          ...labelLines.map((line) => String(line).length),
+          ...labelLines.map((line, index) => {
+            const lineSize =
+              index === 0 ? markerLabelLine1Size : markerLabelLine2Size;
+
+            return String(line).length * lineSize * 0.62;
+          }),
           0
-        ) * markerLabelSize * 0.62;
+        );
 
       const markerLabelLineCount =
         Math.max(labelLines.length, 1);
 
       const markerLabelTextHeight =
-        markerLabelLineCount * markerLabelSize +
+        markerLabelLineSizes.reduce((total, size) => total + size, 0) +
         Math.max(0, markerLabelLineCount - 1) * markerLabelTextLineGap;
 
       const markerLabelWidth =
@@ -8613,24 +8660,32 @@ class SimpleBandGraphCard extends HTMLElement {
 
       const markerLabelTextHtml = labelLines
         .map((line, index) => {
-          const lineCount = Math.max(labelLines.length, 1);
+          const previousLineHeights =
+            markerLabelLineSizes
+              .slice(0, index)
+              .reduce((total, size) => total + size, 0);
+
+          const currentLineSize =
+            markerLabelLineSizes[index] || markerLabelLine1Size;
 
           const totalTextHeight =
-            lineCount * markerLabelSize +
-            Math.max(0, lineCount - 1) * markerLabelTextLineGap;
+            markerLabelLineSizes.reduce((total, size) => total + size, 0) +
+            Math.max(0, labelLines.length - 1) * markerLabelTextLineGap;
 
-          const firstLineY =
+          const lineY =
             labelPlacement.labelY -
             totalTextHeight / 2 +
-            markerLabelSize / 2;
+            previousLineHeights +
+            index * markerLabelTextLineGap +
+            currentLineSize / 2;
 
           return `
             <text
               x="${labelPlacement.labelX}"
-              y="${firstLineY + index * (markerLabelSize + markerLabelTextLineGap)}"
+              y="${lineY}"
               text-anchor="middle"
               dominant-baseline="middle"
-              font-size="${cssValue(this.config.marker_label_size ?? 11, 11, "px")}"
+              font-size="${cssValue(currentLineSize, 11, "px")}"
               font-weight="${cssValue(this.config.marker_label_weight, 400)}"
               fill="${markerLabelColour}"
             >
