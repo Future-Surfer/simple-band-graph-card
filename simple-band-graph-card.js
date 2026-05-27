@@ -351,6 +351,13 @@ class SimpleBandGraphCard extends HTMLElement {
       marker_label_line_gap: 6,
       marker_label_min_gap: 8,
 
+      // Marker label content settings
+      marker_label_line_1_mode: "value",
+      marker_label_line_2_mode: "none",
+      marker_label_custom_line_1: "",
+      marker_label_custom_line_2: "",
+      marker_label_text_line_gap: 2,
+
       // Marker label settings
       marker_label_size: 11,
       marker_label_weight: 400,
@@ -541,6 +548,21 @@ class SimpleBandGraphCard extends HTMLElement {
       { value: 500, label: "Medium" },
       { value: 600, label: "Semi-bold" },
       { value: 700, label: "Bold" },
+    ];
+
+    const markerLabelLineModeOptions = [
+      { value: "none", label: "None" },
+      { value: "value", label: "Value only, e.g. 42" },
+      { value: "value_unit", label: "Value + unit, e.g. 42 °C" },
+      { value: "prefixed", label: "Prefixed, e.g. Min 42" },
+      { value: "compact", label: "Compact, e.g. ↓ 42" },
+      { value: "band", label: "Band, e.g. Warm" },
+      { value: "message", label: "Band message, e.g. Room is warm" },
+      { value: "time", label: "Clock time, e.g. 14:30" },
+      { value: "date_time", label: "Date and time, e.g. Mon 14:30" },
+      { value: "age_auto", label: "Age, automatic, e.g. ~2h ago" },
+      { value: "age_hours_minutes", label: "Age, detailed, e.g. 2h 15m ago" },
+      { value: "custom", label: "Custom text" },
     ];
 
 
@@ -2557,6 +2579,51 @@ class SimpleBandGraphCard extends HTMLElement {
             },
 
             /*
+              Marker label content
+            */
+            {
+              name: "marker_label_line_1_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: markerLabelLineModeOptions,
+                },
+              },
+            },
+            {
+              name: "marker_label_line_2_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: markerLabelLineModeOptions,
+                },
+              },
+            },
+            {
+              name: "marker_label_custom_line_1",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "marker_label_custom_line_2",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "marker_label_text_line_gap",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 12,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+
+            /*
               Marker label text
             */
             {
@@ -3843,7 +3910,7 @@ class SimpleBandGraphCard extends HTMLElement {
           y_axis_title_position:
             "Place the Y-axis title at the top of the axis side. Top follows the current Y-axis side.",
           y_axis_title_gap:
-            "Distance between the Y-axis title and the top of the plot area.",
+            "Horizontal distance between the Y-axis title and the plot edge.",
           y_axis_title_size:
             "Text size for the Y-axis title.",
           y_axis_title_weight:
@@ -4105,6 +4172,18 @@ class SimpleBandGraphCard extends HTMLElement {
             "Vertical offset of the marker dot shadow.",
           marker_dot_shadow_opacity:
             "Opacity of the marker dot shadow, from 0 to 1.",
+
+          // Marker label content
+          marker_label_line_1_mode:
+            "Choose what appears on the first line of marker labels.",
+          marker_label_line_2_mode:
+            "Choose what appears on the second line of marker labels. Use None for single-line labels.",
+          marker_label_custom_line_1:
+            "Custom text used when the first marker label line is set to Custom text.",
+          marker_label_custom_line_2:
+            "Custom text used when the second marker label line is set to Custom text.",
+          marker_label_text_line_gap:
+            "Vertical gap between the first and second line of marker label text.",
 
           // Marker label text
           marker_label_size:
@@ -4718,12 +4797,29 @@ class SimpleBandGraphCard extends HTMLElement {
       marker_label_min_gap:
         config.marker_label_min_gap ?? 8,
 
+      // Marker label content settings
+      marker_label_line_1_mode:
+        config.marker_label_line_1_mode ?? "value",
+      marker_label_line_2_mode:
+        config.marker_label_line_2_mode ?? "none",
+      marker_label_custom_line_1:
+        config.marker_label_custom_line_1 ?? "",
+      marker_label_custom_line_2:
+        config.marker_label_custom_line_2 ?? "",
+      marker_label_text_line_gap:
+        config.marker_label_text_line_gap ?? 2,
+
       // Marker label settings
-      marker_label_size: config.marker_label_size ?? 11,
-      marker_label_weight: config.marker_label_weight ?? 400,
-      marker_label_color: config.marker_label_color ?? "var(--primary-text-color)",
-      marker_label_color_mode: config.marker_label_color_mode ?? "static",
-      marker_label_opacity: config.marker_label_opacity ?? 0.9,
+      marker_label_size:
+        config.marker_label_size ?? 11,
+      marker_label_weight:
+        config.marker_label_weight ?? 400,
+      marker_label_color:
+        config.marker_label_color ?? "var(--primary-text-color)",
+      marker_label_color_mode:
+        config.marker_label_color_mode ?? "static",
+      marker_label_opacity:
+        config.marker_label_opacity ?? 0.9,
 
       // Marker label background and chip settings
       // Default is a soft translucent white label chip for readability.
@@ -5890,27 +5986,122 @@ class SimpleBandGraphCard extends HTMLElement {
       ? `${formatValue(rawValue)}${unit}`
       : `${value}${unit}`;
 
-    const formatMarkerLabel = (point, markerType = "value") => {
-      if (!point) return "";
+    const formatMarkerLabelLine = (point, markerType = "value", mode = "value", customText = "") => {
+      if (!point || mode === "none") return "";
 
-      const valueText = `${formatValue(point.state)}${unit}`;
-      const mode = this.config.extrema_label_mode || "value";
+      const markerBand = getBandForValue(point.state);
+      const valueOnlyText = formatValue(point.state);
+      const valueText = `${valueOnlyText}${unit}`;
 
-      if (markerType === "latest") {
+      if (mode === "value") {
         return valueText;
       }
 
+      if (mode === "value_unit") {
+        return unit ? `${valueOnlyText} ${unit}` : valueOnlyText;
+      }
+
       if (mode === "prefixed") {
+        if (markerType === "latest") return `Now ${valueText}`;
         if (markerType === "min") return `Min ${valueText}`;
         if (markerType === "max") return `Max ${valueText}`;
+        return valueText;
       }
 
       if (mode === "compact") {
         if (markerType === "min") return `↓ ${valueText}`;
         if (markerType === "max") return `↑ ${valueText}`;
+        return valueText;
+      }
+
+      if (mode === "band") {
+        return markerBand?.label || "";
+      }
+
+      if (mode === "message") {
+        return markerBand?.message || "";
+      }
+
+      if (mode === "time") {
+        return new Date(point.time).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
+
+      if (mode === "date_time") {
+        return new Date(point.time).toLocaleDateString([], {
+          weekday: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
+
+      if (mode === "age_auto") {
+        const ageMinutes =
+          Math.max(0, Math.round((Date.now() - point.time) / 60000));
+
+        const chartHours =
+          Number(this.config.hours_to_show) || 24;
+
+        if (ageMinutes < 60 || chartHours <= 2) {
+          return `${ageMinutes}m ago`;
+        }
+
+        const ageHours = ageMinutes / 60;
+
+        if (chartHours <= 48) {
+          return `~${Math.round(ageHours)}h ago`;
+        }
+
+        const ageDays = ageHours / 24;
+
+        return `~${Math.round(ageDays)}d ago`;
+      }
+
+      if (mode === "age_hours_minutes") {
+        const ageMinutes =
+          Math.max(0, Math.round((Date.now() - point.time) / 60000));
+
+        const hours = Math.floor(ageMinutes / 60);
+        const minutes = ageMinutes % 60;
+
+        if (hours <= 0) {
+          return `${minutes}m ago`;
+        }
+
+        if (minutes <= 0) {
+          return `${hours}h ago`;
+        }
+
+        return `${hours}h ${minutes}m ago`;
+      }
+
+      if (mode === "custom") {
+        return String(customText || "");
       }
 
       return valueText;
+    };
+
+    const formatMarkerLabel = (point, markerType = "value") => {
+      if (!point) return [];
+
+      const line1 = formatMarkerLabelLine(
+        point,
+        markerType,
+        this.config.marker_label_line_1_mode || "value",
+        this.config.marker_label_custom_line_1 || ""
+      );
+
+      const line2 = formatMarkerLabelLine(
+        point,
+        markerType,
+        this.config.marker_label_line_2_mode || "none",
+        this.config.marker_label_custom_line_2 || ""
+      );
+
+      return [line1, line2].filter(Boolean);
     };
 
     const formatBandValue = (number, suffix = "") => {
@@ -6256,7 +6447,7 @@ class SimpleBandGraphCard extends HTMLElement {
     const yAxisTitleGap =
       Math.max(0, Number(this.config.y_axis_title_gap) || 0);
 
-    const yAxisTitleReservedPadding = 0;
+    const yAxisTitleReservedPadding = 2;
 
     const baseTopPadding =
       this.config.show_x_axis_labels && xAxisLabelPosition === "top"
@@ -7779,7 +7970,8 @@ class SimpleBandGraphCard extends HTMLElement {
       const y = yToSvg(point.state);
 
       const markerBand = getBandForValue(point.state);
-      const labelText = formatMarkerLabel(point, markerType);
+      const labelLines = formatMarkerLabel(point, markerType);
+      const labelText = labelLines.join(" ");
 
       /*
         ------------------------------------------------------------------------
@@ -7827,9 +8019,28 @@ class SimpleBandGraphCard extends HTMLElement {
       const markerLabelRadius =
         Math.max(0, Number(this.config.marker_label_radius) || 0);
 
-      const estimatedTextWidth = labelText.length * markerLabelSize * 0.62;
-      const markerLabelWidth = estimatedTextWidth + markerLabelPaddingX * 2;
-      const markerLabelHeight = markerLabelSize + markerLabelPaddingY * 2;
+      const markerLabelTextLineGap =
+        Math.max(0, Number(this.config.marker_label_text_line_gap) || 0);
+
+      const estimatedTextWidth =
+        Math.max(
+          ...labelLines.map((line) => String(line).length),
+          0
+        ) * markerLabelSize * 0.62;
+
+      const markerLabelLineCount =
+        Math.max(labelLines.length, 1);
+
+      const markerLabelTextHeight =
+        markerLabelLineCount * markerLabelSize +
+        Math.max(0, markerLabelLineCount - 1) * markerLabelTextLineGap;
+
+      const markerLabelWidth =
+        estimatedTextWidth + markerLabelPaddingX * 2;
+
+      const markerLabelHeight =
+        markerLabelTextHeight + markerLabelPaddingY * 2;
+
       const gap = 8;
 
       /*
@@ -8400,6 +8611,35 @@ class SimpleBandGraphCard extends HTMLElement {
         `
         : "";
 
+      const markerLabelTextHtml = labelLines
+        .map((line, index) => {
+          const lineCount = Math.max(labelLines.length, 1);
+
+          const totalTextHeight =
+            lineCount * markerLabelSize +
+            Math.max(0, lineCount - 1) * markerLabelTextLineGap;
+
+          const firstLineY =
+            labelPlacement.labelY -
+            totalTextHeight / 2 +
+            markerLabelSize / 2;
+
+          return `
+            <text
+              x="${labelPlacement.labelX}"
+              y="${firstLineY + index * (markerLabelSize + markerLabelTextLineGap)}"
+              text-anchor="middle"
+              dominant-baseline="middle"
+              font-size="${cssValue(this.config.marker_label_size ?? 11, 11, "px")}"
+              font-weight="${cssValue(this.config.marker_label_weight, 400)}"
+              fill="${markerLabelColour}"
+            >
+              ${line}
+            </text>
+          `;
+        })
+        .join("");
+
       /*
         ------------------------------------------------------------------------
         Marker SVG output
@@ -8490,17 +8730,7 @@ class SimpleBandGraphCard extends HTMLElement {
                   }"
                 ></rect>
 
-                <text
-                  x="${labelPlacement.labelX}"
-                  y="${labelPlacement.labelY}"
-                  text-anchor="middle"
-                  dominant-baseline="middle"
-                  font-size="${cssValue(this.config.marker_label_size ?? 11, 11, "px")}"
-                  font-weight="${cssValue(this.config.marker_label_weight, 400)}"
-                  fill="${markerLabelColour}"
-                >
-                  ${labelText}
-                </text>
+                ${markerLabelTextHtml}
               `
               : ""
           }
