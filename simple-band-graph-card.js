@@ -192,6 +192,16 @@ class SimpleBandGraphCard extends HTMLElement {
       band_fill_mode: "stepped",
       band_opacity: 0.24,
 
+      // Band surface settings
+      band_surface_style: "flat",
+      band_surface_highlight_opacity: 0.06,
+      band_surface_shadow_opacity: 0.1,
+      band_surface_border_width: 0,
+      band_surface_border_opacity: 0.12,
+      band_surface_glow: false,
+      band_surface_glow_opacity: 0.08,
+      band_surface_glow_blur: 18,
+
       // Band separator settings
       show_band_separators: false,
       band_separator_color: "var(--divider-color)",
@@ -1287,14 +1297,14 @@ class SimpleBandGraphCard extends HTMLElement {
         },
         /*
           ----------------------------------------------------------------------
-          Bands section
+          Band appearance section
           ----------------------------------------------------------------------
-          Band display, separator styling, and band label styling.
+          Band visibility, fill mode, surface treatment, and separator styling.
         */
         {
           type: "expandable",
-          name: "bands",
-          title: "Bands",
+          name: "band_appearance",
+          title: "Band appearance",
           icon: "mdi:format-color-fill",
           flatten: true,
           schema: [
@@ -1324,6 +1334,100 @@ class SimpleBandGraphCard extends HTMLElement {
                 },
               },
             },
+
+            /*
+              Band surface treatment
+            */
+            {
+              name: "band_surface_style",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "flat", label: "Flat" },
+                    { value: "soft", label: "Soft" },
+                    { value: "glass", label: "Glass" },
+                    { value: "glow", label: "Glow" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "band_surface_highlight_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 0.5,
+                  step: 0.01,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "band_surface_shadow_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 0.5,
+                  step: 0.01,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "band_surface_border_width",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 4,
+                  step: 0.5,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "band_surface_border_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 0.5,
+                  step: 0.01,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "band_surface_glow",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "band_surface_glow_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 0.4,
+                  step: 0.01,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "band_surface_glow_blur",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 40,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+
+            /*
+              Band separators
+            */
             {
               name: "show_band_separators",
               selector: {
@@ -1371,6 +1475,22 @@ class SimpleBandGraphCard extends HTMLElement {
                 },
               },
             },
+          ],
+        },
+
+        /*
+          ----------------------------------------------------------------------
+          Band labels section
+          ----------------------------------------------------------------------
+          Band label content, position, alignment, and text styling.
+        */
+        {
+          type: "expandable",
+          name: "band_labels",
+          title: "Band labels",
+          icon: "mdi:label-outline",
+          flatten: true,
+          schema: [
             {
               name: "band_label_mode",
               selector: {
@@ -2956,6 +3076,18 @@ class SimpleBandGraphCard extends HTMLElement {
           show_bands: "Show bands",
           band_opacity: "Band opacity",
           band_fill_mode: "Band fill mode",
+
+          // Band surface
+          band_surface_style: "Band surface style",
+          band_surface_highlight_opacity: "Band highlight opacity",
+          band_surface_shadow_opacity: "Band shadow opacity",
+          band_surface_border_width: "Band border width",
+          band_surface_border_opacity: "Band border opacity",
+          band_surface_glow: "Show band glow",
+          band_surface_glow_opacity: "Band glow opacity",
+          band_surface_glow_blur: "Band glow blur",
+
+          // Band label
           band_label_mode: "Band label mode",
           band_label_unit: "Show units in band labels",
           band_label_position: "Band label position",
@@ -3305,6 +3437,26 @@ class SimpleBandGraphCard extends HTMLElement {
           band_opacity: "Opacity for the coloured background bands, from 0 to 1.",
           band_fill_mode:
             "Choose whether band backgrounds are drawn as stepped threshold blocks or as a smooth vertical gradient between band colours.",
+
+          // Band surface
+          band_surface_style:
+            "Visual treatment applied over the band fills. Flat preserves the current simple rendering. Soft adds subtle shading. Glass adds highlight, shade, and border treatment. Glow adds a luminous dark-mode focused treatment.",
+          band_surface_highlight_opacity:
+            "Opacity of the soft highlight applied to each band surface.",
+          band_surface_shadow_opacity:
+            "Opacity of the subtle shade applied to each band surface.",
+          band_surface_border_width:
+            "Width of subtle separator or edge treatment applied to band surfaces.",
+          band_surface_border_opacity:
+            "Opacity of the subtle band edge or border treatment.",
+          band_surface_glow:
+            "Add a soft glow layer to band surfaces. Most useful for dark, premium-style cards.",
+          band_surface_glow_opacity:
+            "Opacity of the band surface glow.",
+          band_surface_glow_blur:
+            "Softness of the band surface glow.",
+
+          // Band label
           band_label_mode:
             "Choose whether band labels show the label, range, threshold, label + range, label + threshold, or are hidden.",
           band_label_unit:
@@ -3692,6 +3844,24 @@ class SimpleBandGraphCard extends HTMLElement {
       show_bands: config.show_bands ?? true,
       band_opacity: config.band_opacity ?? 0.28,
       band_fill_mode: config.band_fill_mode ?? "stepped",
+
+      // Band surface settings
+      band_surface_style:
+        config.band_surface_style ?? "flat",
+      band_surface_highlight_opacity:
+        config.band_surface_highlight_opacity ?? 0.06,
+      band_surface_shadow_opacity:
+        config.band_surface_shadow_opacity ?? 0.1,
+      band_surface_border_width:
+        config.band_surface_border_width ?? 0,
+      band_surface_border_opacity:
+        config.band_surface_border_opacity ?? 0.12,
+      band_surface_glow:
+        config.band_surface_glow ?? false,
+      band_surface_glow_opacity:
+        config.band_surface_glow_opacity ?? 0.08,
+      band_surface_glow_blur:
+        config.band_surface_glow_blur ?? 18,
 
       // Band separator settings
       show_band_separators: config.show_band_separators ?? false,
@@ -6075,6 +6245,204 @@ class SimpleBandGraphCard extends HTMLElement {
 
     const bandGradientId = `${this._instanceId}-band-gradient`;
 
+    const bandSurfaceStyle = this.config.band_surface_style || "flat";
+    const bandSurfaceEnabled = bandSurfaceStyle !== "flat";
+
+    const bandSurfaceHighlightOpacity =
+      Math.max(0, Number(this.config.band_surface_highlight_opacity) || 0);
+
+    const bandSurfaceShadowOpacity =
+      Math.max(0, Number(this.config.band_surface_shadow_opacity) || 0);
+
+    const bandSurfaceBorderWidth =
+      Math.max(0, Number(this.config.band_surface_border_width) || 0);
+
+    const bandSurfaceBorderOpacity =
+      Math.max(0, Number(this.config.band_surface_border_opacity) || 0);
+
+    const bandSurfaceGlowEnabled =
+      this.config.band_surface_glow ||
+      bandSurfaceStyle === "glow";
+
+    const bandSurfaceGlowOpacity =
+      Math.max(0, Number(this.config.band_surface_glow_opacity) || 0);
+
+    const bandSurfaceGlowBlur =
+      Math.max(0, Number(this.config.band_surface_glow_blur) || 0);
+
+    const bandSurfaceHighlightId =
+      `${this._instanceId}-band-surface-highlight`;
+
+    const bandSurfaceShadowId =
+      `${this._instanceId}-band-surface-shadow`;
+
+    const bandSurfaceGlowFilterId =
+      `${this._instanceId}-band-surface-glow`;
+
+    const buildBandSurfaceDefs = () => {
+      if (!bandSurfaceEnabled && !bandSurfaceGlowEnabled) return "";
+
+      return `
+        <defs>
+          <linearGradient
+            id="${bandSurfaceHighlightId}"
+            x1="0"
+            y1="0"
+            x2="0"
+            y2="1"
+            gradientUnits="objectBoundingBox"
+          >
+            <stop
+              offset="0%"
+              stop-color="${applyOpacityToColour("#ffffff", bandSurfaceHighlightOpacity)}"
+            ></stop>
+            <stop
+              offset="45%"
+              stop-color="${applyOpacityToColour("#ffffff", bandSurfaceHighlightOpacity * 0.25)}"
+            ></stop>
+            <stop
+              offset="100%"
+              stop-color="${applyOpacityToColour("#ffffff", 0)}"
+            ></stop>
+          </linearGradient>
+
+          <linearGradient
+            id="${bandSurfaceShadowId}"
+            x1="0"
+            y1="0"
+            x2="0"
+            y2="1"
+            gradientUnits="objectBoundingBox"
+          >
+            <stop
+              offset="0%"
+              stop-color="${applyOpacityToColour("#000000", 0)}"
+            ></stop>
+            <stop
+              offset="100%"
+              stop-color="${applyOpacityToColour("#000000", bandSurfaceShadowOpacity)}"
+            ></stop>
+          </linearGradient>
+
+          <filter
+            id="${bandSurfaceGlowFilterId}"
+            filterUnits="userSpaceOnUse"
+            x="${padding.left - 80}"
+            y="${padding.top - 80}"
+            width="${plotWidth + 160}"
+            height="${plotHeight + 160}"
+          >
+            <feGaussianBlur
+              in="SourceGraphic"
+              stdDeviation="${bandSurfaceGlowBlur}"
+            ></feGaussianBlur>
+          </filter>
+        </defs>
+      `;
+    };
+
+    const buildBandSurfaceTreatment = ({
+      x,
+      y,
+      width,
+      height,
+      colour,
+      clipId = null,
+    }) => {
+      if (!bandSurfaceEnabled && !bandSurfaceGlowEnabled) return "";
+
+      const surfaceClipAttribute = clipId
+        ? `clip-path="url(#${clipId})"`
+        : "";
+
+      const showSoftLayers =
+        bandSurfaceStyle === "soft" ||
+        bandSurfaceStyle === "glass" ||
+        bandSurfaceStyle === "glow";
+
+      const showGlassBorder =
+        bandSurfaceStyle === "glass" ||
+        bandSurfaceStyle === "glow";
+
+      return `
+        ${
+          bandSurfaceGlowEnabled && bandSurfaceGlowOpacity > 0
+            ? `
+              <rect
+                x="${x}"
+                y="${y}"
+                width="${width}"
+                height="${height}"
+                fill="${applyOpacityToColour(colour, bandSurfaceGlowOpacity)}"
+                filter="url(#${bandSurfaceGlowFilterId})"
+                ${surfaceClipAttribute}
+              ></rect>
+            `
+            : ""
+        }
+
+        ${
+          showSoftLayers && bandSurfaceHighlightOpacity > 0
+            ? `
+              <rect
+                x="${x}"
+                y="${y}"
+                width="${width}"
+                height="${height}"
+                fill="url(#${bandSurfaceHighlightId})"
+                ${surfaceClipAttribute}
+              ></rect>
+            `
+            : ""
+        }
+
+        ${
+          showSoftLayers && bandSurfaceShadowOpacity > 0
+            ? `
+              <rect
+                x="${x}"
+                y="${y}"
+                width="${width}"
+                height="${height}"
+                fill="url(#${bandSurfaceShadowId})"
+                ${surfaceClipAttribute}
+              ></rect>
+            `
+            : ""
+        }
+
+        ${
+          showGlassBorder &&
+          bandSurfaceBorderWidth > 0 &&
+          bandSurfaceBorderOpacity > 0
+            ? `
+              <line
+                x1="${x + 2}"
+                y1="${y + bandSurfaceBorderWidth / 2}"
+                x2="${x + width - 2}"
+                y2="${y + bandSurfaceBorderWidth / 2}"
+                stroke="${applyOpacityToColour("#ffffff", bandSurfaceBorderOpacity)}"
+                stroke-width="${bandSurfaceBorderWidth}"
+                stroke-linecap="round"
+                ${surfaceClipAttribute}
+              ></line>
+
+              <line
+                x1="${x + 2}"
+                y1="${y + height - bandSurfaceBorderWidth / 2}"
+                x2="${x + width - 2}"
+                y2="${y + height - bandSurfaceBorderWidth / 2}"
+                stroke="${applyOpacityToColour("#000000", bandSurfaceBorderOpacity * 0.7)}"
+                stroke-width="${bandSurfaceBorderWidth}"
+                stroke-linecap="round"
+                ${surfaceClipAttribute}
+              ></line>
+            `
+            : ""
+        }
+      `;
+    };
+
     const valueToBandGradientOffset = (value) => {
       const min = Number(this.config.y_min);
       const max = Number(this.config.y_max);
@@ -6134,6 +6502,8 @@ class SimpleBandGraphCard extends HTMLElement {
           })()
         : "";
 
+    const bandSurfaceDefs = buildBandSurfaceDefs();
+
     const bandRects =
       this.config.show_bands && validBands.length > 0
         ? this.config.band_fill_mode === "gradient"
@@ -6151,6 +6521,8 @@ class SimpleBandGraphCard extends HTMLElement {
               </linearGradient>
             </defs>
 
+            ${bandSurfaceDefs}
+
             <rect
               x="${padding.left}"
               y="${padding.top}"
@@ -6158,27 +6530,52 @@ class SimpleBandGraphCard extends HTMLElement {
               height="${plotHeight}"
               fill="url(#${bandGradientId})"
             ></rect>
+
+            ${buildBandSurfaceTreatment({
+              x: padding.left,
+              y: padding.top,
+              width: plotWidth,
+              height: plotHeight,
+              colour: "rgba(255, 255, 255, 1)",
+            })}
           `
-          : validBands
+          : `
+            ${bandSurfaceDefs}
+
+            ${validBands
               .map(
                 ({
                   band,
                   y1,
                   bandHeight,
-                }) => `
-                  <rect
-                    x="${padding.left}"
-                    y="${y1}"
-                    width="${plotWidth}"
-                    height="${bandHeight}"
-                    fill="${applyOpacityToColour(
-                      band.color || "rgba(128,128,128,0.15)",
-                      this.config.band_opacity
-                    )}"
-                  ></rect>
-                `
+                }) => {
+                  const bandColour =
+                    band.color || "rgba(128,128,128,0.15)";
+
+                  return `
+                    <rect
+                      x="${padding.left}"
+                      y="${y1}"
+                      width="${plotWidth}"
+                      height="${bandHeight}"
+                      fill="${applyOpacityToColour(
+                        bandColour,
+                        this.config.band_opacity
+                      )}"
+                    ></rect>
+
+                    ${buildBandSurfaceTreatment({
+                      x: padding.left,
+                      y: y1,
+                      width: plotWidth,
+                      height: bandHeight,
+                      colour: bandColour,
+                    })}
+                  `;
+                }
               )
-              .join("")
+              .join("")}
+          `
         : "";
 
     const bandSeparators =
