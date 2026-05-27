@@ -221,6 +221,24 @@ class SimpleBandGraphCard extends HTMLElement {
       line_width: 2.5,
       line_opacity: 0.9,
 
+      line_outline: false,
+      line_outline_color: "#ffffff",
+      line_outline_width: 1,
+      line_outline_opacity: 0.65,
+
+      line_halo: false,
+      line_halo_color: "#ffffff",
+      line_halo_width: 8,
+      line_halo_blur: 4,
+      line_halo_opacity: 0.18,
+
+      line_shadow: false,
+      line_shadow_color: "rgba(0, 0, 0, 0.45)",
+      line_shadow_blur: 6,
+      line_shadow_offset_x: 0,
+      line_shadow_offset_y: 2,
+      line_shadow_opacity: 0.35,
+
       // Area appearance settings
       show_area: false,
       area_color: "var(--primary-color)",
@@ -1447,7 +1465,8 @@ class SimpleBandGraphCard extends HTMLElement {
           ----------------------------------------------------------------------
           Line section
           ----------------------------------------------------------------------
-          History line visibility, colour mode, colour, width, and opacity.
+          History line visibility, colour mode, colour, width, opacity, and
+          premium line effects.
         */
         {
           type: "expandable",
@@ -1490,6 +1509,152 @@ class SimpleBandGraphCard extends HTMLElement {
             },
             {
               name: "line_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+
+            /*
+              Line outline
+            */
+            {
+              name: "line_outline",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "line_outline_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "line_outline_width",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 12,
+                  step: 0.5,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "line_outline_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+
+            /*
+              Line halo
+            */
+            {
+              name: "line_halo",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "line_halo_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "line_halo_width",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 32,
+                  step: 0.5,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "line_halo_blur",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 24,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "line_halo_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+            /*
+              Line shadow
+            */
+            {
+              name: "line_shadow",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "line_shadow_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "line_shadow_blur",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 32,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "line_shadow_offset_x",
+              selector: {
+                number: {
+                  min: -24,
+                  max: 24,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "line_shadow_offset_y",
+              selector: {
+                number: {
+                  min: -24,
+                  max: 24,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "line_shadow_opacity",
               selector: {
                 number: {
                   min: 0,
@@ -2237,6 +2402,24 @@ class SimpleBandGraphCard extends HTMLElement {
           line_width: "Line width",
           line_opacity: "Line opacity",
 
+          line_outline: "Show line outline",
+          line_outline_color: "Line outline colour",
+          line_outline_width: "Line outline width",
+          line_outline_opacity: "Line outline opacity",
+
+          line_halo: "Show line halo",
+          line_halo_color: "Line halo colour",
+          line_halo_width: "Line halo width",
+          line_halo_blur: "Line halo blur",
+          line_halo_opacity: "Line halo opacity",
+
+          line_shadow: "Show line shadow",
+          line_shadow_color: "Line shadow colour",
+          line_shadow_blur: "Line shadow blur",
+          line_shadow_offset_x: "Line shadow horizontal offset",
+          line_shadow_offset_y: "Line shadow vertical offset",
+          line_shadow_opacity: "Line shadow opacity",
+
           // Area
           show_area: "Show area",
           area_color_mode: "Area colour mode",
@@ -2522,6 +2705,40 @@ class SimpleBandGraphCard extends HTMLElement {
             "CSS colour for the line, such as var(--primary-color), #03a9f4, or rgb(3, 169, 244).",
           line_width: "Thickness of the plotted line.",
           line_opacity: "Opacity of the plotted line, from 0 to 1.",
+
+          line_outline:
+            "Draw a crisp outline underneath the plotted line to improve contrast against bands or busy backgrounds.",
+          line_outline_color:
+            "CSS colour for the line outline, such as rgba(0,0,0,0.45), #ffffff, or var(--card-background-color).",
+          line_outline_width:
+            "Extra width added around the plotted line for the outline effect.",
+          line_outline_opacity:
+            "Opacity of the line outline, from 0 to 1.",
+
+          line_halo:
+            "Draw a soft wider halo underneath the plotted line for a premium glow or contrast effect.",
+          line_halo_color:
+            "CSS colour for the line halo, such as #ffffff, rgba(255,255,255,0.5), or var(--primary-color).",
+          line_halo_width:
+            "Extra width added around the plotted line for the halo effect.",
+          line_halo_blur:
+            "Softness of the line halo. Higher values create a blurrier, more glow-like edge.",
+          line_halo_opacity:
+            "Opacity of the line halo, from 0 to 1.",
+
+          line_shadow:
+            "Draw a soft offset shadow underneath the plotted line to add depth.",
+          line_shadow_color:
+            "CSS colour for the line shadow, such as rgba(0,0,0,0.45).",
+          line_shadow_blur:
+            "Softness of the line shadow.",
+          line_shadow_offset_x:
+            "Horizontal offset of the line shadow.",
+          line_shadow_offset_y:
+            "Vertical offset of the line shadow.",
+          line_shadow_opacity:
+            "Opacity of the line shadow, from 0 to 1.",
+
 
           // Area
           show_area:
@@ -2922,6 +3139,24 @@ class SimpleBandGraphCard extends HTMLElement {
       line_color_mode: config.line_color_mode ?? "static",
       line_width: config.line_width ?? 3,
       line_opacity: config.line_opacity ?? 1,
+
+      line_outline: config.line_outline ?? false,
+      line_outline_color: config.line_outline_color ?? "rgba(0, 0, 0, 0.45)",
+      line_outline_width: config.line_outline_width ?? 1.5,
+      line_outline_opacity: config.line_outline_opacity ?? 0.35,
+
+      line_halo: config.line_halo ?? false,
+      line_halo_color: config.line_halo_color ?? "#ffffff",
+      line_halo_width: config.line_halo_width ?? 8,
+      line_halo_blur: config.line_halo_blur ?? 4,
+      line_halo_opacity: config.line_halo_opacity ?? 0.18,
+
+      line_shadow: config.line_shadow ?? false,
+      line_shadow_color: config.line_shadow_color ?? "rgba(0, 0, 0, 0.45)",
+      line_shadow_blur: config.line_shadow_blur ?? 6,
+      line_shadow_offset_x: config.line_shadow_offset_x ?? 0,
+      line_shadow_offset_y: config.line_shadow_offset_y ?? 2,
+      line_shadow_opacity: config.line_shadow_opacity ?? 0.35,
 
       // Area appearance settings
       show_area: config.show_area ?? false,
@@ -5475,6 +5710,10 @@ class SimpleBandGraphCard extends HTMLElement {
 
       Gradient mode draws one continuous polyline with a vertical SVG gradient
       based on the configured band colours.
+
+      Premium line effects are drawn underneath the main line as simple full-path
+      layers. This keeps the existing static/band/gradient line logic intact
+      while adding contrast, glow, and depth.
     */
     const buildLineGradientStops = () => {
       if (!validBands.length) return "";
@@ -5523,6 +5762,133 @@ class SimpleBandGraphCard extends HTMLElement {
     };
 
     const lineGradientId = `${this._instanceId}-line-gradient`;
+    const lineShadowFilterId = `${this._instanceId}-line-shadow-blur`;
+    const lineHaloFilterId = `${this._instanceId}-line-halo-blur`;
+
+    const numericLineWidth = Math.max(0, Number(this.config.line_width) || 3);
+
+    const buildLineEffectsHtml = () => {
+      if (!points || plotData.length < 2) return "";
+
+      const effects = [];
+
+      const shadowEnabled =
+        this.config.line_shadow &&
+        Number(this.config.line_shadow_opacity) > 0 &&
+        Number(this.config.line_shadow_blur) >= 0;
+
+      const haloEnabled =
+        this.config.line_halo &&
+        Number(this.config.line_halo_width) > 0 &&
+        Number(this.config.line_halo_opacity) > 0;
+
+      const outlineEnabled =
+        this.config.line_outline &&
+        Number(this.config.line_outline_width) > 0 &&
+        Number(this.config.line_outline_opacity) > 0;
+
+      if (shadowEnabled) {
+        const shadowBlur = Math.max(0, Number(this.config.line_shadow_blur) || 0);
+        const shadowOffsetX = Number(this.config.line_shadow_offset_x) || 0;
+        const shadowOffsetY = Number(this.config.line_shadow_offset_y) || 0;
+        const shadowColour = applyOpacityToColour(
+          this.config.line_shadow_color || "rgba(0, 0, 0, 0.45)",
+          Number(this.config.line_shadow_opacity) || 0
+        );
+
+        effects.push(`
+          <defs>
+            <filter
+              id="${lineShadowFilterId}"
+              filterUnits="userSpaceOnUse"
+              x="${padding.left - 120}"
+              y="${padding.top - 120}"
+              width="${plotWidth + 240}"
+              height="${plotHeight + 240}"
+            >
+              <feGaussianBlur
+                in="SourceGraphic"
+                stdDeviation="${shadowBlur}"
+              ></feGaussianBlur>
+            </filter>
+          </defs>
+
+          <polyline
+            points="${points}"
+            fill="none"
+            stroke="${shadowColour}"
+            stroke-width="${numericLineWidth}"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            transform="translate(${shadowOffsetX}, ${shadowOffsetY})"
+            filter="url(#${lineShadowFilterId})"
+          ></polyline>
+        `);
+      }
+
+      if (haloEnabled) {
+        const haloExtraWidth = Math.max(0, Number(this.config.line_halo_width) || 0);
+        const haloBlur = Math.max(0, Number(this.config.line_halo_blur) || 0);
+        const haloStrokeWidth = numericLineWidth + haloExtraWidth * 2;
+        const haloColour = applyOpacityToColour(
+          this.config.line_halo_color || "#ffffff",
+          Number(this.config.line_halo_opacity) || 0
+        );
+
+        effects.push(`
+          <defs>
+            <filter
+              id="${lineHaloFilterId}"
+              filterUnits="userSpaceOnUse"
+              x="${padding.left - 120}"
+              y="${padding.top - 120}"
+              width="${plotWidth + 240}"
+              height="${plotHeight + 240}"
+            >
+              <feGaussianBlur
+                in="SourceGraphic"
+                stdDeviation="${haloBlur}"
+              ></feGaussianBlur>
+            </filter>
+          </defs>
+
+          <polyline
+            points="${points}"
+            fill="none"
+            stroke="${haloColour}"
+            stroke-width="${haloStrokeWidth}"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            filter="${haloBlur > 0 ? `url(#${lineHaloFilterId})` : "none"}"
+          ></polyline>
+        `);
+      }
+
+      if (outlineEnabled) {
+        const outlineExtraWidth = Math.max(
+          0,
+          Number(this.config.line_outline_width) || 0
+        );
+        const outlineStrokeWidth = numericLineWidth + outlineExtraWidth * 2;
+        const outlineColour = applyOpacityToColour(
+          this.config.line_outline_color || "#ffffff",
+          Number(this.config.line_outline_opacity) || 0
+        );
+
+        effects.push(`
+          <polyline
+            points="${points}"
+            fill="none"
+            stroke="${outlineColour}"
+            stroke-width="${outlineStrokeWidth}"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></polyline>
+        `);
+      }
+
+      return effects.join("");
+    };
 
     const buildGradientLineHtml = () => {
       if (!points || plotData.length < 2 || !validBands.length) {
@@ -5683,24 +6049,35 @@ class SimpleBandGraphCard extends HTMLElement {
         this._lastLinePathCount = 0;
         this._lastLineSplitSegmentCount = 0;
         lineHtml = "";
-      } else if (this.config.line_color_mode === "band") {
-        lineHtml = buildGroupedBandLineHtml();
-      } else if (this.config.line_color_mode === "gradient") {
-        lineHtml = buildGradientLineHtml();
       } else {
-        this._lastLinePathCount = 1;
-        this._lastLineSplitSegmentCount = this._lastLineSegmentCount;
+        const lineEffectsHtml = buildLineEffectsHtml();
+
+        let mainLineHtml = "";
+
+        if (this.config.line_color_mode === "band") {
+          mainLineHtml = buildGroupedBandLineHtml();
+        } else if (this.config.line_color_mode === "gradient") {
+          mainLineHtml = buildGradientLineHtml();
+        } else {
+          this._lastLinePathCount = 1;
+          this._lastLineSplitSegmentCount = this._lastLineSegmentCount;
+
+          mainLineHtml = `
+            <polyline
+              points="${points}"
+              fill="none"
+              stroke="${cssValue(this.config.line_color, "var(--primary-color)")}"
+              stroke-width="${cssValue(this.config.line_width, 3)}"
+              opacity="${cssValue(this.config.line_opacity, 1)}"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ></polyline>
+          `;
+        }
 
         lineHtml = `
-          <polyline
-            points="${points}"
-            fill="none"
-            stroke="${cssValue(this.config.line_color, "var(--primary-color)")}"
-            stroke-width="${cssValue(this.config.line_width, 3)}"
-            opacity="${cssValue(this.config.line_opacity, 1)}"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          ></polyline>
+          ${lineEffectsHtml}
+          ${mainLineHtml}
         `;
       }
     } else {
