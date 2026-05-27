@@ -111,37 +111,64 @@ class SimpleBandGraphCard extends HTMLElement {
       statistics_period: "hour",
       hybrid_raw_hours: 240,
 
-      // Axis settings
-      show_x_axis: false,
-      show_x_axis_labels: true,
+      // X-axis display settings
+      show_x_axis: true,
       x_axis_position: "bottom",
-      x_axis_label_position: "bottom",
-      x_axis_label_mode: "relative",
+      x_axis_gap: 0,
       x_axis_ticks: 3,
-
-      show_y_axis: false,
-      show_y_axis_labels: true,
-      y_axis_position: "left",
-      y_axis_ticks: 2,
 
       // X-axis line settings
       x_axis_line_color: "var(--divider-color)",
       x_axis_line_width: 1,
       x_axis_line_opacity: 1,
+      x_axis_soft_start: false,
+      x_axis_soft_end: false,
+      x_axis_soft_size: 24,
 
-      // Y-axis line settings
-      y_axis_line_color: "var(--divider-color)",
-      y_axis_line_width: 1,
-      y_axis_line_opacity: 1,
+      // X-axis tick settings
+      x_axis_tick_position: "crossing",
+      x_axis_tick_shape: "stick",
+      x_axis_tick_length: 6,
+      x_axis_tick_width: 1,
+      x_axis_tick_color: "var(--divider-color)",
+      x_axis_tick_color_mode: "axis",
+      x_axis_tick_opacity: 1,
 
       // X-axis label settings
+      show_x_axis_labels: true,
+      x_axis_label_position: "bottom",
+      x_axis_label_mode: "relative",
       x_axis_label_size: 11,
       x_axis_label_weight: 400,
       x_axis_label_color: "var(--secondary-text-color)",
       x_axis_label_color_mode: "static",
       x_axis_label_opacity: 0.8,
 
+      // Y-axis display settings
+      show_y_axis: true,
+      y_axis_position: "left",
+      y_axis_gap: 0,
+      y_axis_ticks: 2,
+
+      // Y-axis line settings
+      y_axis_line_color: "var(--divider-color)",
+      y_axis_line_width: 1,
+      y_axis_line_opacity: 1,
+      y_axis_soft_start: false,
+      y_axis_soft_end: false,
+      y_axis_soft_size: 24,
+
+      // Y-axis tick settings
+      y_axis_tick_position: "crossing",
+      y_axis_tick_shape: "stick",
+      y_axis_tick_length: 6,
+      y_axis_tick_width: 1,
+      y_axis_tick_color: "var(--divider-color)",
+      y_axis_tick_color_mode: "axis",
+      y_axis_tick_opacity: 1,
+
       // Y-axis label settings
+      show_y_axis_labels: true,
       y_axis_label_size: 11,
       y_axis_label_weight: 400,
       y_axis_label_color: "var(--secondary-text-color)",
@@ -672,8 +699,7 @@ class SimpleBandGraphCard extends HTMLElement {
           ----------------------------------------------------------------------
           X-axis section
           ----------------------------------------------------------------------
-          X-axis visibility, line position, label position, tick count, and
-          styling.
+          X-axis visibility, position, line styling, soft ends, ticks, and labels.
         */
         {
           type: "expandable",
@@ -683,7 +709,7 @@ class SimpleBandGraphCard extends HTMLElement {
           flatten: true,
           schema: [
             /*
-              Visibility
+              Display
             */
             {
               name: "show_x_axis",
@@ -691,16 +717,6 @@ class SimpleBandGraphCard extends HTMLElement {
                 boolean: {},
               },
             },
-            {
-              name: "show_x_axis_labels",
-              selector: {
-                boolean: {},
-              },
-            },
-
-            /*
-              Position and ticks
-            */
             {
               name: "x_axis_position",
               selector: {
@@ -715,36 +731,11 @@ class SimpleBandGraphCard extends HTMLElement {
               },
             },
             {
-              name: "x_axis_label_position",
-              selector: {
-                select: {
-                  mode: "dropdown",
-                  options: [
-                    { value: "bottom", label: "Bottom" },
-                    { value: "middle", label: "Middle" },
-                    { value: "top", label: "Top" },
-                  ],
-                },
-              },
-            },
-            {
-              name: "x_axis_label_mode",
-              selector: {
-                select: {
-                  mode: "dropdown",
-                  options: [
-                    { value: "relative", label: "Relative time" },
-                    { value: "time", label: "Clock time" },
-                  ],
-                },
-              },
-            },
-            {
-              name: "x_axis_ticks",
+              name: "x_axis_gap",
               selector: {
                 number: {
-                  min: 2,
-                  max: 12,
+                  min: 0,
+                  max: 48,
                   step: 1,
                   mode: "slider",
                 },
@@ -784,8 +775,158 @@ class SimpleBandGraphCard extends HTMLElement {
             },
 
             /*
-              Label style
+              Soft ends
             */
+            {
+              name: "x_axis_soft_start",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "x_axis_soft_end",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "x_axis_soft_size",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 80,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+
+            /*
+              Ticks
+            */
+            {
+              name: "x_axis_ticks",
+              selector: {
+                number: {
+                  min: 2,
+                  max: 12,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "x_axis_tick_position",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "above", label: "Above line" },
+                    { value: "below", label: "Below line" },
+                    { value: "crossing", label: "Crossing line" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "x_axis_tick_shape",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "stick", label: "Stick" },
+                    { value: "spike", label: "Spike" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "x_axis_tick_length",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 32,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "x_axis_tick_width",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 8,
+                  step: 0.5,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "x_axis_tick_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "x_axis_tick_color_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "axis", label: "Use axis line colour" },
+                    { value: "static", label: "Static colour" },
+                    { value: "none", label: "No tick colour / transparent" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "x_axis_tick_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+
+            /*
+              Labels
+            */
+            {
+              name: "show_x_axis_labels",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "x_axis_label_position",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "bottom", label: "Bottom" },
+                    { value: "middle", label: "Middle" },
+                    { value: "top", label: "Top" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "x_axis_label_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "relative", label: "Relative time" },
+                    { value: "time", label: "Clock time" },
+                  ],
+                },
+              },
+            },
             {
               name: "x_axis_label_size",
               selector: {
@@ -834,11 +975,12 @@ class SimpleBandGraphCard extends HTMLElement {
             },
           ],
         },
+
         /*
           ----------------------------------------------------------------------
           Y-axis section
           ----------------------------------------------------------------------
-          Y-axis visibility, position, tick count, and styling.
+          Y-axis visibility, position, line styling, soft ends, ticks, and labels.
         */
         {
           type: "expandable",
@@ -848,7 +990,7 @@ class SimpleBandGraphCard extends HTMLElement {
           flatten: true,
           schema: [
             /*
-              Visibility
+              Display
             */
             {
               name: "show_y_axis",
@@ -856,16 +998,6 @@ class SimpleBandGraphCard extends HTMLElement {
                 boolean: {},
               },
             },
-            {
-              name: "show_y_axis_labels",
-              selector: {
-                boolean: {},
-              },
-            },
-
-            /*
-              Position and ticks
-            */
             {
               name: "y_axis_position",
               selector: {
@@ -879,11 +1011,11 @@ class SimpleBandGraphCard extends HTMLElement {
               },
             },
             {
-              name: "y_axis_ticks",
+              name: "y_axis_gap",
               selector: {
                 number: {
-                  min: 2,
-                  max: 12,
+                  min: 0,
+                  max: 48,
                   step: 1,
                   mode: "slider",
                 },
@@ -923,8 +1055,133 @@ class SimpleBandGraphCard extends HTMLElement {
             },
 
             /*
-              Label style
+              Soft ends
             */
+            {
+              name: "y_axis_soft_start",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "y_axis_soft_end",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "y_axis_soft_size",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 80,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+
+            /*
+              Ticks
+            */
+            {
+              name: "y_axis_ticks",
+              selector: {
+                number: {
+                  min: 2,
+                  max: 12,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "y_axis_tick_position",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "left", label: "Left of line" },
+                    { value: "right", label: "Right of line" },
+                    { value: "crossing", label: "Crossing line" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "y_axis_tick_shape",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "stick", label: "Stick" },
+                    { value: "spike", label: "Spike" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "y_axis_tick_length",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 32,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "y_axis_tick_width",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 8,
+                  step: 0.5,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "y_axis_tick_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "y_axis_tick_color_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "axis", label: "Use axis line colour" },
+                    { value: "static", label: "Static colour" },
+                    { value: "none", label: "No tick colour / transparent" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "y_axis_tick_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+
+            /*
+              Labels
+            */
+            {
+              name: "show_y_axis_labels",
+              selector: {
+                boolean: {},
+              },
+            },
             {
               name: "y_axis_label_size",
               selector: {
@@ -3004,35 +3261,69 @@ class SimpleBandGraphCard extends HTMLElement {
           statistics_period: "Statistics period",
           hybrid_raw_hours: "Hybrid raw hours",
 
-          // X-axis
+          // X-axis display
           show_x_axis: "Show X-axis line",
-          show_x_axis_labels: "Show X-axis labels",
           x_axis_position: "X-axis line position",
+          x_axis_gap: "X-axis gap",
+          x_axis_ticks: "X-axis ticks",
+
+          // X-axis line
+          x_axis_line_color: "X-axis line colour",
+          x_axis_line_width: "X-axis line width",
+          x_axis_line_opacity: "X-axis line opacity",
+          x_axis_soft_start: "Soften X-axis start",
+          x_axis_soft_end: "Soften X-axis end",
+          x_axis_soft_size: "X-axis soft end size",
+
+          // X-axis ticks
+          x_axis_tick_position: "X-axis tick position",
+          x_axis_tick_shape: "X-axis tick shape",
+          x_axis_tick_length: "X-axis tick length",
+          x_axis_tick_width: "X-axis tick width",
+          x_axis_tick_color: "X-axis tick colour",
+          x_axis_tick_color_mode: "X-axis tick colour mode",
+          x_axis_tick_opacity: "X-axis tick opacity",
+
+          // X-axis labels
+          show_x_axis_labels: "Show X-axis labels",
           x_axis_label_position: "X-axis label position",
           x_axis_label_mode: "X-axis label mode",
-          x_axis_ticks: "X-axis ticks",
           x_axis_label_size: "X-axis label size",
           x_axis_label_weight: "X-axis label weight",
           x_axis_label_color: "X-axis label colour",
           x_axis_label_color_mode: "X-axis label colour mode",
           x_axis_label_opacity: "X-axis label opacity",
-          x_axis_line_color: "X-axis line colour",
-          x_axis_line_width: "X-axis line width",
-          x_axis_line_opacity: "X-axis line opacity",
 
-          // X-axis
+          // Y-axis display
           show_y_axis: "Show Y-axis line",
-          show_y_axis_labels: "Show Y-axis labels",
-          y_axis_position: "Y-axis position",
+          y_axis_position: "Y-axis line position",
+          y_axis_gap: "Y-axis gap",
           y_axis_ticks: "Y-axis ticks",
+
+          // Y-axis line
+          y_axis_line_color: "Y-axis line colour",
+          y_axis_line_width: "Y-axis line width",
+          y_axis_line_opacity: "Y-axis line opacity",
+          y_axis_soft_start: "Soften Y-axis start",
+          y_axis_soft_end: "Soften Y-axis end",
+          y_axis_soft_size: "Y-axis soft end size",
+
+          // Y-axis ticks
+          y_axis_tick_position: "Y-axis tick position",
+          y_axis_tick_shape: "Y-axis tick shape",
+          y_axis_tick_length: "Y-axis tick length",
+          y_axis_tick_width: "Y-axis tick width",
+          y_axis_tick_color: "Y-axis tick colour",
+          y_axis_tick_color_mode: "Y-axis tick colour mode",
+          y_axis_tick_opacity: "Y-axis tick opacity",
+
+          // Y-axis labels
+          show_y_axis_labels: "Show Y-axis labels",
           y_axis_label_size: "Y-axis label size",
           y_axis_label_weight: "Y-axis label weight",
           y_axis_label_color: "Y-axis label colour",
           y_axis_label_color_mode: "Y-axis label colour mode",
           y_axis_label_opacity: "Y-axis label opacity",
-          y_axis_line_color: "Y-axis line colour",
-          y_axis_line_width: "Y-axis line width",
-          y_axis_line_opacity: "Y-axis line opacity",
 
           // Grid
           show_x_grid: "Show vertical grid lines",
@@ -3325,48 +3616,117 @@ class SimpleBandGraphCard extends HTMLElement {
           value_decimals:
             "Number of decimal places used for displayed values and labels. Auto uses fewer decimals for larger numbers.",
 
-          // X-axis
+          // X-axis display
           show_x_axis:
             "Show or hide the horizontal X-axis line. This does not control X-axis labels.",
-          show_x_axis_labels: "Show or hide the time labels on the X-axis.",
           x_axis_position:
             "Place the X-axis line at the bottom, top, or zero point of the graph.",
+          x_axis_gap:
+            "Distance between the X-axis line and the plot area when the axis is placed at the top or bottom. Ignored when the axis is positioned at zero.",
+          x_axis_ticks:
+            "Number of labelled positions on the X-axis. Vertical grid lines use these same positions.",
+
+          // X-axis line
+          x_axis_line_color:
+            "CSS colour for the X-axis line, such as var(--divider-color), #111111, or rgba(0,0,0,0.5).",
+          x_axis_line_width:
+            "Thickness of the X-axis line.",
+          x_axis_line_opacity:
+            "Opacity of the X-axis line, from 0 to 1.",
+          x_axis_soft_start:
+            "Fade the start of the X-axis line. For the X-axis, the start is the left end.",
+          x_axis_soft_end:
+            "Fade the end of the X-axis line. For the X-axis, the end is the right end.",
+          x_axis_soft_size:
+            "Distance over which the X-axis line fades at softened ends.",
+
+          // X-axis ticks
+          x_axis_tick_position:
+            "Position X-axis tick marks above the line, below the line, or crossing through it.",
+          x_axis_tick_shape:
+            "Shape of X-axis tick marks. Stick uses straight ticks. Spike uses tapered ticks.",
+          x_axis_tick_length:
+            "Length of X-axis tick marks.",
+          x_axis_tick_width:
+            "Thickness of X-axis tick marks.",
+          x_axis_tick_color:
+            "CSS colour for X-axis ticks. Used when the tick colour mode is static.",
+          x_axis_tick_color_mode:
+            "Axis uses the X-axis line colour. Static uses the chosen tick colour. No colour hides the ticks.",
+          x_axis_tick_opacity:
+            "Opacity of X-axis tick marks, from 0 to 1.",
+
+          // X-axis labels
+          show_x_axis_labels:
+            "Show or hide the time labels on the X-axis.",
           x_axis_label_position:
             "Place the X-axis labels at the bottom, middle, or top of the graph independently of the X-axis line.",
           x_axis_label_mode:
             "Relative shows labels such as 24h ago. Clock time shows labels such as 14:30.",
-          x_axis_ticks:
-            "Number of labelled positions on the X-axis. Vertical grid lines use these same positions.",
-          x_axis_label_size: "Text size for X-axis labels.",
-          x_axis_label_weight: "Font weight for X-axis labels.",
+          x_axis_label_size:
+            "Text size for X-axis labels.",
+          x_axis_label_weight:
+            "Font weight for X-axis labels.",
           x_axis_label_color:
             "CSS colour for X-axis labels, such as var(--secondary-text-color), #666666, or rgba(0,0,0,0.6).",
           x_axis_label_color_mode:
             "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the labels transparent.",
-          x_axis_label_opacity: "Opacity of X-axis label text, from 0 to 1.",
-          x_axis_line_color:
-            "CSS colour for the X-axis line, such as var(--divider-color), #111111, or rgba(0,0,0,0.5).",
-          x_axis_line_width: "Thickness of the X-axis line.",
-          x_axis_line_opacity: "Opacity of the X-axis line, from 0 to 1.",
+          x_axis_label_opacity:
+            "Opacity of X-axis label text, from 0 to 1.",
 
-          // Y-axis
+          // Y-axis display
           show_y_axis:
             "Show or hide the vertical Y-axis line. This does not control Y-axis labels.",
-          show_y_axis_labels: "Show or hide the value labels on the Y-axis.",
-          y_axis_position: "Place the Y-axis on the left or right of the graph.",
+          y_axis_position:
+            "Place the Y-axis line on the left or right of the graph.",
+          y_axis_gap:
+            "Distance between the Y-axis line and the plot area when the axis is placed on the left or right. Ignored when the axis is positioned at zero.",
           y_axis_ticks:
             "Number of labelled positions on the Y-axis. Horizontal grid lines use these same positions.",
-          y_axis_label_size: "Text size for Y-axis labels.",
-          y_axis_label_weight: "Font weight for Y-axis labels.",
+
+          // Y-axis line
+          y_axis_line_color:
+            "CSS colour for the Y-axis line, such as var(--divider-color), #111111, or rgba(0,0,0,0.5).",
+          y_axis_line_width:
+            "Thickness of the Y-axis line.",
+          y_axis_line_opacity:
+            "Opacity of the Y-axis line, from 0 to 1.",
+          y_axis_soft_start:
+            "Fade the start of the Y-axis line. For the Y-axis, the start is the top end.",
+          y_axis_soft_end:
+            "Fade the end of the Y-axis line. For the Y-axis, the end is the bottom end.",
+          y_axis_soft_size:
+            "Distance over which the Y-axis line fades at softened ends.",
+
+          // Y-axis ticks
+          y_axis_tick_position:
+            "Position Y-axis tick marks to the left of the line, to the right of the line, or crossing through it.",
+          y_axis_tick_shape:
+            "Shape of Y-axis tick marks. Stick uses straight ticks. Spike uses tapered ticks.",
+          y_axis_tick_length:
+            "Length of Y-axis tick marks.",
+          y_axis_tick_width:
+            "Thickness of Y-axis tick marks.",
+          y_axis_tick_color:
+            "CSS colour for Y-axis ticks. Used when the tick colour mode is static.",
+          y_axis_tick_color_mode:
+            "Axis uses the Y-axis line colour. Static uses the chosen tick colour. No colour hides the ticks.",
+          y_axis_tick_opacity:
+            "Opacity of Y-axis tick marks, from 0 to 1.",
+
+          // Y-axis labels
+          show_y_axis_labels:
+            "Show or hide the value labels on the Y-axis.",
+          y_axis_label_size:
+            "Text size for Y-axis labels.",
+          y_axis_label_weight:
+            "Font weight for Y-axis labels.",
           y_axis_label_color:
             "CSS colour for Y-axis labels, such as var(--secondary-text-color), #666666, or rgba(0,0,0,0.6).",
           y_axis_label_color_mode:
             "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the labels transparent.",
-          y_axis_label_opacity: "Opacity of Y-axis label text, from 0 to 1.",
-          y_axis_line_color:
-            "CSS colour for the Y-axis line, such as var(--divider-color), #111111, or rgba(0,0,0,0.5).",
-          y_axis_line_width: "Thickness of the Y-axis line.",
-          y_axis_line_opacity: "Opacity of the Y-axis line, from 0 to 1.",
+          y_axis_label_opacity:
+            "Opacity of Y-axis label text, from 0 to 1.",
 
           // Grid
           show_x_grid:
@@ -4257,43 +4617,70 @@ class SimpleBandGraphCard extends HTMLElement {
       marker_label_shadow_opacity:
         config.marker_label_shadow_opacity ?? 0.35,
 
-      // Axis settings
-      show_x_axis: config.show_x_axis ?? true,
-      show_x_axis_labels: config.show_x_axis_labels ?? true,
-      x_axis_position: config.x_axis_position ?? "bottom",
-      x_axis_label_position:
-        config.x_axis_label_position ?? config.x_axis_position ?? "bottom",
-      x_axis_label_mode: config.x_axis_label_mode ?? "relative",
-      x_axis_ticks: config.x_axis_ticks ?? 3,
-
-      show_y_axis: config.show_y_axis ?? true,
-      show_y_axis_labels: config.show_y_axis_labels ?? true,
-      y_axis_position: config.y_axis_position ?? "left",
-      y_axis_ticks: config.y_axis_ticks ?? 2,
+      // X-axis display settings
+      show_x_axis:
+        config.show_x_axis ?? true,
+      x_axis_position:
+        config.x_axis_position ?? "bottom",
+      x_axis_gap:
+        config.x_axis_gap ?? 0,
+      x_axis_ticks:
+        config.x_axis_ticks ?? 3,
 
       // X-axis line settings
-      x_axis_line_color: config.x_axis_line_color ?? "var(--divider-color)",
-      x_axis_line_width: config.x_axis_line_width ?? 1,
-      x_axis_line_opacity: config.x_axis_line_opacity ?? 1,
+      x_axis_line_color:
+        config.x_axis_line_color ?? "var(--divider-color)",
+      x_axis_line_width:
+        config.x_axis_line_width ?? 1,
+      x_axis_line_opacity:
+        config.x_axis_line_opacity ?? 1,
+      x_axis_soft_start:
+        config.x_axis_soft_start ?? false,
+      x_axis_soft_end:
+        config.x_axis_soft_end ?? false,
+      x_axis_soft_size:
+        config.x_axis_soft_size ?? 24,
 
-      // Y-axis line settings
-      y_axis_line_color: config.y_axis_line_color ?? "var(--divider-color)",
-      y_axis_line_width: config.y_axis_line_width ?? 1,
-      y_axis_line_opacity: config.y_axis_line_opacity ?? 1,
+      // X-axis tick settings
+      x_axis_tick_position:
+        config.x_axis_tick_position ?? "crossing",
+      x_axis_tick_shape:
+        config.x_axis_tick_shape ?? "stick",
+      x_axis_tick_length:
+        config.x_axis_tick_length ?? 6,
+      x_axis_tick_width:
+        config.x_axis_tick_width ?? 1,
+      x_axis_tick_color:
+        config.x_axis_tick_color ?? "var(--divider-color)",
+      x_axis_tick_color_mode:
+        config.x_axis_tick_color_mode ?? "axis",
+      x_axis_tick_opacity:
+        config.x_axis_tick_opacity ?? 1,
 
       // Shared axis label settings
       // Kept for backwards compatibility. New configs should prefer the separate
       // x_axis_label_* and y_axis_label_* options below.
-      axis_label_size: config.axis_label_size ?? 11,
-      axis_label_weight: config.axis_label_weight ?? 400,
-      axis_label_color: config.axis_label_color ?? "var(--secondary-text-color)",
-      axis_label_color_mode: config.axis_label_color_mode ?? "static",
-      axis_label_opacity: config.axis_label_opacity ?? 0.8,
+      axis_label_size:
+        config.axis_label_size ?? 11,
+      axis_label_weight:
+        config.axis_label_weight ?? 400,
+      axis_label_color:
+        config.axis_label_color ?? "var(--secondary-text-color)",
+      axis_label_color_mode:
+        config.axis_label_color_mode ?? "static",
+      axis_label_opacity:
+        config.axis_label_opacity ?? 0.8,
 
       // X-axis label settings
       // x_axis_label_position is deliberately separate from x_axis_position so
       // the axis line can sit at zero while labels remain at the top, middle, or
       // bottom of the plot.
+      show_x_axis_labels:
+        config.show_x_axis_labels ?? true,
+      x_axis_label_position:
+        config.x_axis_label_position ?? config.x_axis_position ?? "bottom",
+      x_axis_label_mode:
+        config.x_axis_label_mode ?? "relative",
       x_axis_label_size:
         config.x_axis_label_size ?? config.axis_label_size ?? 11,
       x_axis_label_weight:
@@ -4309,7 +4696,49 @@ class SimpleBandGraphCard extends HTMLElement {
       x_axis_label_opacity:
         config.x_axis_label_opacity ?? config.axis_label_opacity ?? 0.8,
 
+      // Y-axis display settings
+      show_y_axis:
+        config.show_y_axis ?? true,
+      y_axis_position:
+        config.y_axis_position ?? "left",
+      y_axis_gap:
+        config.y_axis_gap ?? 0,
+      y_axis_ticks:
+        config.y_axis_ticks ?? 2,
+
+      // Y-axis line settings
+      y_axis_line_color:
+        config.y_axis_line_color ?? "var(--divider-color)",
+      y_axis_line_width:
+        config.y_axis_line_width ?? 1,
+      y_axis_line_opacity:
+        config.y_axis_line_opacity ?? 1,
+      y_axis_soft_start:
+        config.y_axis_soft_start ?? false,
+      y_axis_soft_end:
+        config.y_axis_soft_end ?? false,
+      y_axis_soft_size:
+        config.y_axis_soft_size ?? 24,
+
+      // Y-axis tick settings
+      y_axis_tick_position:
+        config.y_axis_tick_position ?? "crossing",
+      y_axis_tick_shape:
+        config.y_axis_tick_shape ?? "stick",
+      y_axis_tick_length:
+        config.y_axis_tick_length ?? 6,
+      y_axis_tick_width:
+        config.y_axis_tick_width ?? 1,
+      y_axis_tick_color:
+        config.y_axis_tick_color ?? "var(--divider-color)",
+      y_axis_tick_color_mode:
+        config.y_axis_tick_color_mode ?? "axis",
+      y_axis_tick_opacity:
+        config.y_axis_tick_opacity ?? 1,
+
       // Y-axis label settings
+      show_y_axis_labels:
+        config.show_y_axis_labels ?? true,
       y_axis_label_size:
         config.y_axis_label_size ?? config.axis_label_size ?? 11,
       y_axis_label_weight:
@@ -6111,41 +6540,307 @@ class SimpleBandGraphCard extends HTMLElement {
       --------------------------------------------------------------------------
       Y-axis SVG
       --------------------------------------------------------------------------
-      Renders the vertical axis line and its value labels.
+      Renders the vertical axis line, optional soft extensions, tick marks, and
+      value labels.
 
-      Y-axis labels use the dedicated y_axis_label_* settings, which are resolved
-      from either modern y_axis_label_* YAML or legacy shared axis_label_* YAML in
-      setConfig.
-
-      When both axes are visible, the axis lines overlap very slightly at the
-      plot corner so thicker lines form a clean joined edge.
+      Soft start/end are rendered as faded extensions beyond the first and last
+      tick positions. The main axis span between ticks remains solid so ticks feel
+      anchored rather than sitting on a faded line.
     */
+    const yAxisGap =
+      Math.max(0, Number(this.config.y_axis_gap) || 0);
+
     const yAxisX =
-      yAxisPosition === "right" ? padding.left + plotWidth : padding.left;
+      yAxisPosition === "right"
+        ? padding.left + plotWidth + yAxisGap
+        : padding.left - yAxisGap;
 
     const xAxisLineWidth = Number(this.config.x_axis_line_width) || 1;
     const yAxisCornerOverlap = this.config.show_x_axis ? xAxisLineWidth / 2 : 0;
 
-    const yAxisY1 =
-      padding.top - (xAxisPosition === "top" ? yAxisCornerOverlap : 0);
+    const xAxisGapForYAxis =
+      this.config.show_x_axis
+        ? Math.max(0, Number(this.config.x_axis_gap) || 0)
+        : 0;
 
-    const yAxisY2 =
-      padding.top +
-      plotHeight +
-      (xAxisPosition === "bottom" ? yAxisCornerOverlap : 0);
+    const yAxisHardStartY =
+      this.config.show_x_axis && xAxisPosition === "top"
+        ? padding.top - xAxisGapForYAxis - yAxisCornerOverlap
+        : padding.top;
+
+    const yAxisHardEndY =
+      this.config.show_x_axis && xAxisPosition === "bottom"
+        ? padding.top + plotHeight + xAxisGapForYAxis + yAxisCornerOverlap
+        : padding.top + plotHeight;
+
+    const yAxisTickStartY = padding.top;
+    const yAxisTickEndY = padding.top + plotHeight;
+
+    const yAxisLineColour =
+      cssValue(this.config.y_axis_line_color, "var(--divider-color)");
+
+    const yAxisLineWidthValue =
+      cssValue(this.config.y_axis_line_width, 1);
+
+    const yAxisLineOpacity =
+      normaliseOpacity(this.config.y_axis_line_opacity ?? 1);
+
+    const yAxisSoftSize =
+      Math.max(0, Number(this.config.y_axis_soft_size) || 0);
+
+    const yAxisSoftStart =
+      Boolean(this.config.y_axis_soft_start) && yAxisSoftSize > 0;
+
+    const yAxisSoftEnd =
+      Boolean(this.config.y_axis_soft_end) && yAxisSoftSize > 0;
+
+    const yAxisStartGradientId =
+      `${this._instanceId}-y-axis-soft-start`;
+
+    const yAxisEndGradientId =
+      `${this._instanceId}-y-axis-soft-end`;
+
+    const yAxisSoftDefs =
+      yAxisSoftStart || yAxisSoftEnd
+        ? `
+          <defs>
+            ${
+              yAxisSoftStart
+                ? `
+                  <linearGradient
+                    id="${yAxisStartGradientId}"
+                    x1="${yAxisX}"
+                    y1="${yAxisTickStartY - yAxisSoftSize}"
+                    x2="${yAxisX}"
+                    y2="${yAxisTickStartY}"
+                    gradientUnits="userSpaceOnUse"
+                  >
+                    <stop
+                      offset="0%"
+                      stop-color="${yAxisLineColour}"
+                      stop-opacity="0"
+                    ></stop>
+                    <stop
+                      offset="100%"
+                      stop-color="${yAxisLineColour}"
+                      stop-opacity="${yAxisLineOpacity}"
+                    ></stop>
+                  </linearGradient>
+                `
+                : ""
+            }
+
+            ${
+              yAxisSoftEnd
+                ? `
+                  <linearGradient
+                    id="${yAxisEndGradientId}"
+                    x1="${yAxisX}"
+                    y1="${yAxisTickEndY}"
+                    x2="${yAxisX}"
+                    y2="${yAxisTickEndY + yAxisSoftSize}"
+                    gradientUnits="userSpaceOnUse"
+                  >
+                    <stop
+                      offset="0%"
+                      stop-color="${yAxisLineColour}"
+                      stop-opacity="${yAxisLineOpacity}"
+                    ></stop>
+                    <stop
+                      offset="100%"
+                      stop-color="${yAxisLineColour}"
+                      stop-opacity="0"
+                    ></stop>
+                  </linearGradient>
+                `
+                : ""
+            }
+          </defs>
+        `
+        : "";
+
+    const yAxisMainLineY1 =
+      yAxisSoftStart ? yAxisTickStartY : yAxisHardStartY;
+
+    const yAxisMainLineY2 =
+      yAxisSoftEnd ? yAxisTickEndY : yAxisHardEndY;
+
+    const yAxisLineHtml = `
+      ${yAxisSoftDefs}
+
+      ${
+        yAxisSoftStart
+          ? `
+            <line
+              x1="${yAxisX}"
+              y1="${yAxisTickStartY - yAxisSoftSize}"
+              x2="${yAxisX}"
+              y2="${yAxisTickStartY}"
+              stroke="url(#${yAxisStartGradientId})"
+              stroke-width="${yAxisLineWidthValue}"
+              stroke-linecap="butt"
+            ></line>
+          `
+          : ""
+      }
+
+      <line
+        x1="${yAxisX}"
+        y1="${yAxisMainLineY1}"
+        x2="${yAxisX}"
+        y2="${yAxisMainLineY2}"
+        stroke="${yAxisLineColour}"
+        stroke-width="${yAxisLineWidthValue}"
+        stroke-linecap="butt"
+        opacity="${yAxisLineOpacity}"
+      ></line>
+
+      ${
+        yAxisSoftEnd
+          ? `
+            <line
+              x1="${yAxisX}"
+              y1="${yAxisTickEndY}"
+              x2="${yAxisX}"
+              y2="${yAxisTickEndY + yAxisSoftSize}"
+              stroke="url(#${yAxisEndGradientId})"
+              stroke-width="${yAxisLineWidthValue}"
+              stroke-linecap="butt"
+            ></line>
+          `
+          : ""
+      }
+    `;
+
+    const yAxisTickColour =
+      this.config.y_axis_tick_color_mode === "none"
+        ? "transparent"
+        : this.config.y_axis_tick_color_mode === "static"
+          ? cssValue(this.config.y_axis_tick_color, "var(--divider-color)")
+          : yAxisLineColour;
+
+    const yAxisTickLength =
+      Math.max(0, Number(this.config.y_axis_tick_length) || 0);
+
+    const yAxisTickWidth =
+      Math.max(0, Number(this.config.y_axis_tick_width) || 0);
+
+    const yAxisTickOpacity =
+      cssValue(this.config.y_axis_tick_opacity, 1);
+
+    const yAxisTickPosition =
+      this.config.y_axis_tick_position || "crossing";
+
+    const yAxisTickShape =
+      this.config.y_axis_tick_shape || "stick";
+
+    const getYAxisTickXValues = () => {
+      if (yAxisTickPosition === "left") {
+        return {
+          x1: yAxisX - yAxisTickLength,
+          x2: yAxisX,
+        };
+      }
+
+      if (yAxisTickPosition === "right") {
+        return {
+          x1: yAxisX,
+          x2: yAxisX + yAxisTickLength,
+        };
+      }
+
+      return {
+        x1: yAxisX - yAxisTickLength / 2,
+        x2: yAxisX + yAxisTickLength / 2,
+      };
+    };
+
+    const buildYAxisStickTick = (tickY) => {
+      const { x1, x2 } = getYAxisTickXValues();
+
+      return `
+        <line
+          x1="${x1}"
+          y1="${tickY}"
+          x2="${x2}"
+          y2="${tickY}"
+          stroke="${yAxisTickColour}"
+          stroke-width="${yAxisTickWidth}"
+          stroke-linecap="round"
+          opacity="${yAxisTickOpacity}"
+        ></line>
+      `;
+    };
+
+    const buildYAxisSpikeTick = (tickY) => {
+      const spikeWidth = Math.max(
+        yAxisTickWidth * 2.5,
+        yAxisTickLength * 0.35
+      );
+
+      if (yAxisTickPosition === "left") {
+        return `
+          <polygon
+            points="
+              ${yAxisX},${tickY - spikeWidth / 2}
+              ${yAxisX},${tickY + spikeWidth / 2}
+              ${yAxisX - yAxisTickLength},${tickY}
+            "
+            fill="${yAxisTickColour}"
+            opacity="${yAxisTickOpacity}"
+          ></polygon>
+        `;
+      }
+
+      if (yAxisTickPosition === "right") {
+        return `
+          <polygon
+            points="
+              ${yAxisX},${tickY - spikeWidth / 2}
+              ${yAxisX},${tickY + spikeWidth / 2}
+              ${yAxisX + yAxisTickLength},${tickY}
+            "
+            fill="${yAxisTickColour}"
+            opacity="${yAxisTickOpacity}"
+          ></polygon>
+        `;
+      }
+
+      return `
+        <polygon
+          points="
+            ${yAxisX - yAxisTickLength / 2},${tickY}
+            ${yAxisX},${tickY - spikeWidth / 2}
+            ${yAxisX + yAxisTickLength / 2},${tickY}
+            ${yAxisX},${tickY + spikeWidth / 2}
+          "
+          fill="${yAxisTickColour}"
+          opacity="${yAxisTickOpacity}"
+        ></polygon>
+      `;
+    };
+
+    const yAxisTicksHtml =
+      this.config.show_y_axis &&
+      yAxisTickLength > 0 &&
+      yAxisTickWidth > 0 &&
+      this.config.y_axis_tick_color_mode !== "none"
+        ? yTickValues
+            .map((value) => {
+              const tickY = yToSvg(value);
+
+              return yAxisTickShape === "spike"
+                ? buildYAxisSpikeTick(tickY)
+                : buildYAxisStickTick(tickY);
+            })
+            .join("")
+        : "";
 
     const yAxisHtml = this.config.show_y_axis
       ? `
-        <line
-          x1="${yAxisX}"
-          y1="${yAxisY1}"
-          x2="${yAxisX}"
-          y2="${yAxisY2}"
-          stroke="${cssValue(this.config.y_axis_line_color, "var(--divider-color)")}"
-          stroke-width="${cssValue(this.config.y_axis_line_width, 1)}"
-          stroke-linecap="butt"
-          opacity="${cssValue(this.config.y_axis_line_opacity, 1)}"
-        ></line>
+        ${yAxisLineHtml}
+
+        ${yAxisTicksHtml}
       `
       : "";
 
@@ -6156,8 +6851,8 @@ class SimpleBandGraphCard extends HTMLElement {
 
             const x =
               yAxisPosition === "right"
-                ? padding.left + plotWidth + 8
-                : padding.left - 8;
+                ? yAxisX + 8
+                : yAxisX - 8;
 
             const anchor = yAxisPosition === "right" ? "start" : "end";
 
@@ -7517,42 +8212,314 @@ class SimpleBandGraphCard extends HTMLElement {
       --------------------------------------------------------------------------
       X-axis SVG
       --------------------------------------------------------------------------
-      Renders the horizontal time axis line and its time labels.
+      Renders the horizontal time axis line, optional soft extensions, tick marks,
+      and time labels.
 
-      The X-axis line position and X-axis label position are deliberately
-      separate. This allows the axis line to sit at the zero point while labels
-      remain at the top, middle, or bottom of the plot.
-
-      X-axis labels use the dedicated x_axis_label_* settings rather than the
-      older shared axis_label_* settings.
-
-      When both axes are visible, the axis lines overlap very slightly at the
-      plot corner so thicker lines form a clean joined edge.
+      Soft start/end are rendered as faded extensions beyond the first and last
+      tick positions. The main axis span between ticks remains solid so ticks feel
+      anchored rather than sitting on a faded line.
     */
+
+    const xAxisGap =
+      Math.max(0, Number(this.config.x_axis_gap) || 0);
+
+    const yAxisGapForXAxis =
+      this.config.show_y_axis
+        ? Math.max(0, Number(this.config.y_axis_gap) || 0)
+        : 0;
+
     const xAxisY =
       xAxisPosition === "top"
-        ? padding.top
+        ? padding.top - xAxisGap
         : xAxisPosition === "zero"
           ? clamp(yToSvg(0), padding.top, padding.top + plotHeight)
-          : padding.top + plotHeight;
+          : padding.top + plotHeight + xAxisGap;
 
     const xAxisLabelY =
       xAxisLabelPosition === "top"
-        ? padding.top - 14
+        ? padding.top - xAxisGap - 14
         : xAxisLabelPosition === "middle"
           ? padding.top + plotHeight / 2
-          : padding.top + plotHeight + 18;
+          : padding.top + plotHeight + xAxisGap + 18;
 
     const yAxisLineWidth = Number(this.config.y_axis_line_width) || 1;
     const xAxisCornerOverlap = this.config.show_y_axis ? yAxisLineWidth / 2 : 0;
 
-    const xAxisX1 =
-      padding.left - (yAxisPosition === "left" ? xAxisCornerOverlap : 0);
+    const xAxisHardStartX =
+      padding.left -
+      (yAxisPosition === "left"
+        ? yAxisGapForXAxis + xAxisCornerOverlap
+        : 0);
 
-    const xAxisX2 =
+    const xAxisHardEndX =
       padding.left +
       plotWidth +
-      (yAxisPosition === "right" ? xAxisCornerOverlap : 0);
+      (yAxisPosition === "right"
+        ? yAxisGapForXAxis + xAxisCornerOverlap
+        : 0);
+
+    const xAxisTickStartX = padding.left;
+    const xAxisTickEndX = padding.left + plotWidth;
+
+    const xAxisLineColour =
+      cssValue(this.config.x_axis_line_color, "var(--divider-color)");
+
+    const xAxisLineWidthValue =
+      cssValue(this.config.x_axis_line_width, 1);
+
+    const xAxisLineOpacity =
+      normaliseOpacity(this.config.x_axis_line_opacity ?? 1);
+
+    const xAxisSoftSize =
+      Math.max(0, Number(this.config.x_axis_soft_size) || 0);
+
+    const xAxisSoftStart =
+      Boolean(this.config.x_axis_soft_start) && xAxisSoftSize > 0;
+
+    const xAxisSoftEnd =
+      Boolean(this.config.x_axis_soft_end) && xAxisSoftSize > 0;
+
+    const xAxisStartGradientId =
+      `${this._instanceId}-x-axis-soft-start`;
+
+    const xAxisEndGradientId =
+      `${this._instanceId}-x-axis-soft-end`;
+
+    const xAxisSoftDefs =
+      xAxisSoftStart || xAxisSoftEnd
+        ? `
+          <defs>
+            ${
+              xAxisSoftStart
+                ? `
+                  <linearGradient
+                    id="${xAxisStartGradientId}"
+                    x1="${xAxisTickStartX - xAxisSoftSize}"
+                    y1="${xAxisY}"
+                    x2="${xAxisTickStartX}"
+                    y2="${xAxisY}"
+                    gradientUnits="userSpaceOnUse"
+                  >
+                    <stop
+                      offset="0%"
+                      stop-color="${xAxisLineColour}"
+                      stop-opacity="0"
+                    ></stop>
+                    <stop
+                      offset="100%"
+                      stop-color="${xAxisLineColour}"
+                      stop-opacity="${xAxisLineOpacity}"
+                    ></stop>
+                  </linearGradient>
+                `
+                : ""
+            }
+
+            ${
+              xAxisSoftEnd
+                ? `
+                  <linearGradient
+                    id="${xAxisEndGradientId}"
+                    x1="${xAxisTickEndX}"
+                    y1="${xAxisY}"
+                    x2="${xAxisTickEndX + xAxisSoftSize}"
+                    y2="${xAxisY}"
+                    gradientUnits="userSpaceOnUse"
+                  >
+                    <stop
+                      offset="0%"
+                      stop-color="${xAxisLineColour}"
+                      stop-opacity="${xAxisLineOpacity}"
+                    ></stop>
+                    <stop
+                      offset="100%"
+                      stop-color="${xAxisLineColour}"
+                      stop-opacity="0"
+                    ></stop>
+                  </linearGradient>
+                `
+                : ""
+            }
+          </defs>
+        `
+        : "";
+
+    const xAxisMainLineX1 =
+      xAxisSoftStart ? xAxisTickStartX : xAxisHardStartX;
+
+    const xAxisMainLineX2 =
+      xAxisSoftEnd ? xAxisTickEndX : xAxisHardEndX;
+
+    const xAxisLineHtml = `
+      ${xAxisSoftDefs}
+
+      ${
+        xAxisSoftStart
+          ? `
+            <line
+              x1="${xAxisTickStartX - xAxisSoftSize}"
+              y1="${xAxisY}"
+              x2="${xAxisTickStartX}"
+              y2="${xAxisY}"
+              stroke="url(#${xAxisStartGradientId})"
+              stroke-width="${xAxisLineWidthValue}"
+              stroke-linecap="butt"
+            ></line>
+          `
+          : ""
+      }
+
+      <line
+        x1="${xAxisMainLineX1}"
+        y1="${xAxisY}"
+        x2="${xAxisMainLineX2}"
+        y2="${xAxisY}"
+        stroke="${xAxisLineColour}"
+        stroke-width="${xAxisLineWidthValue}"
+        stroke-linecap="butt"
+        opacity="${xAxisLineOpacity}"
+      ></line>
+
+      ${
+        xAxisSoftEnd
+          ? `
+            <line
+              x1="${xAxisTickEndX}"
+              y1="${xAxisY}"
+              x2="${xAxisTickEndX + xAxisSoftSize}"
+              y2="${xAxisY}"
+              stroke="url(#${xAxisEndGradientId})"
+              stroke-width="${xAxisLineWidthValue}"
+              stroke-linecap="butt"
+            ></line>
+          `
+          : ""
+      }
+    `;
+
+    const xAxisTickColour =
+      this.config.x_axis_tick_color_mode === "none"
+        ? "transparent"
+        : this.config.x_axis_tick_color_mode === "static"
+          ? cssValue(this.config.x_axis_tick_color, "var(--divider-color)")
+          : xAxisLineColour;
+
+    const xAxisTickLength =
+      Math.max(0, Number(this.config.x_axis_tick_length) || 0);
+
+    const xAxisTickWidth =
+      Math.max(0, Number(this.config.x_axis_tick_width) || 0);
+
+    const xAxisTickOpacity =
+      cssValue(this.config.x_axis_tick_opacity, 1);
+
+    const xAxisTickPosition =
+      this.config.x_axis_tick_position || "crossing";
+
+    const xAxisTickShape =
+      this.config.x_axis_tick_shape || "stick";
+
+    const getXAxisTickYValues = () => {
+      if (xAxisTickPosition === "above") {
+        return {
+          y1: xAxisY - xAxisTickLength,
+          y2: xAxisY,
+        };
+      }
+
+      if (xAxisTickPosition === "below") {
+        return {
+          y1: xAxisY,
+          y2: xAxisY + xAxisTickLength,
+        };
+      }
+
+      return {
+        y1: xAxisY - xAxisTickLength / 2,
+        y2: xAxisY + xAxisTickLength / 2,
+      };
+    };
+
+    const buildXAxisStickTick = (tickX) => {
+      const { y1, y2 } = getXAxisTickYValues();
+
+      return `
+        <line
+          x1="${tickX}"
+          y1="${y1}"
+          x2="${tickX}"
+          y2="${y2}"
+          stroke="${xAxisTickColour}"
+          stroke-width="${xAxisTickWidth}"
+          stroke-linecap="round"
+          opacity="${xAxisTickOpacity}"
+        ></line>
+      `;
+    };
+
+    const buildXAxisSpikeTick = (tickX) => {
+      const spikeWidth = Math.max(
+        xAxisTickWidth * 2.5,
+        xAxisTickLength * 0.35
+      );
+
+      if (xAxisTickPosition === "above") {
+        return `
+          <polygon
+            points="
+              ${tickX - spikeWidth / 2},${xAxisY}
+              ${tickX + spikeWidth / 2},${xAxisY}
+              ${tickX},${xAxisY - xAxisTickLength}
+            "
+            fill="${xAxisTickColour}"
+            opacity="${xAxisTickOpacity}"
+          ></polygon>
+        `;
+      }
+
+      if (xAxisTickPosition === "below") {
+        return `
+          <polygon
+            points="
+              ${tickX - spikeWidth / 2},${xAxisY}
+              ${tickX + spikeWidth / 2},${xAxisY}
+              ${tickX},${xAxisY + xAxisTickLength}
+            "
+            fill="${xAxisTickColour}"
+            opacity="${xAxisTickOpacity}"
+          ></polygon>
+        `;
+      }
+
+      return `
+        <polygon
+          points="
+            ${tickX},${xAxisY - xAxisTickLength / 2}
+            ${tickX + spikeWidth / 2},${xAxisY}
+            ${tickX},${xAxisY + xAxisTickLength / 2}
+            ${tickX - spikeWidth / 2},${xAxisY}
+          "
+          fill="${xAxisTickColour}"
+          opacity="${xAxisTickOpacity}"
+        ></polygon>
+      `;
+    };
+
+    const xAxisTicksHtml =
+      this.config.show_x_axis &&
+      xAxisTickLength > 0 &&
+      xAxisTickWidth > 0 &&
+      this.config.x_axis_tick_color_mode !== "none"
+        ? xTickValues
+            .map((tick) => {
+              const tickX = padding.left + tick.ratio * plotWidth;
+
+              return xAxisTickShape === "spike"
+                ? buildXAxisSpikeTick(tickX)
+                : buildXAxisStickTick(tickX);
+            })
+            .join("")
+        : "";
 
     const xAxisLabelsHtml = this.config.show_x_axis_labels
       ? xTickValues
@@ -7583,16 +8550,9 @@ class SimpleBandGraphCard extends HTMLElement {
 
     const xAxisHtml = this.config.show_x_axis
       ? `
-        <line
-          x1="${xAxisX1}"
-          y1="${xAxisY}"
-          x2="${xAxisX2}"
-          y2="${xAxisY}"
-          stroke="${cssValue(this.config.x_axis_line_color, "var(--divider-color)")}"
-          stroke-width="${cssValue(this.config.x_axis_line_width, 1)}"
-          stroke-linecap="butt"
-          opacity="${cssValue(this.config.x_axis_line_opacity, 1)}"
-        ></line>
+        ${xAxisLineHtml}
+
+        ${xAxisTicksHtml}
       `
       : "";
     /*
