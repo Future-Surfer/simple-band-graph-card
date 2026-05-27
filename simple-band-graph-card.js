@@ -156,10 +156,27 @@ class SimpleBandGraphCard extends HTMLElement {
       grid_opacity: 0.25,
       grid_line_style: "solid",
 
-      // Whole-card background settings
+      // Whole-card background and surface settings
       background_color: "var(--card-background-color)",
       background_color_mode: "static",
       background_opacity: 1,
+
+      card_radius: "var(--ha-card-border-radius, 12px)",
+      card_padding: 16,
+
+      card_border_width: 0,
+      card_border_color: "var(--divider-color)",
+      card_border_opacity: 0,
+
+      card_shadow: false,
+      card_shadow_color: "rgba(0, 0, 0, 0.25)",
+      card_shadow_blur: 24,
+      card_shadow_spread: 0,
+      card_shadow_offset_x: 0,
+      card_shadow_offset_y: 8,
+
+      card_inner_highlight: false,
+      card_inner_highlight_opacity: 0.08,
 
       // Plot-area background settings
       plot_background_color: "transparent",
@@ -939,7 +956,8 @@ class SimpleBandGraphCard extends HTMLElement {
           ----------------------------------------------------------------------
           Appearance section
           ----------------------------------------------------------------------
-          Card and plot background colours, opacity, and plot corner radius.
+          Card surface, background, border, shadow, padding, and plot background
+          styling.
         */
         {
           type: "expandable",
@@ -974,6 +992,144 @@ class SimpleBandGraphCard extends HTMLElement {
                 },
               },
             },
+
+            /*
+              Card surface
+            */
+            {
+              name: "card_radius",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "card_padding",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 40,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+
+            /*
+              Card border
+            */
+            {
+              name: "card_border_width",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 8,
+                  step: 0.5,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "card_border_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "card_border_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+
+            /*
+              Card shadow
+            */
+            {
+              name: "card_shadow",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "card_shadow_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "card_shadow_blur",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 80,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "card_shadow_spread",
+              selector: {
+                number: {
+                  min: -20,
+                  max: 40,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "card_shadow_offset_x",
+              selector: {
+                number: {
+                  min: -40,
+                  max: 40,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "card_shadow_offset_y",
+              selector: {
+                number: {
+                  min: -40,
+                  max: 40,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+
+            /*
+              Card inner highlight
+            */
+            {
+              name: "card_inner_highlight",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "card_inner_highlight_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+
+            /*
+              Plot background
+            */
             {
               name: "plot_background_color",
               selector: {
@@ -1968,6 +2124,24 @@ class SimpleBandGraphCard extends HTMLElement {
           background_color: "Card background colour",
           background_color_mode: "Card background colour mode",
           background_opacity: "Card background opacity",
+
+          card_radius: "Card corner radius",
+          card_padding: "Card padding",
+
+          card_border_width: "Card border width",
+          card_border_color: "Card border colour",
+          card_border_opacity: "Card border opacity",
+
+          card_shadow: "Show card shadow",
+          card_shadow_color: "Card shadow colour",
+          card_shadow_blur: "Card shadow blur",
+          card_shadow_spread: "Card shadow spread",
+          card_shadow_offset_x: "Card shadow horizontal offset",
+          card_shadow_offset_y: "Card shadow vertical offset",
+
+          card_inner_highlight: "Show inner highlight",
+          card_inner_highlight_opacity: "Inner highlight opacity",
+
           plot_background_color: "Plot background colour",
           plot_background_color_mode: "Plot background colour mode",
           plot_background_opacity: "Plot background opacity",
@@ -2192,6 +2366,37 @@ class SimpleBandGraphCard extends HTMLElement {
             "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the card background transparent.",
           background_opacity:
             "Opacity of the whole card background, from 0 to 1.",
+
+          card_radius:
+            "Corner radius for the whole card. Accepts CSS values such as 16px, 24px, or var(--ha-card-border-radius, 12px).",
+          card_padding:
+            "Inner spacing between the card edge and the chart content.",
+
+          card_border_width:
+            "Width of the card border. Use 0 for no border.",
+          card_border_color:
+            "CSS colour for the card border, such as var(--divider-color), #ffffff, or rgba(255,255,255,0.2).",
+          card_border_opacity:
+            "Opacity of the card border, from 0 to 1.",
+
+          card_shadow:
+            "Show or hide the card shadow.",
+          card_shadow_color:
+            "CSS colour for the card shadow, such as rgba(0,0,0,0.25).",
+          card_shadow_blur:
+            "Softness of the card shadow. Higher values create a larger, softer shadow.",
+          card_shadow_spread:
+            "Spread of the card shadow. Negative values pull the shadow in; positive values expand it.",
+          card_shadow_offset_x:
+            "Horizontal offset of the card shadow.",
+          card_shadow_offset_y:
+            "Vertical offset of the card shadow.",
+
+          card_inner_highlight:
+            "Show or hide a subtle inner highlight along the top edge of the card.",
+          card_inner_highlight_opacity:
+            "Opacity of the inner highlight, from 0 to 1.",
+
           plot_background_color:
             "CSS colour for the graph plotting area, such as transparent, var(--card-background-color), #222222, or rgba(0,0,0,0.2).",
           plot_background_color_mode:
@@ -2440,10 +2645,27 @@ class SimpleBandGraphCard extends HTMLElement {
       band_separator_opacity: config.band_separator_opacity ?? 0.5,
       band_separator_style: config.band_separator_style ?? "dashed",
 
-      // Whole-card background settings
+      // Whole-card background and surface settings
       background_color: config.background_color ?? "var(--card-background-color)",
       background_opacity: config.background_opacity ?? 1,
       background_color_mode: config.background_color_mode ?? "static",
+
+      card_radius: config.card_radius ?? "var(--ha-card-border-radius, 12px)",
+      card_padding: config.card_padding ?? 16,
+
+      card_border_width: config.card_border_width ?? 0,
+      card_border_color: config.card_border_color ?? "var(--divider-color)",
+      card_border_opacity: config.card_border_opacity ?? 0,
+
+      card_shadow: config.card_shadow ?? false,
+      card_shadow_color: config.card_shadow_color ?? "rgba(0, 0, 0, 0.25)",
+      card_shadow_blur: config.card_shadow_blur ?? 24,
+      card_shadow_spread: config.card_shadow_spread ?? 0,
+      card_shadow_offset_x: config.card_shadow_offset_x ?? 0,
+      card_shadow_offset_y: config.card_shadow_offset_y ?? 8,
+
+      card_inner_highlight: config.card_inner_highlight ?? false,
+      card_inner_highlight_opacity: config.card_inner_highlight_opacity ?? 0.08,
 
       // Plot-area background settings
       // Default is transparent so the plot area does not appear as a dark block.
@@ -6185,14 +6407,40 @@ class SimpleBandGraphCard extends HTMLElement {
           width: 100%;
           height: ${cardHeightCss};
           box-sizing: border-box;
-          border-radius: var(--ha-card-border-radius, 12px);
+          border-radius: ${this.config.card_radius};
           overflow: hidden;
+          position: relative;
+          border: ${Number(this.config.card_border_width) || 0}px solid ${applyOpacityToColour(
+            this.config.card_border_color,
+            Number(this.config.card_border_opacity) || 0
+          )};
+          box-shadow: ${
+            this.config.card_shadow
+              ? `${Number(this.config.card_shadow_offset_x) || 0}px ${Number(this.config.card_shadow_offset_y) || 0}px ${Number(this.config.card_shadow_blur) || 0}px ${Number(this.config.card_shadow_spread) || 0}px ${this.config.card_shadow_color}`
+              : "none"
+          };
+        }
+
+        ${cssScope} ha-card::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          border-radius: inherit;
+          box-shadow: ${
+            this.config.card_inner_highlight
+              ? `inset 0 1px 0 rgba(255, 255, 255, ${Number(this.config.card_inner_highlight_opacity) || 0})`
+              : "none"
+          };
+          z-index: 1;
         }
 
         ${cssScope} .sbgc-inner {
+          position: relative;
+          z-index: 2;
           height: ${innerHeightCss};
           box-sizing: border-box;
-          padding: 16px;
+          padding: ${Number(this.config.card_padding) || 0}px;
           display: flex;
           flex-direction: column;
           min-width: 0;
