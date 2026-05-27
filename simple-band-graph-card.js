@@ -245,7 +245,7 @@ class SimpleBandGraphCard extends HTMLElement {
       area_color_mode: "static",
       area_opacity: 0.18,
 
-      // Marker settings
+      // Marker visibility and size settings
       show_latest: false,
       show_latest_label: true,
       latest_marker_size: 4,
@@ -259,6 +259,27 @@ class SimpleBandGraphCard extends HTMLElement {
       hide_recent_min: true,
       hide_recent_max: false,
       recent_extrema_minutes: 30,
+
+      // Marker dot settings
+      marker_dot_fill_color: "var(--primary-color)",
+      marker_dot_fill_color_mode: "static",
+      marker_dot_stroke_color: "var(--card-background-color)",
+      marker_dot_stroke_color_mode: "static",
+      marker_dot_stroke_width: 2,
+      marker_dot_opacity: 0.95,
+
+      marker_dot_glow: false,
+      marker_dot_glow_color: "var(--primary-color)",
+      marker_dot_glow_color_mode: "static",
+      marker_dot_glow_blur: 8,
+      marker_dot_glow_opacity: 0.35,
+
+      marker_dot_shadow: false,
+      marker_dot_shadow_color: "rgba(0, 0, 0, 0.35)",
+      marker_dot_shadow_blur: 4,
+      marker_dot_shadow_offset_x: 0,
+      marker_dot_shadow_offset_y: 2,
+      marker_dot_shadow_opacity: 0.35,
 
       // Marker label settings
       marker_label_size: 11,
@@ -1730,26 +1751,20 @@ class SimpleBandGraphCard extends HTMLElement {
         },
         /*
           ----------------------------------------------------------------------
-          Markers section
+          Marker dots section
           ----------------------------------------------------------------------
-          Current, minimum, and maximum markers, marker labels, and premium label
-          chip styling.
+          Current, minimum, and maximum marker visibility, size, fill, stroke,
+          opacity, and glow styling.
         */
         {
           type: "expandable",
-          name: "markers",
-          title: "Markers",
-          icon: "mdi:map-marker-outline",
+          name: "marker_dots",
+          title: "Marker dots",
+          icon: "mdi:circle-medium",
           flatten: true,
           schema: [
             {
               name: "show_latest",
-              selector: {
-                boolean: {},
-              },
-            },
-            {
-              name: "show_latest_label",
               selector: {
                 boolean: {},
               },
@@ -1778,12 +1793,6 @@ class SimpleBandGraphCard extends HTMLElement {
               },
             },
             {
-              name: "show_extrema_labels",
-              selector: {
-                boolean: {},
-              },
-            },
-            {
               name: "extrema_marker_size",
               selector: {
                 number: {
@@ -1791,19 +1800,6 @@ class SimpleBandGraphCard extends HTMLElement {
                   max: 16,
                   step: 1,
                   mode: "slider",
-                },
-              },
-            },
-            {
-              name: "extrema_label_mode",
-              selector: {
-                select: {
-                  mode: "dropdown",
-                  options: [
-                    { value: "value", label: "Value only" },
-                    { value: "prefixed", label: "Prefixed, e.g. Min 42" },
-                    { value: "compact", label: "Compact, e.g. ↓ 42" },
-                  ],
                 },
               },
             },
@@ -1828,6 +1824,227 @@ class SimpleBandGraphCard extends HTMLElement {
                   step: 5,
                   mode: "slider",
                   unit_of_measurement: "min",
+                },
+              },
+            },
+
+            /*
+              Marker dot fill and stroke
+            */
+            {
+              name: "marker_dot_fill_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "marker_dot_fill_color_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "card", label: "Use card background" },
+                    { value: "static", label: "Static colour" },
+                    { value: "band", label: "Use band colour" },
+                    { value: "none", label: "No fill / transparent" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "marker_dot_stroke_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "marker_dot_stroke_color_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "card", label: "Use card background" },
+                    { value: "static", label: "Static colour" },
+                    { value: "band", label: "Use band colour" },
+                    { value: "none", label: "No stroke / transparent" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "marker_dot_stroke_width",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 8,
+                  step: 0.5,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "marker_dot_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+
+            /*
+              Marker dot glow
+            */
+            {
+              name: "marker_dot_glow",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "marker_dot_glow_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "marker_dot_glow_color_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "static", label: "Static colour" },
+                    { value: "band", label: "Use band colour" },
+                    { value: "none", label: "No glow colour / transparent" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "marker_dot_glow_blur",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 24,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "marker_dot_glow_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+
+            /*
+              Marker dot shadow
+            */
+            {
+              name: "marker_dot_shadow",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "marker_dot_shadow_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "marker_dot_shadow_blur",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 24,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "marker_dot_shadow_offset_x",
+              selector: {
+                number: {
+                  min: -16,
+                  max: 16,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "marker_dot_shadow_offset_y",
+              selector: {
+                number: {
+                  min: -16,
+                  max: 16,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "marker_dot_shadow_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+          ],
+        },
+
+
+
+        /*
+          ----------------------------------------------------------------------
+          Marker labels section
+          ----------------------------------------------------------------------
+          Current, minimum, and maximum marker labels, label text, and premium
+          label chip styling.
+        */
+        {
+          type: "expandable",
+          name: "marker_labels",
+          title: "Marker labels",
+          icon: "mdi:label-outline",
+          flatten: true,
+          schema: [
+            {
+              name: "show_latest_label",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "show_extrema_labels",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "extrema_label_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "value", label: "Value only" },
+                    { value: "prefixed", label: "Prefixed, e.g. Min 42" },
+                    { value: "compact", label: "Compact, e.g. ↓ 42" },
+                  ],
                 },
               },
             },
@@ -2589,25 +2806,46 @@ class SimpleBandGraphCard extends HTMLElement {
           area_color: "Area colour",
           area_opacity: "Area opacity",
 
-          // Markers
+          // Marker visibility
           show_latest: "Show current marker",
           show_latest_label: "Show current label",
-          latest_marker_size: "Current marker size",
           show_min: "Show minimum marker",
           show_max: "Show maximum marker",
           show_extrema_labels: "Show min/max labels",
-          extrema_marker_size: "Min/max marker size",
           extrema_label_mode: "Min/max label mode",
           hide_recent_min: "Hide recent minimum",
           hide_recent_max: "Hide recent maximum",
           recent_extrema_minutes: "Recent threshold",
 
+          // Marker dots
+          latest_marker_size: "Current marker size",
+          extrema_marker_size: "Min/max marker size",
+          marker_dot_fill_color: "Marker dot fill colour",
+          marker_dot_fill_color_mode: "Marker dot fill colour mode",
+          marker_dot_stroke_color: "Marker dot stroke colour",
+          marker_dot_stroke_color_mode: "Marker dot stroke colour mode",
+          marker_dot_stroke_width: "Marker dot stroke width",
+          marker_dot_opacity: "Marker dot opacity",
+          marker_dot_glow: "Show marker dot glow",
+          marker_dot_glow_color: "Marker dot glow colour",
+          marker_dot_glow_color_mode: "Marker dot glow colour mode",
+          marker_dot_glow_blur: "Marker dot glow blur",
+          marker_dot_glow_opacity: "Marker dot glow opacity",
+          marker_dot_shadow: "Show marker dot shadow",
+          marker_dot_shadow_color: "Marker dot shadow colour",
+          marker_dot_shadow_blur: "Marker dot shadow blur",
+          marker_dot_shadow_offset_x: "Marker dot shadow horizontal offset",
+          marker_dot_shadow_offset_y: "Marker dot shadow vertical offset",
+          marker_dot_shadow_opacity: "Marker dot shadow opacity",
+
+          // Marker label text
           marker_label_size: "Marker label size",
           marker_label_weight: "Marker label weight",
           marker_label_color: "Marker label colour",
           marker_label_color_mode: "Marker label colour mode",
           marker_label_opacity: "Marker label opacity",
 
+          // Marker label chip
           marker_label_background_color: "Marker label background colour",
           marker_label_background_mode: "Marker label background mode",
           marker_label_background_opacity: "Marker label background opacity",
@@ -2615,11 +2853,13 @@ class SimpleBandGraphCard extends HTMLElement {
           marker_label_padding_x: "Marker label horizontal padding",
           marker_label_padding_y: "Marker label vertical padding",
 
+          // Marker label border
           marker_label_border_width: "Marker label border width",
           marker_label_border_color: "Marker label border colour",
           marker_label_border_color_mode: "Marker label border colour mode",
           marker_label_border_opacity: "Marker label border opacity",
 
+          // Marker label shadow
           marker_label_shadow: "Show marker label shadow",
           marker_label_shadow_color: "Marker label shadow colour",
           marker_label_shadow_blur: "Marker label shadow blur",
@@ -2930,15 +3170,17 @@ class SimpleBandGraphCard extends HTMLElement {
           area_opacity:
             "Opacity of the area fill. Lower values keep the history line, bands, grid, and axes easier to read.",
 
-          // Markers
+          // Marker visibility
           show_latest:
-            "Show a marker at the current/latest plotted value. This uses the existing show_latest YAML option.",
-          show_latest_label: "Show or hide the label beside the current marker.",
-          latest_marker_size: "Size of the current marker dot.",
-          show_min: "Show a marker at the lowest value in the visible history.",
-          show_max: "Show a marker at the highest value in the visible history.",
-          show_extrema_labels: "Show or hide labels beside the min/max markers.",
-          extrema_marker_size: "Size of the minimum and maximum marker dots.",
+            "Show a marker at the current/latest plotted value.",
+          show_latest_label:
+            "Show or hide the label beside the current marker.",
+          show_min:
+            "Show a marker at the lowest value in the visible history.",
+          show_max:
+            "Show a marker at the highest value in the visible history.",
+          show_extrema_labels:
+            "Show or hide labels beside the min/max markers.",
           extrema_label_mode:
             "Choose whether min/max labels show only the value, use Min/Max prefixes, or compact arrow prefixes.",
           hide_recent_min:
@@ -2948,14 +3190,59 @@ class SimpleBandGraphCard extends HTMLElement {
           recent_extrema_minutes:
             "How recent a min/max point can be before it is hidden, when recent hiding is enabled.",
 
-          marker_label_size: "Text size for current, min, and max marker labels.",
-          marker_label_weight: "Font weight for marker labels.",
+          // Marker dots
+          latest_marker_size:
+            "Size of the current marker dot.",
+          extrema_marker_size:
+            "Size of the minimum and maximum marker dots.",
+          marker_dot_fill_color:
+            "CSS colour for the inside of marker dots, such as var(--primary-color), var(--card-background-color), #ffffff, or rgba(255,255,255,0.9).",
+          marker_dot_fill_color_mode:
+            "Static uses the chosen fill colour. Card uses the card background colour. Use band colour follows the marker value's band. No colour makes the marker fill transparent.",
+          marker_dot_stroke_color:
+            "CSS colour for the marker dot outline, such as var(--card-background-color), #ffffff, or rgba(255,255,255,0.5).",
+          marker_dot_stroke_color_mode:
+            "Static uses the chosen stroke colour. Card uses the card background colour. Use band colour follows the marker value's band. No colour hides the marker stroke.",
+          marker_dot_stroke_width:
+            "Width of the marker dot outline. Use 0 for no outline.",
+          marker_dot_opacity:
+            "Overall opacity of marker dots, from 0 to 1.",
+          marker_dot_glow:
+            "Show or hide a soft glow behind marker dots.",
+          marker_dot_glow_color:
+            "CSS colour for the marker dot glow, such as var(--primary-color), #ffffff, or rgba(255,255,255,0.6).",
+          marker_dot_glow_color_mode:
+            "Static uses the chosen glow colour. Use band colour follows the marker value's band. No colour hides the glow.",
+          marker_dot_glow_blur:
+            "Softness of the marker dot glow.",
+          marker_dot_glow_opacity:
+            "Opacity of the marker dot glow, from 0 to 1.",
+          marker_dot_shadow:
+            "Show or hide a soft drop shadow behind marker dots.",
+          marker_dot_shadow_color:
+            "CSS colour for the marker dot shadow, such as rgba(0,0,0,0.35).",
+          marker_dot_shadow_blur:
+            "Softness of the marker dot shadow.",
+          marker_dot_shadow_offset_x:
+            "Horizontal offset of the marker dot shadow.",
+          marker_dot_shadow_offset_y:
+            "Vertical offset of the marker dot shadow.",
+          marker_dot_shadow_opacity:
+            "Opacity of the marker dot shadow, from 0 to 1.",
+
+          // Marker label text
+          marker_label_size:
+            "Text size for current, min, and max marker labels.",
+          marker_label_weight:
+            "Font weight for marker labels.",
           marker_label_color:
             "CSS colour for marker labels, such as var(--primary-text-color), #333333, or rgba(0,0,0,0.8).",
           marker_label_color_mode:
             "Static uses the chosen colour. Use band colour follows the marker value's band. No colour makes the labels transparent.",
-          marker_label_opacity: "Opacity of marker label text, from 0 to 1.",
+          marker_label_opacity:
+            "Opacity of marker label text, from 0 to 1.",
 
+          // Marker label chip
           marker_label_background_color:
             "CSS colour for the background behind marker labels, such as #ffffff, var(--card-background-color), #222222, or rgba(0,0,0,0.2).",
           marker_label_background_mode:
@@ -2963,12 +3250,13 @@ class SimpleBandGraphCard extends HTMLElement {
           marker_label_background_opacity:
             "Opacity of the marker label background, from 0 to 1.",
           marker_label_radius:
-            "Corner radius for marker label chips. Use a large value such as 999 for pill-shaped labels.",
+            "Corner radius for marker label chips. Use a small value for rounded rectangles or a large value such as 999 for pill-shaped labels.",
           marker_label_padding_x:
             "Horizontal padding inside marker label chips.",
           marker_label_padding_y:
             "Vertical padding inside marker label chips.",
 
+          // Marker label border
           marker_label_border_width:
             "Width of the marker label border. Use 0 for no border.",
           marker_label_border_color:
@@ -2978,6 +3266,7 @@ class SimpleBandGraphCard extends HTMLElement {
           marker_label_border_opacity:
             "Opacity of the marker label border, from 0 to 1.",
 
+          // Marker label shadow
           marker_label_shadow:
             "Show or hide a soft shadow behind marker label chips.",
           marker_label_shadow_color:
@@ -3398,6 +3687,60 @@ class SimpleBandGraphCard extends HTMLElement {
       hide_small_band_labels: config.hide_small_band_labels ?? false,
       min_band_label_height: config.min_band_label_height ?? 18,
 
+      // Marker visibility and size settings
+      show_latest: config.show_latest ?? false,
+      show_latest_label: config.show_latest_label ?? true,
+      latest_marker_size: config.latest_marker_size ?? 4,
+
+      show_min: config.show_min ?? config.show_extrema ?? false,
+      show_max: config.show_max ?? config.show_extrema ?? false,
+
+      show_extrema_labels: config.show_extrema_labels ?? true,
+      extrema_marker_size: config.extrema_marker_size ?? 4,
+      extrema_label_mode: config.extrema_label_mode ?? "value",
+
+      hide_recent_min: config.hide_recent_min ?? config.hide_recent_extrema ?? true,
+      hide_recent_max: config.hide_recent_max ?? config.hide_recent_extrema ?? false,
+      recent_extrema_minutes: config.recent_extrema_minutes ?? 30,
+
+      // Marker dot settings
+      marker_dot_fill_color:
+        config.marker_dot_fill_color ?? "var(--primary-color)",
+      marker_dot_fill_color_mode:
+        config.marker_dot_fill_color_mode ?? "static",
+      marker_dot_stroke_color:
+        config.marker_dot_stroke_color ?? "var(--card-background-color)",
+      marker_dot_stroke_color_mode:
+        config.marker_dot_stroke_color_mode ?? "static",
+      marker_dot_stroke_width:
+        config.marker_dot_stroke_width ?? 2,
+      marker_dot_opacity:
+        config.marker_dot_opacity ?? 0.95,
+
+      marker_dot_glow:
+        config.marker_dot_glow ?? false,
+      marker_dot_glow_color:
+        config.marker_dot_glow_color ?? "var(--primary-color)",
+      marker_dot_glow_color_mode:
+        config.marker_dot_glow_color_mode ?? "static",
+      marker_dot_glow_blur:
+        config.marker_dot_glow_blur ?? 8,
+      marker_dot_glow_opacity:
+        config.marker_dot_glow_opacity ?? 0.35,
+
+      marker_dot_shadow:
+        config.marker_dot_shadow ?? false,
+      marker_dot_shadow_color:
+        config.marker_dot_shadow_color ?? "rgba(0, 0, 0, 0.35)",
+      marker_dot_shadow_blur:
+        config.marker_dot_shadow_blur ?? 4,
+      marker_dot_shadow_offset_x:
+        config.marker_dot_shadow_offset_x ?? 0,
+      marker_dot_shadow_offset_y:
+        config.marker_dot_shadow_offset_y ?? 2,
+      marker_dot_shadow_opacity:
+        config.marker_dot_shadow_opacity ?? 0.35,
+
       // Marker label settings
       marker_label_size: config.marker_label_size ?? 11,
       marker_label_weight: config.marker_label_weight ?? 400,
@@ -3530,25 +3873,10 @@ class SimpleBandGraphCard extends HTMLElement {
 
       ribbon_styles: config.ribbon_styles || {},
 
-      // Current value and point marker settings
+      // Current value positioning settings
       show_current: config.show_current ?? true,
       current_position: config.current_position ?? null,
 
-      show_latest: config.show_latest ?? false,
-      show_latest_label: config.show_latest_label ?? true,
-      latest_marker_size: config.latest_marker_size ?? 4,
-
-      // Min/max marker settings
-      show_min: config.show_min ?? config.show_extrema ?? false,
-      show_max: config.show_max ?? config.show_extrema ?? false,
-
-      show_extrema_labels: config.show_extrema_labels ?? true,
-      extrema_marker_size: config.extrema_marker_size ?? 4,
-      extrema_label_mode: config.extrema_label_mode ?? "value",
-
-      hide_recent_min: config.hide_recent_min ?? config.hide_recent_extrema ?? true,
-      hide_recent_max: config.hide_recent_max ?? config.hide_recent_extrema ?? false,
-      recent_extrema_minutes: config.recent_extrema_minutes ?? 30,
     };
 
     /*
@@ -5648,11 +5976,16 @@ class SimpleBandGraphCard extends HTMLElement {
       --------------------------------------------------------------------------
       Marker rendering
       --------------------------------------------------------------------------
-      Builds latest/min/max marker SVG, including label chip styling, simple
-      label placement, and overlap avoidance against previously placed marker
-      labels.
+      Builds latest/min/max marker SVG, including dot styling, label chip styling,
+      simple label placement, and overlap avoidance against previously placed
+      marker labels.
     */
     const buildValueMarker = (point, options = {}) => {
+      /*
+        ------------------------------------------------------------------------
+        Marker input and position
+        ------------------------------------------------------------------------
+      */
       if (!point) {
         return {
           html: "",
@@ -5668,81 +6001,17 @@ class SimpleBandGraphCard extends HTMLElement {
       const x = xToSvg(point.time);
       const y = yToSvg(point.state);
 
+      const markerBand = getBandForValue(point.state);
       const labelText = formatMarkerLabel(point, markerType);
 
-      const markerLabelSize = Number(this.config.marker_label_size) || 11;
-      const markerLabelPaddingX =
-        Math.max(0, Number(this.config.marker_label_padding_x) || 0);
-      const markerLabelPaddingY =
-        Math.max(0, Number(this.config.marker_label_padding_y) || 0);
-      const markerLabelRadius =
-        Math.max(0, Number(this.config.marker_label_radius) || 0);
-
-      const estimatedTextWidth = labelText.length * markerLabelSize * 0.62;
-      const markerLabelWidth = estimatedTextWidth + markerLabelPaddingX * 2;
-      const markerLabelHeight = markerLabelSize + markerLabelPaddingY * 2;
-      const gap = 8;
-
-      const plotRight = padding.left + plotWidth;
-      const plotTop = padding.top;
-      const plotBottom = padding.top + plotHeight;
-
-      const midpoint = yMin + (yMax - yMin) / 2;
-      const preferredLabelY = point.state >= midpoint ? y - 18 : y + 18;
-
-      const labelY = clamp(
-        preferredLabelY,
-        plotTop + markerLabelHeight / 2,
-        plotBottom - markerLabelHeight / 2
-      );
-
-      const buildLabelPlacement = (forceLeft = false) => {
-        const wouldOverflowRight = x + gap + markerLabelWidth > plotRight;
-        const placeLeft = forceLeft || wouldOverflowRight;
-
-        const backgroundX = placeLeft ? x - gap - markerLabelWidth : x + gap;
-        const backgroundY = labelY - markerLabelHeight / 2;
-
-        const labelX = backgroundX + markerLabelWidth / 2;
-
-        const labelBox = {
-          left: backgroundX,
-          top: backgroundY,
-          right: backgroundX + markerLabelWidth,
-          bottom: backgroundY + markerLabelHeight,
-        };
-
-        return {
-          labelX,
-          labelY,
-          backgroundX,
-          backgroundY,
-          labelBox,
-        };
-      };
-
-      let labelPlacement = buildLabelPlacement(false);
-
-      const overlapsBlockedLabel = (box) =>
-        hideLabelIfOverlapsBoxes.some((blockedBox) =>
-          boxesOverlap(box, blockedBox)
-        );
-
-      let resolvedShowLabel =
-        requestedShowLabel && !overlapsBlockedLabel(labelPlacement.labelBox);
-
-      if (requestedShowLabel && !resolvedShowLabel && markerType !== "latest") {
-        const leftPlacement = buildLabelPlacement(true);
-
-        if (!overlapsBlockedLabel(leftPlacement.labelBox)) {
-          labelPlacement = leftPlacement;
-          resolvedShowLabel = true;
-        }
-      }
-
-      const markerBand = getBandForValue(point.state);
-
-      const resolveMarkerChipColour = (
+      /*
+        ------------------------------------------------------------------------
+        Shared marker colour resolver
+        ------------------------------------------------------------------------
+        Supports static, card, band, and none modes for marker dots and marker
+        label chips.
+      */
+      const resolveMarkerColour = (
         configuredColour,
         mode = "static",
         opacity = 1
@@ -5768,6 +6037,218 @@ class SimpleBandGraphCard extends HTMLElement {
         return applyOpacityToColour(configuredColour, opacity);
       };
 
+      /*
+        ------------------------------------------------------------------------
+        Marker label sizing
+        ------------------------------------------------------------------------
+      */
+      const markerLabelSize = Number(this.config.marker_label_size) || 11;
+      const markerLabelPaddingX =
+        Math.max(0, Number(this.config.marker_label_padding_x) || 0);
+      const markerLabelPaddingY =
+        Math.max(0, Number(this.config.marker_label_padding_y) || 0);
+      const markerLabelRadius =
+        Math.max(0, Number(this.config.marker_label_radius) || 0);
+
+      const estimatedTextWidth = labelText.length * markerLabelSize * 0.62;
+      const markerLabelWidth = estimatedTextWidth + markerLabelPaddingX * 2;
+      const markerLabelHeight = markerLabelSize + markerLabelPaddingY * 2;
+      const gap = 8;
+
+      /*
+        ------------------------------------------------------------------------
+        Marker label placement
+        ------------------------------------------------------------------------
+      */
+      const plotRight = padding.left + plotWidth;
+      const plotTop = padding.top;
+      const plotBottom = padding.top + plotHeight;
+
+      const midpoint = yMin + (yMax - yMin) / 2;
+      const preferredLabelY = point.state >= midpoint ? y - 18 : y + 18;
+
+      const labelY = clamp(
+        preferredLabelY,
+        plotTop + markerLabelHeight / 2,
+        plotBottom - markerLabelHeight / 2
+      );
+
+      const buildLabelPlacement = (forceLeft = false) => {
+        const wouldOverflowRight = x + gap + markerLabelWidth > plotRight;
+        const placeLeft = forceLeft || wouldOverflowRight;
+
+        const backgroundX = placeLeft ? x - gap - markerLabelWidth : x + gap;
+        const backgroundY = labelY - markerLabelHeight / 2;
+        const labelX = backgroundX + markerLabelWidth / 2;
+
+        const labelBox = {
+          left: backgroundX,
+          top: backgroundY,
+          right: backgroundX + markerLabelWidth,
+          bottom: backgroundY + markerLabelHeight,
+        };
+
+        return {
+          labelX,
+          labelY,
+          backgroundX,
+          backgroundY,
+          labelBox,
+        };
+      };
+
+      let labelPlacement = buildLabelPlacement(false);
+
+      /*
+        ------------------------------------------------------------------------
+        Marker label overlap handling
+        ------------------------------------------------------------------------
+      */
+      const overlapsBlockedLabel = (box) =>
+        hideLabelIfOverlapsBoxes.some((blockedBox) =>
+          boxesOverlap(box, blockedBox)
+        );
+
+      let resolvedShowLabel =
+        requestedShowLabel && !overlapsBlockedLabel(labelPlacement.labelBox);
+
+      if (requestedShowLabel && !resolvedShowLabel && markerType !== "latest") {
+        const leftPlacement = buildLabelPlacement(true);
+
+        if (!overlapsBlockedLabel(leftPlacement.labelBox)) {
+          labelPlacement = leftPlacement;
+          resolvedShowLabel = true;
+        }
+      }
+
+      /*
+        ------------------------------------------------------------------------
+        Marker dot fill, stroke, and opacity
+        ------------------------------------------------------------------------
+      */
+      const markerDotFillColour = resolveMarkerColour(
+        this.config.marker_dot_fill_color || "var(--primary-color)",
+        this.config.marker_dot_fill_color_mode,
+        1
+      );
+
+      const markerDotStrokeColour = resolveMarkerColour(
+        this.config.marker_dot_stroke_color || "var(--card-background-color)",
+        this.config.marker_dot_stroke_color_mode,
+        1
+      );
+
+      const markerDotStrokeWidth =
+        Math.max(0, Number(this.config.marker_dot_stroke_width) || 0);
+
+      const markerDotOpacity =
+        Math.max(0, Math.min(1, Number(this.config.marker_dot_opacity) || 0));
+
+      /*
+        ------------------------------------------------------------------------
+        Marker dot shadow
+        ------------------------------------------------------------------------
+        Drop shadow is a depth/readability effect. It is separate from glow,
+        which is an emphasis/accent effect.
+      */
+      const markerDotShadowEnabled =
+        this.config.marker_dot_shadow &&
+        Number(this.config.marker_dot_shadow_opacity) > 0 &&
+        Number(this.config.marker_dot_shadow_blur) >= 0;
+
+      const markerDotShadowBlur =
+        Math.max(0, Number(this.config.marker_dot_shadow_blur) || 0);
+      const markerDotShadowOffsetX =
+        Number(this.config.marker_dot_shadow_offset_x) || 0;
+      const markerDotShadowOffsetY =
+        Number(this.config.marker_dot_shadow_offset_y) || 0;
+
+      const markerDotShadowColour = applyOpacityToColour(
+        this.config.marker_dot_shadow_color || "rgba(0, 0, 0, 0.35)",
+        Number(this.config.marker_dot_shadow_opacity) || 0
+      );
+
+      const markerDotShadowFilterId =
+        `${this._instanceId}-${markerType}-marker-dot-shadow`;
+
+      const markerDotShadowPadding = Math.max(
+        24,
+        markerDotShadowBlur * 4 +
+          Math.abs(markerDotShadowOffsetX) +
+          Math.abs(markerDotShadowOffsetY)
+      );
+
+      const markerDotShadowFilter = markerDotShadowEnabled
+        ? `
+          <defs>
+            <filter
+              id="${markerDotShadowFilterId}"
+              filterUnits="userSpaceOnUse"
+              x="${x - markerSize - markerDotShadowPadding}"
+              y="${y - markerSize - markerDotShadowPadding}"
+              width="${markerSize * 2 + markerDotShadowPadding * 2}"
+              height="${markerSize * 2 + markerDotShadowPadding * 2}"
+            >
+              <feDropShadow
+                dx="${markerDotShadowOffsetX}"
+                dy="${markerDotShadowOffsetY}"
+                stdDeviation="${markerDotShadowBlur}"
+                flood-color="${markerDotShadowColour}"
+              ></feDropShadow>
+            </filter>
+          </defs>
+        `
+        : "";
+
+      /*
+        ------------------------------------------------------------------------
+        Marker dot glow
+        ------------------------------------------------------------------------
+      */
+      const markerDotGlowEnabled =
+        this.config.marker_dot_glow &&
+        Number(this.config.marker_dot_glow_opacity) > 0 &&
+        Number(this.config.marker_dot_glow_blur) >= 0;
+
+      const markerDotGlowColour = resolveMarkerColour(
+        this.config.marker_dot_glow_color || "var(--primary-color)",
+        this.config.marker_dot_glow_color_mode,
+        1
+      );
+
+      const markerDotGlowBlur =
+        Math.max(0, Number(this.config.marker_dot_glow_blur) || 0);
+
+      const markerDotGlowFilterId =
+        `${this._instanceId}-${markerType}-marker-dot-glow`;
+
+      const markerDotGlowPadding = Math.max(24, markerDotGlowBlur * 4);
+
+      const markerDotGlowFilter = markerDotGlowEnabled
+        ? `
+          <defs>
+            <filter
+              id="${markerDotGlowFilterId}"
+              filterUnits="userSpaceOnUse"
+              x="${x - markerSize - markerDotGlowPadding}"
+              y="${y - markerSize - markerDotGlowPadding}"
+              width="${markerSize * 2 + markerDotGlowPadding * 2}"
+              height="${markerSize * 2 + markerDotGlowPadding * 2}"
+            >
+              <feGaussianBlur
+                in="SourceGraphic"
+                stdDeviation="${markerDotGlowBlur}"
+              ></feGaussianBlur>
+            </filter>
+          </defs>
+        `
+        : "";
+
+      /*
+        ------------------------------------------------------------------------
+        Marker label text and chip colours
+        ------------------------------------------------------------------------
+      */
       const markerLabelColour = resolveColour(
         this.config.marker_label_color,
         this.config.marker_label_color_mode,
@@ -5775,7 +6256,7 @@ class SimpleBandGraphCard extends HTMLElement {
         markerBand
       );
 
-      const markerBackgroundColour = resolveMarkerChipColour(
+      const markerBackgroundColour = resolveMarkerColour(
         this.config.marker_label_background_color ||
           "var(--card-background-color)",
         this.config.marker_label_background_mode,
@@ -5785,12 +6266,17 @@ class SimpleBandGraphCard extends HTMLElement {
       const markerBorderWidth =
         Math.max(0, Number(this.config.marker_label_border_width) || 0);
 
-      const markerBorderColour = resolveMarkerChipColour(
+      const markerBorderColour = resolveMarkerColour(
         this.config.marker_label_border_color || "var(--divider-color)",
         this.config.marker_label_border_color_mode,
         this.config.marker_label_border_opacity
       );
 
+      /*
+        ------------------------------------------------------------------------
+        Marker label chip shadow
+        ------------------------------------------------------------------------
+      */
       const markerShadowEnabled =
         this.config.marker_label_shadow &&
         Number(this.config.marker_label_shadow_opacity) > 0 &&
@@ -5802,6 +6288,7 @@ class SimpleBandGraphCard extends HTMLElement {
         Number(this.config.marker_label_shadow_offset_x) || 0;
       const markerShadowOffsetY =
         Number(this.config.marker_label_shadow_offset_y) || 0;
+
       const markerShadowColour = applyOpacityToColour(
         this.config.marker_label_shadow_color || "rgba(0, 0, 0, 0.35)",
         Number(this.config.marker_label_shadow_opacity) || 0
@@ -5839,17 +6326,56 @@ class SimpleBandGraphCard extends HTMLElement {
         `
         : "";
 
+      /*
+        ------------------------------------------------------------------------
+        Marker SVG output
+        ------------------------------------------------------------------------
+      */
       return {
         labelBox: resolvedShowLabel ? labelPlacement.labelBox : null,
         html: `
+          ${
+            markerDotShadowEnabled
+              ? `
+                ${markerDotShadowFilter}
+
+                <circle
+                  cx="${x}"
+                  cy="${y}"
+                  r="${markerSize}"
+                  fill="${markerDotFillColour}"
+                  opacity="${markerDotOpacity}"
+                  filter="url(#${markerDotShadowFilterId})"
+                ></circle>
+              `
+              : ""
+          }
+
+          ${
+            markerDotGlowEnabled
+              ? `
+                ${markerDotGlowFilter}
+
+                <circle
+                  cx="${x}"
+                  cy="${y}"
+                  r="${markerSize}"
+                  fill="${markerDotGlowColour}"
+                  opacity="${Number(this.config.marker_dot_glow_opacity) || 0}"
+                  filter="url(#${markerDotGlowFilterId})"
+                ></circle>
+              `
+              : ""
+          }
+
           <circle
             cx="${x}"
             cy="${y}"
             r="${markerSize}"
-            fill="var(--primary-color)"
-            stroke="var(--card-background-color)"
-            stroke-width="2"
-            opacity="0.95"
+            fill="${markerDotFillColour}"
+            stroke="${markerDotStrokeColour}"
+            stroke-width="${markerDotStrokeWidth}"
+            opacity="${markerDotOpacity}"
           ></circle>
 
           ${
@@ -5891,6 +6417,11 @@ class SimpleBandGraphCard extends HTMLElement {
       };
     };
 
+    /*
+      --------------------------------------------------------------------------
+      Min/max marker visibility
+      --------------------------------------------------------------------------
+    */
     const showMin =
       this.config.show_min &&
       extrema.min &&
@@ -5902,6 +6433,11 @@ class SimpleBandGraphCard extends HTMLElement {
       extrema.max !== extrema.min &&
       !(this.config.hide_recent_max && isRecent(extrema.max));
 
+    /*
+      --------------------------------------------------------------------------
+      Latest marker point
+      --------------------------------------------------------------------------
+    */
     const latestPoint = Number.isFinite(rawValue)
       ? {
           state: rawValue,
@@ -5909,6 +6445,11 @@ class SimpleBandGraphCard extends HTMLElement {
         }
       : null;
 
+    /*
+      --------------------------------------------------------------------------
+      Build marker instances
+      --------------------------------------------------------------------------
+    */
     const latestMarkerInfo = this.config.show_latest
       ? buildValueMarker(latestPoint, {
           markerSize: Number(this.config.latest_marker_size),
@@ -5944,6 +6485,11 @@ class SimpleBandGraphCard extends HTMLElement {
           labelBox: null,
         };
 
+    /*
+      --------------------------------------------------------------------------
+      Marker SVG groups
+      --------------------------------------------------------------------------
+    */
     const extremaMarkers = `
       ${minMarkerInfo.html}
       ${maxMarkerInfo.html}
