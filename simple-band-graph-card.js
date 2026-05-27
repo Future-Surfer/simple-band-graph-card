@@ -267,10 +267,25 @@ class SimpleBandGraphCard extends HTMLElement {
       marker_label_color_mode: "static",
       marker_label_opacity: 0.9,
 
-      // Marker label background settings
+      // Marker label background and chip settings
       marker_label_background_color: "#ffffff",
       marker_label_background_mode: "static",
       marker_label_background_opacity: 0.8,
+      marker_label_radius: 3,
+      marker_label_padding_x: 3,
+      marker_label_padding_y: 3,
+
+      marker_label_border_width: 0,
+      marker_label_border_color: "var(--divider-color)",
+      marker_label_border_color_mode: "static",
+      marker_label_border_opacity: 0,
+
+      marker_label_shadow: false,
+      marker_label_shadow_color: "rgba(0, 0, 0, 0.35)",
+      marker_label_shadow_blur: 10,
+      marker_label_shadow_offset_x: 0,
+      marker_label_shadow_offset_y: 3,
+      marker_label_shadow_opacity: 0.35,
 
       // Header visibility, slot, background, and text settings
       show_header: true,
@@ -1717,7 +1732,8 @@ class SimpleBandGraphCard extends HTMLElement {
           ----------------------------------------------------------------------
           Markers section
           ----------------------------------------------------------------------
-          Current, minimum, and maximum markers and marker label styling.
+          Current, minimum, and maximum markers, marker labels, and premium label
+          chip styling.
         */
         {
           type: "expandable",
@@ -1815,6 +1831,10 @@ class SimpleBandGraphCard extends HTMLElement {
                 },
               },
             },
+
+            /*
+              Marker label text
+            */
             {
               name: "marker_label_size",
               selector: {
@@ -1861,6 +1881,10 @@ class SimpleBandGraphCard extends HTMLElement {
                 },
               },
             },
+
+            /*
+              Marker label chip
+            */
             {
               name: "marker_label_background_color",
               selector: {
@@ -1883,6 +1907,145 @@ class SimpleBandGraphCard extends HTMLElement {
             },
             {
               name: "marker_label_background_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "marker_label_radius",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 999,
+                  step: 1,
+                  mode: "box",
+                },
+              },
+            },
+            {
+              name: "marker_label_padding_x",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 32,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "marker_label_padding_y",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 20,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+
+            /*
+              Marker label border
+            */
+            {
+              name: "marker_label_border_width",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 6,
+                  step: 0.5,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "marker_label_border_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "marker_label_border_color_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: [
+                    { value: "card", label: "Use card background" },
+                    { value: "static", label: "Static colour" },
+                    { value: "band", label: "Use band colour" },
+                    { value: "none", label: "No border colour / transparent" },
+                  ],
+                },
+              },
+            },
+            {
+              name: "marker_label_border_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+
+            /*
+              Marker label shadow
+            */
+            {
+              name: "marker_label_shadow",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "marker_label_shadow_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "marker_label_shadow_blur",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 32,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "marker_label_shadow_offset_x",
+              selector: {
+                number: {
+                  min: -24,
+                  max: 24,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "marker_label_shadow_offset_y",
+              selector: {
+                number: {
+                  min: -24,
+                  max: 24,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "marker_label_shadow_opacity",
               selector: {
                 number: {
                   min: 0,
@@ -2438,14 +2601,31 @@ class SimpleBandGraphCard extends HTMLElement {
           hide_recent_min: "Hide recent minimum",
           hide_recent_max: "Hide recent maximum",
           recent_extrema_minutes: "Recent threshold",
+
           marker_label_size: "Marker label size",
           marker_label_weight: "Marker label weight",
           marker_label_color: "Marker label colour",
           marker_label_color_mode: "Marker label colour mode",
           marker_label_opacity: "Marker label opacity",
+
           marker_label_background_color: "Marker label background colour",
           marker_label_background_mode: "Marker label background mode",
           marker_label_background_opacity: "Marker label background opacity",
+          marker_label_radius: "Marker label corner radius",
+          marker_label_padding_x: "Marker label horizontal padding",
+          marker_label_padding_y: "Marker label vertical padding",
+
+          marker_label_border_width: "Marker label border width",
+          marker_label_border_color: "Marker label border colour",
+          marker_label_border_color_mode: "Marker label border colour mode",
+          marker_label_border_opacity: "Marker label border opacity",
+
+          marker_label_shadow: "Show marker label shadow",
+          marker_label_shadow_color: "Marker label shadow colour",
+          marker_label_shadow_blur: "Marker label shadow blur",
+          marker_label_shadow_offset_x: "Marker label shadow horizontal offset",
+          marker_label_shadow_offset_y: "Marker label shadow vertical offset",
+          marker_label_shadow_opacity: "Marker label shadow opacity",
 
           // Header
           show_header: "Show header",
@@ -2767,6 +2947,7 @@ class SimpleBandGraphCard extends HTMLElement {
             "Hide the maximum marker if it is too close to the current/latest value.",
           recent_extrema_minutes:
             "How recent a min/max point can be before it is hidden, when recent hiding is enabled.",
+
           marker_label_size: "Text size for current, min, and max marker labels.",
           marker_label_weight: "Font weight for marker labels.",
           marker_label_color:
@@ -2774,12 +2955,41 @@ class SimpleBandGraphCard extends HTMLElement {
           marker_label_color_mode:
             "Static uses the chosen colour. Use band colour follows the marker value's band. No colour makes the labels transparent.",
           marker_label_opacity: "Opacity of marker label text, from 0 to 1.",
+
           marker_label_background_color:
             "CSS colour for the background behind marker labels, such as #ffffff, var(--card-background-color), #222222, or rgba(0,0,0,0.2).",
           marker_label_background_mode:
             "Static uses the chosen colour. Card uses the card background colour. Use band colour follows the marker value's band. No background makes it transparent.",
           marker_label_background_opacity:
             "Opacity of the marker label background, from 0 to 1.",
+          marker_label_radius:
+            "Corner radius for marker label chips. Use a large value such as 999 for pill-shaped labels.",
+          marker_label_padding_x:
+            "Horizontal padding inside marker label chips.",
+          marker_label_padding_y:
+            "Vertical padding inside marker label chips.",
+
+          marker_label_border_width:
+            "Width of the marker label border. Use 0 for no border.",
+          marker_label_border_color:
+            "CSS colour for the marker label border, such as var(--divider-color), #ffffff, or rgba(255,255,255,0.25).",
+          marker_label_border_color_mode:
+            "Static uses the chosen border colour. Card uses the card background colour. Use band colour follows the marker value's band. No colour hides the border.",
+          marker_label_border_opacity:
+            "Opacity of the marker label border, from 0 to 1.",
+
+          marker_label_shadow:
+            "Show or hide a soft shadow behind marker label chips.",
+          marker_label_shadow_color:
+            "CSS colour for the marker label shadow, such as rgba(0,0,0,0.35).",
+          marker_label_shadow_blur:
+            "Softness of the marker label shadow.",
+          marker_label_shadow_offset_x:
+            "Horizontal offset of the marker label shadow.",
+          marker_label_shadow_offset_y:
+            "Vertical offset of the marker label shadow.",
+          marker_label_shadow_opacity:
+            "Opacity of the marker label shadow, from 0 to 1.",
 
           // Header
           show_header:
@@ -3195,7 +3405,7 @@ class SimpleBandGraphCard extends HTMLElement {
       marker_label_color_mode: config.marker_label_color_mode ?? "static",
       marker_label_opacity: config.marker_label_opacity ?? 0.9,
 
-      // Marker label background settings
+      // Marker label background and chip settings
       // Default is a soft translucent white label chip for readability.
       marker_label_background_color:
         config.marker_label_background_color ?? "#ffffff",
@@ -3203,6 +3413,30 @@ class SimpleBandGraphCard extends HTMLElement {
         config.marker_label_background_opacity ?? 0.8,
       marker_label_background_mode:
         config.marker_label_background_mode ?? "static",
+
+      marker_label_radius: config.marker_label_radius ?? 3,
+      marker_label_padding_x: config.marker_label_padding_x ?? 3,
+      marker_label_padding_y: config.marker_label_padding_y ?? 3,
+
+      marker_label_border_width: config.marker_label_border_width ?? 0,
+      marker_label_border_color:
+        config.marker_label_border_color ?? "var(--divider-color)",
+      marker_label_border_color_mode:
+        config.marker_label_border_color_mode ?? "static",
+      marker_label_border_opacity:
+        config.marker_label_border_opacity ?? 0,
+
+      marker_label_shadow: config.marker_label_shadow ?? false,
+      marker_label_shadow_color:
+        config.marker_label_shadow_color ?? "rgba(0, 0, 0, 0.35)",
+      marker_label_shadow_blur:
+        config.marker_label_shadow_blur ?? 10,
+      marker_label_shadow_offset_x:
+        config.marker_label_shadow_offset_x ?? 0,
+      marker_label_shadow_offset_y:
+        config.marker_label_shadow_offset_y ?? 3,
+      marker_label_shadow_opacity:
+        config.marker_label_shadow_opacity ?? 0.35,
 
       // Axis settings
       show_x_axis: config.show_x_axis ?? true,
@@ -5414,8 +5648,9 @@ class SimpleBandGraphCard extends HTMLElement {
       --------------------------------------------------------------------------
       Marker rendering
       --------------------------------------------------------------------------
-      Builds latest/min/max marker SVG, including simple label placement and
-      overlap avoidance against previously placed marker labels.
+      Builds latest/min/max marker SVG, including label chip styling, simple
+      label placement, and overlap avoidance against previously placed marker
+      labels.
     */
     const buildValueMarker = (point, options = {}) => {
       if (!point) {
@@ -5436,8 +5671,16 @@ class SimpleBandGraphCard extends HTMLElement {
       const labelText = formatMarkerLabel(point, markerType);
 
       const markerLabelSize = Number(this.config.marker_label_size) || 11;
-      const markerLabelHeight = markerLabelSize + 8;
-      const estimatedLabelWidth = labelText.length * markerLabelSize * 0.62;
+      const markerLabelPaddingX =
+        Math.max(0, Number(this.config.marker_label_padding_x) || 0);
+      const markerLabelPaddingY =
+        Math.max(0, Number(this.config.marker_label_padding_y) || 0);
+      const markerLabelRadius =
+        Math.max(0, Number(this.config.marker_label_radius) || 0);
+
+      const estimatedTextWidth = labelText.length * markerLabelSize * 0.62;
+      const markerLabelWidth = estimatedTextWidth + markerLabelPaddingX * 2;
+      const markerLabelHeight = markerLabelSize + markerLabelPaddingY * 2;
       const gap = 8;
 
       const plotRight = padding.left + plotWidth;
@@ -5454,18 +5697,18 @@ class SimpleBandGraphCard extends HTMLElement {
       );
 
       const buildLabelPlacement = (forceLeft = false) => {
-        const wouldOverflowRight = x + gap + estimatedLabelWidth > plotRight;
+        const wouldOverflowRight = x + gap + markerLabelWidth > plotRight;
         const placeLeft = forceLeft || wouldOverflowRight;
 
-        const labelX = placeLeft ? x - gap - estimatedLabelWidth : x + gap;
-
-        const backgroundX = labelX - 4;
+        const backgroundX = placeLeft ? x - gap - markerLabelWidth : x + gap;
         const backgroundY = labelY - markerLabelHeight / 2;
+
+        const labelX = backgroundX + markerLabelWidth / 2;
 
         const labelBox = {
           left: backgroundX,
           top: backgroundY,
-          right: backgroundX + estimatedLabelWidth + 8,
+          right: backgroundX + markerLabelWidth,
           bottom: backgroundY + markerLabelHeight,
         };
 
@@ -5499,6 +5742,32 @@ class SimpleBandGraphCard extends HTMLElement {
 
       const markerBand = getBandForValue(point.state);
 
+      const resolveMarkerChipColour = (
+        configuredColour,
+        mode = "static",
+        opacity = 1
+      ) => {
+        if (mode === "none") {
+          return "transparent";
+        }
+
+        if (mode === "card") {
+          return applyOpacityToColour(
+            cardBackground.colour || "var(--card-background-color)",
+            opacity
+          );
+        }
+
+        if (mode === "band") {
+          return applyOpacityToColour(
+            markerBand?.color || configuredColour || "transparent",
+            opacity
+          );
+        }
+
+        return applyOpacityToColour(configuredColour, opacity);
+      };
+
       const markerLabelColour = resolveColour(
         this.config.marker_label_color,
         this.config.marker_label_color_mode,
@@ -5506,13 +5775,69 @@ class SimpleBandGraphCard extends HTMLElement {
         markerBand
       );
 
-      const markerBackgroundColor =
-        this.config.marker_label_background_mode === "band" && markerBand?.color
-          ? markerBand.color
-          : cssValue(
-              this.config.marker_label_background_color,
-              "var(--card-background-color)"
-            );
+      const markerBackgroundColour = resolveMarkerChipColour(
+        this.config.marker_label_background_color ||
+          "var(--card-background-color)",
+        this.config.marker_label_background_mode,
+        this.config.marker_label_background_opacity
+      );
+
+      const markerBorderWidth =
+        Math.max(0, Number(this.config.marker_label_border_width) || 0);
+
+      const markerBorderColour = resolveMarkerChipColour(
+        this.config.marker_label_border_color || "var(--divider-color)",
+        this.config.marker_label_border_color_mode,
+        this.config.marker_label_border_opacity
+      );
+
+      const markerShadowEnabled =
+        this.config.marker_label_shadow &&
+        Number(this.config.marker_label_shadow_opacity) > 0 &&
+        Number(this.config.marker_label_shadow_blur) >= 0;
+
+      const markerShadowBlur =
+        Math.max(0, Number(this.config.marker_label_shadow_blur) || 0);
+      const markerShadowOffsetX =
+        Number(this.config.marker_label_shadow_offset_x) || 0;
+      const markerShadowOffsetY =
+        Number(this.config.marker_label_shadow_offset_y) || 0;
+      const markerShadowColour = applyOpacityToColour(
+        this.config.marker_label_shadow_color || "rgba(0, 0, 0, 0.35)",
+        Number(this.config.marker_label_shadow_opacity) || 0
+      );
+
+      const markerLabelShadowFilterId =
+        `${this._instanceId}-${markerType}-marker-label-shadow`;
+
+      const markerLabelShadowPadding = Math.max(
+        40,
+        markerShadowBlur * 4 +
+          Math.abs(markerShadowOffsetX) +
+          Math.abs(markerShadowOffsetY)
+      );
+
+      const markerLabelShadowFilter = markerShadowEnabled
+        ? `
+          <defs>
+            <filter
+              id="${markerLabelShadowFilterId}"
+              filterUnits="userSpaceOnUse"
+              x="${labelPlacement.backgroundX - markerLabelShadowPadding}"
+              y="${labelPlacement.backgroundY - markerLabelShadowPadding}"
+              width="${markerLabelWidth + markerLabelShadowPadding * 2}"
+              height="${markerLabelHeight + markerLabelShadowPadding * 2}"
+            >
+              <feDropShadow
+                dx="${markerShadowOffsetX}"
+                dy="${markerShadowOffsetY}"
+                stdDeviation="${markerShadowBlur}"
+                flood-color="${markerShadowColour}"
+              ></feDropShadow>
+            </filter>
+          </defs>
+        `
+        : "";
 
       return {
         labelBox: resolvedShowLabel ? labelPlacement.labelBox : null,
@@ -5530,19 +5855,28 @@ class SimpleBandGraphCard extends HTMLElement {
           ${
             resolvedShowLabel
               ? `
+                ${markerLabelShadowFilter}
+
                 <rect
                   x="${labelPlacement.backgroundX}"
                   y="${labelPlacement.backgroundY}"
-                  width="${estimatedLabelWidth + 8}"
+                  width="${markerLabelWidth}"
                   height="${markerLabelHeight}"
-                  rx="4"
-                  fill="${markerBackgroundColor}"
-                  opacity="${cssValue(this.config.marker_label_background_opacity, 0.75)}"
+                  rx="${markerLabelRadius}"
+                  fill="${markerBackgroundColour}"
+                  stroke="${markerBorderColour}"
+                  stroke-width="${markerBorderWidth}"
+                  filter="${
+                    markerShadowEnabled
+                      ? `url(#${markerLabelShadowFilterId})`
+                      : "none"
+                  }"
                 ></rect>
 
                 <text
                   x="${labelPlacement.labelX}"
                   y="${labelPlacement.labelY}"
+                  text-anchor="middle"
                   dominant-baseline="middle"
                   font-size="${cssValue(this.config.marker_label_size ?? 11, 11, "px")}"
                   font-weight="${cssValue(this.config.marker_label_weight, 400)}"
@@ -5616,7 +5950,6 @@ class SimpleBandGraphCard extends HTMLElement {
     `;
 
     const latestMarker = latestMarkerInfo.html;
-
     /*
       --------------------------------------------------------------------------
       X-axis SVG
