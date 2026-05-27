@@ -1756,6 +1756,21 @@ class SimpleBandGraphCard extends HTMLElement {
               },
             },
             {
+              name: "header_color",
+              selector: {
+                text: {},
+              },
+            },
+            {
+              name: "header_color_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: colourModeOptions,
+                },
+              },
+            },
+            {
               name: "header_opacity",
               selector: {
                 number: {
@@ -2213,6 +2228,8 @@ class SimpleBandGraphCard extends HTMLElement {
           header_right: "Header right",
           header_font_size: "Header text size",
           header_font_weight: "Header text weight",
+          header_color: "Header text colour",
+          header_color_mode: "Header text colour mode",
           header_opacity: "Header text opacity",
           header_multiline: "Allow multiline header text",
           header_max_lines: "Header maximum lines",
@@ -2227,6 +2244,8 @@ class SimpleBandGraphCard extends HTMLElement {
           footer_right: "Footer right",
           footer_font_size: "Footer text size",
           footer_font_weight: "Footer text weight",
+          footer_color: "Footer text colour",
+          footer_color_mode: "Footer text colour mode",
           footer_opacity: "Footer text opacity",
           footer_multiline: "Allow multiline footer text",
           footer_max_lines: "Footer maximum lines",
@@ -2506,6 +2525,10 @@ class SimpleBandGraphCard extends HTMLElement {
             "Choose what appears in the right position of the header.",
           header_font_size: "Text size for all header slots.",
           header_font_weight: "Font weight for all header slots.",
+          header_color:
+            "CSS colour for header text, such as var(--primary-text-color), #ffffff, or rgba(255,255,255,0.85).",
+          header_color_mode:
+            "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the header text transparent.",
           header_opacity: "Opacity of header text, from 0 to 1.",
           header_multiline:
             "Allow eligible long-form header content, such as custom text, messages, and debug text, to wrap onto multiple lines. Compact values such as current, min, max, duration, and unit remain single-line.",
@@ -2528,6 +2551,10 @@ class SimpleBandGraphCard extends HTMLElement {
             "Choose what appears in the right position of the footer.",
           footer_font_size: "Text size for all footer slots.",
           footer_font_weight: "Font weight for all footer slots.",
+          footer_color:
+            "CSS colour for footer text, such as var(--secondary-text-color), #ffffff, or rgba(255,255,255,0.72).",
+          footer_color_mode:
+            "Static uses the chosen colour. Use band colour follows the band matching the current value. No colour makes the footer text transparent.",
           footer_opacity: "Opacity of footer text, from 0 to 1.",
           footer_multiline:
             "Allow eligible long-form footer content, such as custom text, messages, and debug text, to wrap onto multiple lines. Compact values such as current, min, max, duration, and unit remain single-line.",
@@ -2740,10 +2767,14 @@ class SimpleBandGraphCard extends HTMLElement {
       // These are the preferred UI-facing controls.
       header_font_size: config.header_font_size ?? 16,
       header_font_weight: config.header_font_weight ?? 600,
+      header_color: config.header_color ?? "var(--primary-text-color)",
+      header_color_mode: config.header_color_mode ?? "static",
       header_opacity: config.header_opacity ?? 1,
 
       footer_font_size: config.footer_font_size ?? 12,
       footer_font_weight: config.footer_font_weight ?? 500,
+      footer_color: config.footer_color ?? "var(--secondary-text-color)",
+      footer_color_mode: config.footer_color_mode ?? "static",
       footer_opacity: config.footer_opacity ?? 0.8,
 
       // Per-slot ribbon text styling.
@@ -2775,6 +2806,34 @@ class SimpleBandGraphCard extends HTMLElement {
         config.bottom_center_font_weight ?? config.footer_font_weight ?? 500,
       bottom_right_font_weight:
         config.bottom_right_font_weight ?? config.footer_font_weight ?? 500,
+
+      top_left_color:
+        config.top_left_color ?? config.header_color ?? "var(--primary-text-color)",
+      top_center_color:
+        config.top_center_color ?? config.header_color ?? "var(--primary-text-color)",
+      top_right_color:
+        config.top_right_color ?? config.header_color ?? "var(--primary-text-color)",
+
+      bottom_left_color:
+        config.bottom_left_color ?? config.footer_color ?? "var(--secondary-text-color)",
+      bottom_center_color:
+        config.bottom_center_color ?? config.footer_color ?? "var(--secondary-text-color)",
+      bottom_right_color:
+        config.bottom_right_color ?? config.footer_color ?? "var(--secondary-text-color)",
+
+      top_left_color_mode:
+        config.top_left_color_mode ?? config.header_color_mode ?? "static",
+      top_center_color_mode:
+        config.top_center_color_mode ?? config.header_color_mode ?? "static",
+      top_right_color_mode:
+        config.top_right_color_mode ?? config.header_color_mode ?? "static",
+
+      bottom_left_color_mode:
+        config.bottom_left_color_mode ?? config.footer_color_mode ?? "static",
+      bottom_center_color_mode:
+        config.bottom_center_color_mode ?? config.footer_color_mode ?? "static",
+      bottom_right_color_mode:
+        config.bottom_right_color_mode ?? config.footer_color_mode ?? "static",
 
       top_left_opacity:
         config.top_left_opacity ?? config.header_opacity ?? 1,
@@ -6074,18 +6133,52 @@ class SimpleBandGraphCard extends HTMLElement {
       const defaultFontWeight = this.config[`${positionKey}_font_weight`] ?? 600;
       const defaultOpacity = this.config[`${positionKey}_opacity`] ?? 1;
 
-      const defaultColor = isDebug
-        ? "var(--secondary-text-color)"
-        : "var(--primary-text-color)";
+      /*
+        New preferred colour path:
+        - top_left_color / top_center_color / top_right_color inherit from
+          header_color via setConfig()
+        - bottom_left_color / bottom_center_color / bottom_right_color inherit
+          from footer_color via setConfig()
+        - ribbon_styles still wins as the most specific override
+      */
+      const defaultColor =
+        this.config[`${positionKey}_color`] ??
+        (
+          isDebug
+            ? "var(--secondary-text-color)"
+            : "var(--primary-text-color)"
+        );
+
+      const defaultColourMode =
+        this.config[`${positionKey}_color_mode`] ??
+        this.config.ribbon_color_mode ??
+        "static";
 
       const style = this.config.ribbon_styles?.[positionKey] || {};
 
-      const fontSize = cssValue(style.font_size ?? defaultFontSize, defaultFontSize, "px");
-      const fontWeight = cssValue(style.font_weight, defaultFontWeight);
-      const colourMode = style.color_mode ?? this.config.ribbon_color_mode ?? "static";
+      const fontSize = cssValue(
+        style.font_size ?? defaultFontSize,
+        defaultFontSize,
+        "px"
+      );
+
+      const fontWeight = cssValue(
+        style.font_weight,
+        defaultFontWeight
+      );
+
+      const colourMode =
+        style.color_mode ?? defaultColourMode;
+
       const colourOpacity =
         style.color_opacity ?? style.opacity ?? defaultOpacity;
-      const color = resolveColour(style.color ?? defaultColor, colourMode, colourOpacity);
+
+      const color = resolveColour(
+        style.color ?? defaultColor,
+        colourMode,
+        colourOpacity
+      );
+
       const opacity = 1;
       const textTransform = cssValue(style.text_transform, "none");
       const letterSpacing = cssValue(style.letter_spacing, "normal");
