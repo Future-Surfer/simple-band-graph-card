@@ -293,12 +293,14 @@ class SimpleBandGraphCard extends HTMLElement {
       // Marker label placement settings
       marker_label_position: "smart",
       marker_label_preferred_positions: "above, below, right, left",
-      latest_marker_label_preferred_positions: "right, above, below, left",
+      latest_marker_label_preferred_positions: "above, below",
       min_marker_label_preferred_positions: "below, right, left, above",
       max_marker_label_preferred_positions: "above, right, left, below",
       marker_label_offset: 12,
       marker_label_avoid_edges: true,
       marker_label_avoid_overlap: true,
+      marker_label_avoid_line: true,
+      marker_label_line_gap: 6,
       marker_label_min_gap: 8,
 
       // Marker label settings
@@ -2444,6 +2446,23 @@ class SimpleBandGraphCard extends HTMLElement {
               },
             },
             {
+              name: "marker_label_avoid_line",
+              selector: {
+                boolean: {},
+              },
+            },
+            {
+              name: "marker_label_line_gap",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 32,
+                  step: 1,
+                  mode: "slider",
+                },
+              },
+            },
+            {
               name: "marker_label_min_gap",
               selector: {
                 number: {
@@ -3069,6 +3088,8 @@ class SimpleBandGraphCard extends HTMLElement {
           marker_label_avoid_edges: "Avoid plot edges",
           marker_label_avoid_overlap: "Avoid label overlap",
           marker_label_min_gap: "Minimum label gap",
+          marker_label_avoid_line: "Avoid data line",
+          marker_label_line_gap: "Line avoidance gap",
 
           // Header
           show_header: "Show header",
@@ -3504,7 +3525,7 @@ class SimpleBandGraphCard extends HTMLElement {
           marker_label_preferred_positions:
             "Default comma-separated priority order for smart label placement, e.g. above, below, right, left.",
           latest_marker_label_preferred_positions:
-            "Comma-separated priority order for the current/latest marker label, e.g. right, above, below, left.",
+            "Comma-separated priority order for the current/latest marker label, e.g. above, below.",
           min_marker_label_preferred_positions:
             "Comma-separated priority order for the minimum marker label, e.g. below, right, left, above.",
           max_marker_label_preferred_positions:
@@ -3517,6 +3538,10 @@ class SimpleBandGraphCard extends HTMLElement {
             "Try to avoid marker labels overlapping each other.",
           marker_label_min_gap:
             "Minimum gap between marker labels when overlap avoidance is enabled.",
+          marker_label_avoid_line:
+            "Try to place marker labels where they do not cover the plotted line.",
+          marker_label_line_gap:
+            "Extra padding around marker labels when checking whether they overlap the plotted line.",
 
           // Header
           show_header:
@@ -4015,6 +4040,10 @@ class SimpleBandGraphCard extends HTMLElement {
         config.marker_label_avoid_edges ?? true,
       marker_label_avoid_overlap:
         config.marker_label_avoid_overlap ?? true,
+      marker_label_avoid_line:
+        config.marker_label_avoid_line ?? true,
+      marker_label_line_gap:
+        config.marker_label_line_gap ?? 6,
       marker_label_min_gap:
         config.marker_label_min_gap ?? 8,
 
@@ -6336,27 +6365,114 @@ class SimpleBandGraphCard extends HTMLElement {
         ------------------------------------------------------------------------
         Marker label placement
         ------------------------------------------------------------------------
+        Smart placement tries a marker-specific priority list first, then falls
+        back to the least-bad placement if no option is perfect.
       */
+      const plotLeft = padding.left;
       const plotRight = padding.left + plotWidth;
       const plotTop = padding.top;
       const plotBottom = padding.top + plotHeight;
 
-      const midpoint = yMin + (yMax - yMin) / 2;
-      const preferredLabelY = point.state >= midpoint ? y - 18 : y + 18;
+      const markerLabelOffset =
+        Math.max(0, Number(this.config.marker_label_offset) || 0);
 
-      const labelY = clamp(
-        preferredLabelY,
-        plotTop + markerLabelHeight / 2,
-        plotBottom - markerLabelHeight / 2
+      const markerLabelMinGap =
+        Math.max(0, Number(this.config.marker_label_min_gap) || 0);
+
+      const markerLabelAvoidEdges =
+        this.config.marker_label_avoid_edges ?? true;
+
+      const markerLabelAvoidOverlap =
+        this.config.marker_label_avoid_overlap ?? true;
+
+      const markerLabelAvoidLine =
+        this.config.marker_label_avoid_line ?? true;
+
+      const markerLabelLineGap =
+        Math.max(0, Number(this.config.marker_label_line_gap) || 0);
+
+      const normalisePreferredPositions = (positions, fallback) => {
+        const rawPositions = Array.isArray(positions)
+          ? positions
+          : String(positions || fallback || "")
+              .split(",")
+              .map((position) => position.trim());
+
+        const validPositions = rawPositions.filter((position) =>
+          ["above", "below", "left", "right"].includes(position)
+        );
+
+        return validPositions.length
+          ? validPositions
+          : ["above", "below", "right", "left"];
+      };
+
+      const markerTypePreferredPositions =
+        markerType === "latest"
+          ? this.config.latest_marker_label_preferred_positions
+          : markerType === "min"
+            ? this.config.min_marker_label_preferred_positions
+            : markerType === "max"
+              ? this.config.max_marker_label_preferred_positions
+              : this.config.marker_label_preferred_positions;
+
+      const preferredPositions = normalisePreferredPositions(
+        markerTypePreferredPositions,
+        this.config.marker_label_preferred_positions
       );
 
-      const buildLabelPlacement = (forceLeft = false) => {
-        const wouldOverflowRight = x + gap + markerLabelWidth > plotRight;
-        const placeLeft = forceLeft || wouldOverflowRight;
+      const requestedLabelPosition =
+        this.config.marker_label_position || "smart";
 
-        const backgroundX = placeLeft ? x - gap - markerLabelWidth : x + gap;
-        const backgroundY = labelY - markerLabelHeight / 2;
+      const candidatePositions =
+        requestedLabelPosition === "smart"
+          ? preferredPositions
+          : normalisePreferredPositions(
+              requestedLabelPosition,
+              this.config.marker_label_preferred_positions
+            );
+
+      const expandBox = (box, amount) => ({
+        left: box.left - amount,
+        top: box.top - amount,
+        right: box.right + amount,
+        bottom: box.bottom + amount,
+      });
+
+      const buildLabelPlacement = (position, clampToPlot = false) => {
+        let backgroundX;
+        let backgroundY;
+
+        if (position === "below") {
+          backgroundX = x - markerLabelWidth / 2;
+          backgroundY = y + markerSize + markerLabelOffset;
+        } else if (position === "left") {
+          backgroundX = x - markerSize - markerLabelOffset - markerLabelWidth;
+          backgroundY = y - markerLabelHeight / 2;
+        } else if (position === "right") {
+          backgroundX = x + markerSize + markerLabelOffset;
+          backgroundY = y - markerLabelHeight / 2;
+        } else {
+          backgroundX = x - markerLabelWidth / 2;
+          backgroundY = y - markerSize - markerLabelOffset - markerLabelHeight;
+        }
+
+        if (clampToPlot) {
+          backgroundX = clamp(
+            backgroundX,
+            plotLeft,
+            plotRight - markerLabelWidth
+          );
+
+          backgroundY = clamp(
+            backgroundY,
+            plotTop,
+            plotBottom - markerLabelHeight
+          );
+        }
+
         const labelX = backgroundX + markerLabelWidth / 2;
+        const labelY = backgroundY + markerLabelHeight / 2;
 
         const labelBox = {
           left: backgroundX,
@@ -6366,6 +6482,7 @@ class SimpleBandGraphCard extends HTMLElement {
         };
 
         return {
+          position,
           labelX,
           labelY,
           backgroundX,
@@ -6374,30 +6491,179 @@ class SimpleBandGraphCard extends HTMLElement {
         };
       };
 
-      let labelPlacement = buildLabelPlacement(false);
+      const labelBoxFitsPlot = (box) =>
+        box.left >= plotLeft &&
+        box.right <= plotRight &&
+        box.top >= plotTop &&
+        box.bottom <= plotBottom;
 
-      /*
-        ------------------------------------------------------------------------
-        Marker label overlap handling
-        ------------------------------------------------------------------------
-      */
-      const overlapsBlockedLabel = (box) =>
-        hideLabelIfOverlapsBoxes.some((blockedBox) =>
-          boxesOverlap(box, blockedBox)
+            const overlapsBlockedLabel = (box) =>
+        hideLabelIfOverlapsBoxes
+          .filter(Boolean)
+          .some((blockedBox) =>
+            boxesOverlap(
+              expandBox(box, markerLabelMinGap),
+              expandBox(blockedBox, markerLabelMinGap)
+            )
+          );
+
+      const pointInsideBox = (pointX, pointY, box) =>
+        pointX >= box.left &&
+        pointX <= box.right &&
+        pointY >= box.top &&
+        pointY <= box.bottom;
+
+      const lineIntersectsLine = (a, b, c, d) => {
+        const direction = (p1, p2, p3) =>
+          (p3.x - p1.x) * (p2.y - p1.y) -
+          (p2.x - p1.x) * (p3.y - p1.y);
+
+        const d1 = direction(c, d, a);
+        const d2 = direction(c, d, b);
+        const d3 = direction(a, b, c);
+        const d4 = direction(a, b, d);
+
+        return (
+          ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+          ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))
+        );
+      };
+
+      const lineSegmentIntersectsBox = (start, end, box) => {
+        if (
+          pointInsideBox(start.x, start.y, box) ||
+          pointInsideBox(end.x, end.y, box)
+        ) {
+          return true;
+        }
+
+        const topLeft = { x: box.left, y: box.top };
+        const topRight = { x: box.right, y: box.top };
+        const bottomRight = { x: box.right, y: box.bottom };
+        const bottomLeft = { x: box.left, y: box.bottom };
+
+        return (
+          lineIntersectsLine(start, end, topLeft, topRight) ||
+          lineIntersectsLine(start, end, topRight, bottomRight) ||
+          lineIntersectsLine(start, end, bottomRight, bottomLeft) ||
+          lineIntersectsLine(start, end, bottomLeft, topLeft)
+        );
+      };
+
+      const labelOverlapsLine = (box) => {
+        if (!markerLabelAvoidLine || !plotData?.length) {
+          return false;
+        }
+
+        const expandedBox = expandBox(box, markerLabelLineGap);
+
+        const linePoints = plotData
+          .filter((dataPoint) => dataPoint && Number.isFinite(dataPoint.state))
+          .map((dataPoint) => ({
+            x: xToSvg(dataPoint.time),
+            y: yToSvg(dataPoint.state),
+          }));
+
+        if (Number.isFinite(rawValue)) {
+          linePoints.push({
+            x: xToSvg(now),
+            y: yToSvg(rawValue),
+          });
+        }
+
+        return linePoints.some((linePoint, index) => {
+          if (pointInsideBox(linePoint.x, linePoint.y, expandedBox)) {
+            return true;
+          }
+
+          if (index === 0) {
+            return false;
+          }
+
+          const previousPoint = linePoints[index - 1];
+
+          return lineSegmentIntersectsBox(
+            previousPoint,
+            linePoint,
+            expandedBox
+          );
+        });
+      };
+
+      const scorePlacement = (placement, index = 0) => {
+        const box = placement.labelBox;
+
+        const edgeOverflow =
+          Math.max(0, plotLeft - box.left) +
+          Math.max(0, box.right - plotRight) +
+          Math.max(0, plotTop - box.top) +
+          Math.max(0, box.bottom - plotBottom);
+
+        const overlapPenalty =
+          markerLabelAvoidOverlap && overlapsBlockedLabel(box) ? 10000 : 0;
+
+        const linePenalty =
+          markerLabelAvoidLine && labelOverlapsLine(box) ? 5000 : 0;
+
+        const preferencePenalty = index * 20;
+
+        return edgeOverflow * 100 + overlapPenalty + linePenalty + preferencePenalty;
+      };
+
+      const placements = candidatePositions.map((position) =>
+        buildLabelPlacement(position, false)
+      );
+
+      const cleanPlacement = placements.find((placement) => {
+        const fitsEdges =
+          !markerLabelAvoidEdges || labelBoxFitsPlot(placement.labelBox);
+
+        const avoidsOverlap =
+          !markerLabelAvoidOverlap ||
+          !overlapsBlockedLabel(placement.labelBox);
+
+        const avoidsLine =
+          !markerLabelAvoidLine ||
+          !labelOverlapsLine(placement.labelBox);
+
+        return fitsEdges && avoidsOverlap && avoidsLine;
+      });
+
+      const fallbackPlacement =
+        cleanPlacement ||
+        placements
+          .slice()
+          .sort(
+            (a, b) =>
+              scorePlacement(a, placements.indexOf(a)) -
+              scorePlacement(b, placements.indexOf(b))
+          )[0] ||
+        buildLabelPlacement("above", false);
+
+      let labelPlacement =
+        markerLabelAvoidEdges && !labelBoxFitsPlot(fallbackPlacement.labelBox)
+          ? buildLabelPlacement(fallbackPlacement.position, true)
+          : fallbackPlacement;
+
+      let resolvedShowLabel = requestedShowLabel;
+
+      if (
+        requestedShowLabel &&
+        markerLabelAvoidOverlap &&
+        overlapsBlockedLabel(labelPlacement.labelBox)
+      ) {
+        const nonOverlappingPlacement = placements.find(
+          (placement) =>
+            (!markerLabelAvoidEdges || labelBoxFitsPlot(placement.labelBox)) &&
+            !overlapsBlockedLabel(placement.labelBox)
         );
 
-      let resolvedShowLabel =
-        requestedShowLabel && !overlapsBlockedLabel(labelPlacement.labelBox);
-
-      if (requestedShowLabel && !resolvedShowLabel && markerType !== "latest") {
-        const leftPlacement = buildLabelPlacement(true);
-
-        if (!overlapsBlockedLabel(leftPlacement.labelBox)) {
-          labelPlacement = leftPlacement;
-          resolvedShowLabel = true;
+        if (nonOverlappingPlacement) {
+          labelPlacement = nonOverlappingPlacement;
+        } else if (markerLabelAvoidOverlap) {
+          resolvedShowLabel = false;
         }
       }
-
       /*
         ------------------------------------------------------------------------
         Marker dot fill, stroke, and opacity
