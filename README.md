@@ -1,6 +1,7 @@
 # Simple Band Graph Card
 
-<img width="699" height="400" alt="Simple Band Graph Card example" src="https://github.com/user-attachments/assets/5e072bc8-392e-4a6c-92f5-d10527977368" />
+<img width="1448" height="1086" alt="Simple Card Schematic" src="https://github.com/user-attachments/assets/bbbe2cf6-450c-4c98-af0e-f9070a986101" />
+
 
 A Home Assistant custom card for clean, configurable line and area graphs with coloured threshold bands.
 
