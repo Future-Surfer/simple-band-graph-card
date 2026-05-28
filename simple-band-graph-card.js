@@ -15,8 +15,8 @@ class SimpleBandGraphCard extends HTMLElement {
     getStubConfig provides Home Assistant with a starter YAML configuration when
     the card is added through the visual editor.
 
-    getConfigElement tells Home Assistant which custom editor element to open when
-    the user edits this card through the visual editor.
+    getConfigForm defines the native Home Assistant visual editor form, including
+    expandable sections, selectors, dropdown options, and helper descriptions.
 
     setConfig is called by Home Assistant when the card is loaded or when the YAML
     changes. This section defines defaults, handles backwards-compatible options,
@@ -34,7 +34,7 @@ class SimpleBandGraphCard extends HTMLElement {
     numeric entity.
 
     Keep these starter defaults aligned with the main setConfig defaults so the
-    visual editor toggles and selectors reflect what the rendered card is already
+    visual editor fields and selectors reflect what the rendered card is already
     doing.
   */
   static getStubConfig(hass) {
@@ -297,6 +297,10 @@ class SimpleBandGraphCard extends HTMLElement {
       area_gradient_opacity_start: 0.24,
       area_gradient_opacity_end: 0,
 
+      // Area band settings
+      area_band_mode: "vertical",
+      area_band_blend: "stepped",
+
       // Marker visibility and size settings
       show_latest: false,
       show_latest_label: true,
@@ -556,6 +560,16 @@ class SimpleBandGraphCard extends HTMLElement {
     const areaGradientDirectionOptions = [
       { value: "vertical", label: "Vertical, fade down" },
       { value: "horizontal", label: "Horizontal, fade across" },
+    ];
+
+    const areaBandModeOptions = [
+      { value: "vertical", label: "Vertical slices, across time" },
+      { value: "horizontal", label: "Horizontal slices, by value" },
+    ];
+
+    const areaBandBlendOptions = [
+      { value: "stepped", label: "Stepped colours" },
+      { value: "gradient", label: "Smooth gradient" },
     ];
 
     const fontWeightOptions = [
@@ -2331,6 +2345,28 @@ class SimpleBandGraphCard extends HTMLElement {
                   max: 1,
                   step: 0.05,
                   mode: "slider",
+                },
+              },
+            },
+
+            /*
+              Band colour behaviour
+            */
+            {
+              name: "area_band_mode",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: areaBandModeOptions,
+                },
+              },
+            },
+            {
+              name: "area_band_blend",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: areaBandBlendOptions,
                 },
               },
             },
@@ -4187,6 +4223,10 @@ class SimpleBandGraphCard extends HTMLElement {
             "Starting opacity for the area gradient.",
           area_gradient_opacity_end:
             "Ending opacity for the area gradient.",
+          area_band_mode:
+            "When using band area colour, choose whether colours appear as vertical time slices or horizontal value bands.",
+          area_band_blend:
+            "When using band area colour, choose stepped colour changes or smooth transitions between band colours.",
 
           // Marker visibility
           show_latest:
@@ -4766,6 +4806,12 @@ class SimpleBandGraphCard extends HTMLElement {
         config.area_gradient_opacity_start ?? 0.24,
       area_gradient_opacity_end:
         config.area_gradient_opacity_end ?? 0,
+
+      // Area band settings
+      area_band_mode:
+        config.area_band_mode ?? "vertical",
+      area_band_blend:
+        config.area_band_blend ?? "stepped",
 
       // Grid-line settings
       show_x_grid: config.show_x_grid ?? false,
@@ -9915,11 +9961,84 @@ class SimpleBandGraphCard extends HTMLElement {
       return polygons.join("");
     };
 
+    const buildHorizontalBandAreaHtml = () => {
+      if (plotData.length < 2 || !Array.isArray(this.config.bands)) {
+        return "";
+      }
+
+      const areaPoints =
+        [
+          `${xToSvg(plotData[0].time)},${areaBaselineY}`,
+          ...plotData.map(
+            (point) => `${xToSvg(point.time)},${yToSvg(point.state)}`
+          ),
+          `${xToSvg(plotData[plotData.length - 1].time)},${areaBaselineY}`,
+        ].join(" ");
+
+      return this.config.bands
+        .map((band) => {
+          const bandTopValue =
+            Math.min(Number(band.to), Number(this.config.y_max));
+
+          const bandBottomValue =
+            Math.max(Number(band.from), Number(this.config.y_min));
+
+          if (
+            !Number.isFinite(bandTopValue) ||
+            !Number.isFinite(bandBottomValue) ||
+            bandTopValue <= bandBottomValue
+          ) {
+            return "";
+          }
+
+          const bandTopY =
+            yToSvg(bandTopValue);
+
+          const bandBottomY =
+            yToSvg(bandBottomValue);
+
+          const bandHeight =
+            Math.abs(bandBottomY - bandTopY);
+
+          if (bandHeight <= 0) {
+            return "";
+          }
+
+          const bandColour =
+            applyOpacityToColour(band.color || "var(--primary-color)", areaOpacity);
+
+          return `
+            <g clip-path="url(#${plotClipPathId})">
+              <clipPath id="${plotClipPathId}-area-band-${this.config.bands.indexOf(band)}">
+                <polygon points="${areaPoints}"></polygon>
+              </clipPath>
+
+              <rect
+                x="${padding.left}"
+                y="${bandTopY}"
+                width="${plotWidth}"
+                height="${bandHeight}"
+                fill="${bandColour}"
+                stroke="none"
+                clip-path="url(#${plotClipPathId}-area-band-${this.config.bands.indexOf(band)})"
+              ></rect>
+            </g>
+          `;
+        })
+        .join("");
+    };
+
     let areaHtml = "";
 
     if (this.config.show_area && areaColorMode !== "none" && points) {
       if (areaColorMode === "band") {
-        areaHtml = buildGroupedBandAreaHtml();
+        const areaBandMode =
+          this.config.area_band_mode || "vertical";
+
+        areaHtml =
+          areaBandMode === "horizontal"
+            ? buildHorizontalBandAreaHtml()
+            : buildGroupedBandAreaHtml();
       } else {
         areaHtml = buildStaticAreaHtml();
       }
