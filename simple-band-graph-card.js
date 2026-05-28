@@ -9737,8 +9737,14 @@ class SimpleBandGraphCard extends HTMLElement {
       Colour mode support:
       - "none" hides the area fill.
       - "static" uses area_color and area_opacity.
-      - "band" splits at band thresholds, then groups adjacent segments with the
-        same resolved band colour into larger polygons.
+      - "band" colours the area using configured bands.
+
+      Band area support:
+      - "vertical" colours the area across time, based on the band of each line
+        segment.
+      - "horizontal" colours the area by value band, clipped underneath the line.
+      - "stepped" uses hard colour transitions.
+      - "gradient" uses smooth colour transitions where supported.
     */
     const areaColorMode = this.config.area_color_mode || "static";
 
@@ -9794,7 +9800,8 @@ class SimpleBandGraphCard extends HTMLElement {
 
     const useAreaGradient =
       this.config.show_area &&
-      this.config.area_fill_style === "gradient";
+      this.config.area_fill_style === "gradient" &&
+      areaColorMode !== "band";
 
     const areaGradientHtml =
       useAreaGradient ? buildAreaGradientHtml() : "";
@@ -9807,24 +9814,28 @@ class SimpleBandGraphCard extends HTMLElement {
       padding.top + plotHeight
     );
 
-    const areaOpacity = normaliseOpacity(this.config.area_opacity ?? 0.18);
+    const areaOpacity =
+      normaliseOpacity(this.config.area_opacity ?? 0.18);
 
-    const staticAreaColour = applyOpacityToColour(
-      this.config.area_color || "var(--primary-color)",
-      areaOpacity
-    );
+    const staticAreaColour =
+      applyOpacityToColour(
+        this.config.area_color || "var(--primary-color)",
+        areaOpacity
+      );
+
+    const buildAreaPoints = () =>
+      plotData.length >= 2
+        ? [
+            `${xToSvg(plotData[0].time)},${areaBaselineY}`,
+            ...plotData.map(
+              (point) => `${xToSvg(point.time)},${yToSvg(point.state)}`
+            ),
+            `${xToSvg(plotData[plotData.length - 1].time)},${areaBaselineY}`,
+          ].join(" ")
+        : "";
 
     const buildStaticAreaHtml = () => {
-      const areaPoints =
-        plotData.length >= 2
-          ? [
-              `${xToSvg(plotData[0].time)},${areaBaselineY}`,
-              ...plotData.map(
-                (point) => `${xToSvg(point.time)},${yToSvg(point.state)}`
-              ),
-              `${xToSvg(plotData[plotData.length - 1].time)},${areaBaselineY}`,
-            ].join(" ")
-          : "";
+      const areaPoints = buildAreaPoints();
 
       const areaFill =
         useAreaGradient
@@ -9853,7 +9864,8 @@ class SimpleBandGraphCard extends HTMLElement {
       let currentColour = null;
       let currentLinePoints = [];
 
-      const toSvgPoint = (point) => `${xToSvg(point.time)},${yToSvg(point.state)}`;
+      const toSvgPoint = (point) =>
+        `${xToSvg(point.time)},${yToSvg(point.state)}`;
 
       const flushCurrentPolygon = () => {
         if (currentLinePoints.length < 2 || !currentColour) return;
@@ -9891,7 +9903,8 @@ class SimpleBandGraphCard extends HTMLElement {
         return thresholds
           .filter((threshold) => threshold > low && threshold < high)
           .map((threshold) => {
-            const ratio = (threshold - startValue) / (endValue - startValue);
+            const ratio =
+              (threshold - startValue) / (endValue - startValue);
 
             return {
               state: threshold,
@@ -9916,18 +9929,23 @@ class SimpleBandGraphCard extends HTMLElement {
           const startPoint = subPoints[subIndex - 1];
           const endPoint = subPoints[subIndex];
 
-          if (startPoint.time === endPoint.time && startPoint.state === endPoint.state) {
+          if (
+            startPoint.time === endPoint.time &&
+            startPoint.state === endPoint.state
+          ) {
             continue;
           }
 
-          const segmentBand = getBandForRange(startPoint.state, endPoint.state);
+          const segmentBand =
+            getBandForRange(startPoint.state, endPoint.state);
 
-          const segmentColour = resolveColour(
-            this.config.area_color,
-            "band",
-            areaOpacity,
-            segmentBand
-          );
+          const segmentColour =
+            resolveColour(
+              this.config.area_color,
+              "band",
+              areaOpacity,
+              segmentBand
+            );
 
           if (!segmentColour || segmentColour === "transparent") {
             flushCurrentPolygon();
@@ -9945,7 +9963,8 @@ class SimpleBandGraphCard extends HTMLElement {
             currentColour = segmentColour;
             currentLinePoints = [startSvgPoint, endSvgPoint];
           } else {
-            const lastPoint = currentLinePoints[currentLinePoints.length - 1];
+            const lastPoint =
+              currentLinePoints[currentLinePoints.length - 1];
 
             if (lastPoint !== startSvgPoint) {
               currentLinePoints.push(startSvgPoint);
@@ -9966,17 +9985,14 @@ class SimpleBandGraphCard extends HTMLElement {
         return "";
       }
 
-      const areaPoints =
-        [
-          `${xToSvg(plotData[0].time)},${areaBaselineY}`,
-          ...plotData.map(
-            (point) => `${xToSvg(point.time)},${yToSvg(point.state)}`
-          ),
-          `${xToSvg(plotData[plotData.length - 1].time)},${areaBaselineY}`,
-        ].join(" ");
+      const areaPoints = buildAreaPoints();
+
+      if (!areaPoints) {
+        return "";
+      }
 
       return this.config.bands
-        .map((band) => {
+        .map((band, index) => {
           const bandTopValue =
             Math.min(Number(band.to), Number(this.config.y_max));
 
@@ -10005,11 +10021,17 @@ class SimpleBandGraphCard extends HTMLElement {
           }
 
           const bandColour =
-            applyOpacityToColour(band.color || "var(--primary-color)", areaOpacity);
+            applyOpacityToColour(
+              band.color || "var(--primary-color)",
+              areaOpacity
+            );
+
+          const areaClipPathId =
+            `${plotClipPathId}-area-band-${index}`;
 
           return `
             <g clip-path="url(#${plotClipPathId})">
-              <clipPath id="${plotClipPathId}-area-band-${this.config.bands.indexOf(band)}">
+              <clipPath id="${areaClipPathId}">
                 <polygon points="${areaPoints}"></polygon>
               </clipPath>
 
@@ -10020,12 +10042,145 @@ class SimpleBandGraphCard extends HTMLElement {
                 height="${bandHeight}"
                 fill="${bandColour}"
                 stroke="none"
-                clip-path="url(#${plotClipPathId}-area-band-${this.config.bands.indexOf(band)})"
+                clip-path="url(#${areaClipPathId})"
               ></rect>
             </g>
           `;
         })
         .join("");
+    };
+
+    const buildHorizontalBandGradientAreaHtml = () => {
+      if (plotData.length < 2 || !Array.isArray(this.config.bands)) {
+        return "";
+      }
+
+      const areaPoints = buildAreaPoints();
+
+      if (!areaPoints) {
+        return "";
+      }
+
+      const validBands =
+        this.config.bands
+          .map((band) => {
+            const from =
+              Math.max(Number(band.from), Number(this.config.y_min));
+
+            const to =
+              Math.min(Number(band.to), Number(this.config.y_max));
+
+            return {
+              ...band,
+              from,
+              to,
+            };
+          })
+          .filter((band) =>
+            Number.isFinite(band.from) &&
+            Number.isFinite(band.to) &&
+            band.to > band.from
+          )
+          .sort((a, b) => a.from - b.from);
+
+      if (!validBands.length) {
+        return "";
+      }
+
+      const gradientId =
+        `${plotClipPathId}-horizontal-area-band-gradient`;
+
+      const areaClipPathId =
+        `${plotClipPathId}-horizontal-area-gradient-clip`;
+
+      const stops =
+        validBands
+          .map((band) => {
+            const midpoint =
+              band.from + (band.to - band.from) / 2;
+
+            const y =
+              yToSvg(midpoint);
+
+            const offset =
+              clamp(
+                ((y - padding.top) / plotHeight) * 100,
+                0,
+                100
+              );
+
+            return {
+              offset,
+              colour: applyOpacityToColour(
+                band.color || "var(--primary-color)",
+                areaOpacity
+              ),
+            };
+          })
+          .sort((a, b) => a.offset - b.offset);
+
+      const topBand =
+        validBands[validBands.length - 1];
+
+      const bottomBand =
+        validBands[0];
+
+      const gradientStopsHtml =
+        [
+          {
+            offset: 0,
+            colour: applyOpacityToColour(
+              topBand.color || "var(--primary-color)",
+              areaOpacity
+            ),
+          },
+          ...stops,
+          {
+            offset: 100,
+            colour: applyOpacityToColour(
+              bottomBand.color || "var(--primary-color)",
+              areaOpacity
+            ),
+          },
+        ]
+          .map((stop) => `
+            <stop
+              offset="${stop.offset}%"
+              stop-color="${stop.colour}"
+            ></stop>
+          `)
+          .join("");
+
+      return `
+        <g clip-path="url(#${plotClipPathId})">
+          <defs>
+            <linearGradient
+              id="${gradientId}"
+              x1="0"
+              y1="${padding.top}"
+              x2="0"
+              y2="${padding.top + plotHeight}"
+              gradientUnits="userSpaceOnUse"
+            >
+              ${gradientStopsHtml}
+            </linearGradient>
+
+            <clipPath id="${areaClipPathId}">
+              <polygon points="${areaPoints}"></polygon>
+            </clipPath>
+          </defs>
+
+          <rect
+            x="${padding.left}"
+            y="${padding.top}"
+            width="${plotWidth}"
+            height="${plotHeight}"
+            fill="url(#${gradientId})"
+            stroke="none"
+            clip-path="url(#${areaClipPathId})"
+          ></rect>
+        </g>
+      `;
     };
 
     let areaHtml = "";
@@ -10035,10 +10190,17 @@ class SimpleBandGraphCard extends HTMLElement {
         const areaBandMode =
           this.config.area_band_mode || "vertical";
 
-        areaHtml =
-          areaBandMode === "horizontal"
-            ? buildHorizontalBandAreaHtml()
-            : buildGroupedBandAreaHtml();
+        const areaBandBlend =
+          this.config.area_band_blend || "stepped";
+
+        if (areaBandMode === "horizontal") {
+          areaHtml =
+            areaBandBlend === "gradient"
+              ? buildHorizontalBandGradientAreaHtml()
+              : buildHorizontalBandAreaHtml();
+        } else {
+          areaHtml = buildGroupedBandAreaHtml();
+        }
       } else {
         areaHtml = buildStaticAreaHtml();
       }
