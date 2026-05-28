@@ -292,6 +292,10 @@ class SimpleBandGraphCard extends HTMLElement {
       area_color: "var(--primary-color)",
       area_color_mode: "static",
       area_opacity: 0.18,
+      area_fill_style: "solid",
+      area_gradient_direction: "vertical",
+      area_gradient_opacity_start: 0.24,
+      area_gradient_opacity_end: 0,
 
       // Marker visibility and size settings
       show_latest: false,
@@ -542,6 +546,16 @@ class SimpleBandGraphCard extends HTMLElement {
       { value: "band", label: "Use band colour" },
       { value: "gradient", label: "Smooth gradient" },
       { value: "none", label: "No colour / transparent" },
+    ];
+
+    const areaFillStyleOptions = [
+      { value: "solid", label: "Solid fill" },
+      { value: "gradient", label: "Gradient fill" },
+    ];
+
+    const areaGradientDirectionOptions = [
+      { value: "vertical", label: "Vertical, fade down" },
+      { value: "horizontal", label: "Horizontal, fade across" },
     ];
 
     const fontWeightOptions = [
@@ -2271,6 +2285,46 @@ class SimpleBandGraphCard extends HTMLElement {
             },
             {
               name: "area_opacity",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "area_fill_style",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: areaFillStyleOptions,
+                },
+              },
+            },
+            {
+              name: "area_gradient_direction",
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: areaGradientDirectionOptions,
+                },
+              },
+            },
+            {
+              name: "area_gradient_opacity_start",
+              selector: {
+                number: {
+                  min: 0,
+                  max: 1,
+                  step: 0.05,
+                  mode: "slider",
+                },
+              },
+            },
+            {
+              name: "area_gradient_opacity_end",
               selector: {
                 number: {
                   min: 0,
@@ -4118,13 +4172,21 @@ class SimpleBandGraphCard extends HTMLElement {
 
           // Area
           show_area:
-            "Show or hide the filled area for the plotted history data. The area can be shown even when the line itself is hidden.",
-          area_color_mode:
-            "Choose how the area fill colour is resolved. Static uses the configured area colour. Band mode will use configured band colours once banded area rendering is added.",
+            "Show or hide the filled area under the line.",
           area_color:
-            "Colour used for the area fill when area colour mode is static.",
+            "Colour used for the area fill.",
+          area_color_mode:
+            "How the area fill colour is resolved.",
           area_opacity:
-            "Opacity of the area fill. Lower values keep the history line, bands, grid, and axes easier to read.",
+            "Opacity of the filled area under the line when using a solid fill.",
+          area_fill_style:
+            "Choose whether the area under the line uses a solid fill or gradient fill.",
+          area_gradient_direction:
+            "Direction of the area gradient.",
+          area_gradient_opacity_start:
+            "Starting opacity for the area gradient.",
+          area_gradient_opacity_end:
+            "Ending opacity for the area gradient.",
 
           // Marker visibility
           show_latest:
@@ -4688,10 +4750,22 @@ class SimpleBandGraphCard extends HTMLElement {
       line_shadow_opacity: config.line_shadow_opacity ?? 0.35,
 
       // Area appearance settings
-      show_area: config.show_area ?? false,
-      area_color: config.area_color ?? "var(--primary-color)",
-      area_color_mode: config.area_color_mode ?? "static",
-      area_opacity: config.area_opacity ?? 0.18,
+      show_area:
+        config.show_area ?? false,
+      area_color:
+        config.area_color ?? "var(--primary-color)",
+      area_color_mode:
+        config.area_color_mode ?? "static",
+      area_opacity:
+        config.area_opacity ?? 0.18,
+      area_fill_style:
+        config.area_fill_style ?? "solid",
+      area_gradient_direction:
+        config.area_gradient_direction ?? "vertical",
+      area_gradient_opacity_start:
+        config.area_gradient_opacity_start ?? 0.24,
+      area_gradient_opacity_end:
+        config.area_gradient_opacity_end ?? 0,
 
       // Grid-line settings
       show_x_grid: config.show_x_grid ?? false,
@@ -9622,6 +9696,63 @@ class SimpleBandGraphCard extends HTMLElement {
     */
     const areaColorMode = this.config.area_color_mode || "static";
 
+    const areaGradientId = `sbgc-area-gradient-${this._instanceId}`;
+
+    const buildAreaGradientHtml = () => {
+      const startOpacity =
+        normaliseOpacity(this.config.area_gradient_opacity_start ?? 0.24);
+
+      const endOpacity =
+        normaliseOpacity(this.config.area_gradient_opacity_end ?? 0);
+
+      const direction =
+        this.config.area_gradient_direction || "vertical";
+
+      const gradientCoordinates =
+        direction === "horizontal"
+          ? {
+              x1: padding.left,
+              y1: 0,
+              x2: padding.left + plotWidth,
+              y2: 0,
+            }
+          : {
+              x1: 0,
+              y1: padding.top,
+              x2: 0,
+              y2: padding.top + plotHeight,
+            };
+
+      return `
+        <linearGradient
+          id="${areaGradientId}"
+          x1="${gradientCoordinates.x1}"
+          y1="${gradientCoordinates.y1}"
+          x2="${gradientCoordinates.x2}"
+          y2="${gradientCoordinates.y2}"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop
+            offset="0%"
+            stop-color="${cssValue(this.config.area_color, "var(--primary-color)")}"
+            stop-opacity="${startOpacity}"
+          ></stop>
+          <stop
+            offset="100%"
+            stop-color="${cssValue(this.config.area_color, "var(--primary-color)")}"
+            stop-opacity="${endOpacity}"
+          ></stop>
+        </linearGradient>
+      `;
+    };
+
+    const useAreaGradient =
+      this.config.show_area &&
+      this.config.area_fill_style === "gradient";
+
+    const areaGradientHtml =
+      useAreaGradient ? buildAreaGradientHtml() : "";
+
     const zeroY = yToSvg(0);
 
     const areaBaselineY = clamp(
@@ -9649,11 +9780,16 @@ class SimpleBandGraphCard extends HTMLElement {
             ].join(" ")
           : "";
 
-      return areaPoints && staticAreaColour !== "transparent"
+      const areaFill =
+        useAreaGradient
+          ? `url(#${areaGradientId})`
+          : staticAreaColour;
+
+      return areaPoints && areaFill !== "transparent"
         ? `
           <polygon
             points="${areaPoints}"
-            fill="${staticAreaColour}"
+            fill="${areaFill}"
             stroke="none"
           ></polygon>
         `
@@ -10546,6 +10682,8 @@ class SimpleBandGraphCard extends HTMLElement {
                 viewBox="0 0 ${width} ${height}"
               >
                 <defs>
+                  ${areaGradientHtml}
+
                   <clipPath id="${plotClipPathId}">
                     <rect
                       x="${padding.left}"
